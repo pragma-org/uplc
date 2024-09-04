@@ -5,3 +5,6 @@ edition = "2021"
 
 [dependencies]
 bumpalo = { version = "3.16.0", features = ["collections"] }
+
+[dev-dependencies]
+pretty_assertions = "1.4.0"
