@@ -55,7 +55,17 @@ impl<'a> Machine<'a> {
 
                 Ok(self.arena.alloc(MachineState::Return(context, value)))
             }
-            Term::Lambda { parameter, body } => todo!(),
+            Term::Lambda { parameter, body } => {
+                let value = self.arena.alloc(Value::Lambda {
+                    parameter: *parameter,
+                    body,
+                    env,
+                });
+
+                let state = self.arena.alloc(MachineState::Return(context, value));
+
+                Ok(state)
+            }
             Term::Apply { function, argument } => todo!(),
             Term::Delay(_) => todo!(),
             Term::Force(_) => todo!(),
