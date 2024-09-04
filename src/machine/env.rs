@@ -1,7 +1,6 @@
 use bumpalo::{collections::Vec as BumpVec, Bump};
 
-use super::{value::Value, MachineError};
-use crate::term::Term;
+use super::value::Value;
 
 pub struct Env<'a>(BumpVec<'a, Value<'a>>);
 
