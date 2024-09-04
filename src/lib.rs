@@ -9,7 +9,6 @@ pub mod typ;
 mod tests {
     use pretty_assertions::assert_eq;
 
-    use crate::machine::Machine;
     use crate::program::Version;
 
     use super::program::Program;
@@ -27,9 +26,7 @@ mod tests {
 
         let program = Program::new(&arena, version, term);
 
-        let mut machine = Machine::new(&arena);
-
-        let result = machine.run(term);
+        let result = program.eval(&arena);
 
         assert_eq!(result.result.unwrap(), Term::integer(&arena, 4));
     }
