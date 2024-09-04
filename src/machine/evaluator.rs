@@ -63,7 +63,7 @@ impl<'a> Machine<'a> {
             Term::Constr { tag, fields } => todo!(),
             Term::Constant(_) => todo!(),
             Term::Builtin(_) => todo!(),
-            Term::Error => todo!(),
+            Term::Error => Err(MachineError::ExplicitErrorTerm),
         }
     }
 
