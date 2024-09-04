@@ -1,6 +1,9 @@
 use bumpalo::Bump;
 
-use crate::term::Term;
+use crate::{
+    machine::{EvalResult, Machine},
+    term::Term,
+};
 
 pub struct Version<'a>(&'a (u8, u8, u8));
 
@@ -46,5 +49,11 @@ impl<'a> Program<'a> {
         let program = Program { version, term };
 
         arena.alloc(program)
+    }
+
+    pub fn eval(&'a self, arena: &'a Bump) -> EvalResult<'a> {
+        let machine = Machine::new(&arena);
+
+        machine.run(self.term)
     }
 }
