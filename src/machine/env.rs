@@ -10,13 +10,7 @@ impl<'a> Env<'a> {
         Self(BumpVec::new_in(arena))
     }
 
-    pub fn lookup(&'a self, term: &'a Term<'a>) -> Result<&'a Value<'a>, MachineError<'a>> {
-        let Term::Var(name) = term else {
-            unreachable!("this should never happen");
-        };
-
-        self.0
-            .get(self.0.len() - name)
-            .ok_or_else(|| MachineError::OpenTermEvaluated(term))
+    pub fn lookup(&'a self, name: usize) -> Option<&'a Value<'a>> {
+        self.0.get(self.0.len() - name)
     }
 }

@@ -48,8 +48,10 @@ impl<'a> Machine<'a> {
         term: &'a Term<'a>,
     ) -> Result<&'a mut MachineState<'a>, MachineError<'a>> {
         match term {
-            Term::Var(_) => {
-                let value = env.lookup(term)?;
+            Term::Var(name) => {
+                let value = env
+                    .lookup(*name)
+                    .ok_or(MachineError::OpenTermEvaluated(term))?;
 
                 Ok(self.arena.alloc(MachineState::Return(context, value)))
             }
