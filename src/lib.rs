@@ -1,5 +1,6 @@
 pub mod builtin;
 pub mod constant;
+pub mod machine;
 pub mod program;
 pub mod term;
 
