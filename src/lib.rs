@@ -1,14 +1,25 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+pub mod builtin;
+pub mod constant;
+pub mod program;
+pub mod term;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::program::Version;
+
+    use super::program::Program;
+    use super::term::Term;
 
     #[test]
     fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+        let arena = bumpalo::Bump::new();
+
+        let term = arena.alloc(Term::Var(2));
+
+        let version = Version::plutus_v3(&arena);
+
+        let program = Program::new(&arena, version, term);
+
+        assert!(program.version.is_plutus_v3())
     }
 }
