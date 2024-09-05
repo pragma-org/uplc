@@ -52,7 +52,7 @@ impl<'a> Program<'a> {
     }
 
     pub fn eval(&'a self, arena: &'a Bump) -> EvalResult<'a> {
-        let machine = Machine::new(&arena);
+        let machine = Machine::new(arena);
 
         machine.run(self.term)
     }

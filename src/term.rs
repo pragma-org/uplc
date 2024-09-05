@@ -1,6 +1,9 @@
 use bumpalo::{collections::Vec as BumpVec, Bump};
 
-use crate::{builtin::DefaultFunction, constant::Constant};
+use crate::{
+    builtin::DefaultFunction,
+    constant::{integer_from, Constant, Integer},
+};
 
 #[derive(Debug, PartialEq)]
 pub enum Term<'a> {
@@ -54,10 +57,14 @@ impl<'a> Term<'a> {
         arena.alloc(Term::Constant(constant))
     }
 
-    pub fn integer(arena: &'a Bump, i: i128) -> &'a Term<'a> {
+    pub fn integer(arena: &'a Bump, i: &'a Integer) -> &'a Term<'a> {
         let constant = arena.alloc(Constant::Integer(i));
 
         Term::constant(arena, constant)
+    }
+
+    pub fn integer_from(arena: &'a Bump, i: i128) -> &'a Term<'a> {
+        Self::integer(arena, integer_from(arena, i))
     }
 
     pub fn builtin(arena: &'a Bump, fun: &'a DefaultFunction) -> &'a Term<'a> {

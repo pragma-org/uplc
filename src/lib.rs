@@ -19,8 +19,8 @@ mod tests {
         let arena = bumpalo::Bump::new();
 
         let term = Term::add_integer(&arena)
-            .apply(&arena, Term::integer(&arena, 1))
-            .apply(&arena, Term::integer(&arena, 3));
+            .apply(&arena, Term::integer_from(&arena, 1))
+            .apply(&arena, Term::integer_from(&arena, 3));
 
         let version = Version::plutus_v3(&arena);
 
@@ -28,6 +28,6 @@ mod tests {
 
         let result = program.eval(&arena);
 
-        assert_eq!(result.result.unwrap(), Term::integer(&arena, 4));
+        assert_eq!(result.result.unwrap(), Term::integer_from(&arena, 4));
     }
 }

@@ -1,6 +1,10 @@
 use bumpalo::{collections::Vec as BumpVec, Bump};
+use rug::Assign;
 
-use crate::builtin::DefaultFunction;
+use crate::{
+    builtin::DefaultFunction,
+    constant::{self, Integer},
+};
 
 use super::{value::Value, MachineError};
 
@@ -32,7 +36,11 @@ impl<'a> Runtime<'a> {
 
                 let result = arg1 + arg2;
 
-                let value = Value::integer(arena, result);
+                let new = constant::integer(arena);
+
+                new.assign(result);
+
+                let value = Value::integer(arena, new);
 
                 Ok(value)
             }

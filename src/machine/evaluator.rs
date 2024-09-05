@@ -182,6 +182,6 @@ impl<'a> Machine<'a> {
         &mut self,
         runtime: &'a Runtime<'a>,
     ) -> Result<&'a Value<'a>, MachineError<'a>> {
-        runtime.call(&self.arena)
+        runtime.call(self.arena)
     }
 }
