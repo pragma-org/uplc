@@ -15,7 +15,7 @@ mod tests {
     use super::term::Term;
 
     #[test]
-    fn it_works() {
+    fn add_integer() {
         let arena = bumpalo::Bump::new();
 
         let term = Term::add_integer(&arena)
