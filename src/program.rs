@@ -1,7 +1,7 @@
 use bumpalo::Bump;
 
 use crate::{
-    machine::{EvalResult, Machine},
+    machine::{CostModel, EvalResult, ExBudget, Machine},
     term::Term,
 };
 
@@ -52,7 +52,7 @@ impl<'a> Program<'a> {
     }
 
     pub fn eval(&'a self, arena: &'a Bump) -> EvalResult<'a> {
-        let machine = Machine::new(arena);
+        let machine = Machine::new(arena, ExBudget::default(), CostModel::default());
 
         machine.run(self.term)
     }

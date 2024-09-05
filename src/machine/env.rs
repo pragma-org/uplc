@@ -10,7 +10,7 @@ impl<'a> Env<'a> {
         arena.alloc(Self(BumpVec::new_in(arena)))
     }
 
-    pub fn push(&'a self, arena: &'a Bump, argument: &'a Value<'a>) -> &'a mut Self {
+    pub fn push(&'a self, arena: &'a Bump, argument: &'a Value<'a>) -> &'a Self {
         let mut new_env = self.0.clone();
 
         new_env.push(argument);
