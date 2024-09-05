@@ -3,7 +3,7 @@ use rug::Assign;
 
 use crate::{
     builtin::DefaultFunction,
-    constant::{self, Integer},
+    constant::{self},
 };
 
 use super::{value::Value, MachineError};
