@@ -91,23 +91,43 @@ impl<'a> Machine<'a> {
 
                 Ok(state)
             }
-            Term::Delay(_) => {
+            Term::Delay(body) => {
                 self.step_and_maybe_spend(StepKind::Delay)?;
 
-                todo!()
+                let value = Value::delay(self.arena, body, env);
+
+                let state = MachineState::return_(self.arena, context, value);
+
+                Ok(state)
             }
-            Term::Force(_) => {
+            Term::Force(body) => {
                 self.step_and_maybe_spend(StepKind::Force)?;
 
-                todo!()
-            }
-            Term::Case { constr, branches } => {
-                self.step_and_maybe_spend(StepKind::Case)?;
+                let frame = Context::frame_force(self.arena, context);
 
-                todo!()
+                let state = MachineState::compute(self.arena, frame, env, body);
+
+                Ok(state)
             }
             Term::Constr { tag, fields } => {
                 self.step_and_maybe_spend(StepKind::Constr)?;
+
+                if let Some((first, terms)) = fields.split_first() {
+                    let frame = Context::frame_constr_empty(self.arena, env, *tag, terms, context);
+
+                    let state = MachineState::compute(self.arena, frame, env, first);
+
+                    Ok(state)
+                } else {
+                    let value = Value::constr_empty(self.arena, *tag);
+
+                    let state = MachineState::return_(self.arena, context, value);
+
+                    Ok(state)
+                }
+            }
+            Term::Case { constr, branches } => {
+                self.step_and_maybe_spend(StepKind::Case)?;
 
                 todo!()
             }
@@ -152,8 +172,30 @@ impl<'a> Machine<'a> {
                 self.apply_evaluate(context, function, value)
             }
             Context::FrameAwaitFunValue(_, _) => todo!(),
-            Context::FrameForce(_) => todo!(),
-            Context::FrameConstr(_, _, _, _, _) => todo!(),
+            Context::FrameForce(context) => self.force_evaluate(context, value),
+            Context::FrameConstr(env, tag, terms, values, context) => {
+                if let Some((first, terms)) = terms.split_first() {
+                    let frame = Context::frame_constr_push(
+                        &self.arena,
+                        value,
+                        env,
+                        *tag,
+                        terms,
+                        values,
+                        context,
+                    );
+
+                    let state = MachineState::compute(self.arena, frame, env, first);
+
+                    Ok(state)
+                } else {
+                    let value = Value::constr_push(self.arena, *tag, value, values);
+
+                    let state = MachineState::return_(self.arena, context, value);
+
+                    Ok(state)
+                }
+            }
             Context::FrameCases(_, _, _) => todo!(),
             Context::NoFrame => {
                 let term = discharge::value_as_term(self.arena, value);
@@ -162,6 +204,34 @@ impl<'a> Machine<'a> {
 
                 Ok(state)
             }
+        }
+    }
+
+    fn force_evaluate(
+        &mut self,
+        context: &'a Context<'a>,
+        value: &'a Value<'a>,
+    ) -> Result<&'a mut MachineState<'a>, MachineError<'a>> {
+        match value {
+            Value::Delay(term, env) => Ok(MachineState::compute(self.arena, context, env, term)),
+            Value::Builtin(runtime) => {
+                if runtime.needs_force() {
+                    let value = if runtime.is_ready() {
+                        self.eval_builtin_app(runtime)?
+                    } else {
+                        Value::builtin(self.arena, runtime.force(self.arena))
+                    };
+
+                    let state = MachineState::return_(self.arena, context, value);
+
+                    Ok(state)
+                } else {
+                    let term = discharge::value_as_term(self.arena, value);
+
+                    Err(MachineError::BuiltinTermArgumentExpected(term))
+                }
+            }
+            rest => Err(MachineError::NonPolymorphicInstantiation(rest)),
         }
     }
 
@@ -206,6 +276,10 @@ impl<'a> Machine<'a> {
         &mut self,
         runtime: &'a Runtime<'a>,
     ) -> Result<&'a Value<'a>, MachineError<'a>> {
+        let cost = runtime.to_ex_budget(&self.costs.builtin_costs);
+
+        self.spend_budget(cost)?;
+
         runtime.call(self.arena)
     }
 

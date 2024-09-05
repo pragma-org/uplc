@@ -6,7 +6,7 @@ use crate::{
     constant::{self},
 };
 
-use super::{value::Value, MachineError};
+use super::{cost_model::builtin_costs::BuiltinCosts, value::Value, ExBudget, MachineError};
 
 #[derive(Debug)]
 pub struct Runtime<'a> {
@@ -22,6 +22,16 @@ impl<'a> Runtime<'a> {
             fun,
             forces: 0,
         })
+    }
+
+    pub fn force(&self, arena: &'a Bump) -> &'a Self {
+        let new_runtime = arena.alloc(Runtime {
+            args: self.args.clone(),
+            fun: self.fun,
+            forces: self.forces + 1,
+        });
+
+        new_runtime
     }
 
     pub fn push(&self, arena: &'a Bump, arg: &'a Value<'a>) -> &'a Self {
@@ -46,6 +56,10 @@ impl<'a> Runtime<'a> {
 
     pub fn is_ready(&self) -> bool {
         self.args.len() == self.fun.arity()
+    }
+
+    pub fn to_ex_budget(&self, builtin_costs: &BuiltinCosts) -> ExBudget {
+        todo!()
     }
 
     pub fn call(&self, arena: &'a Bump) -> Result<&'a Value<'a>, MachineError<'a>> {

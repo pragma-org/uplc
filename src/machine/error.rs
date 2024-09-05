@@ -11,4 +11,6 @@ pub enum MachineError<'a> {
     OutOfExError(ExBudget),
     TypeMismatch(Type<'a>, &'a Constant<'a>),
     UnexpectedBuiltinTermArgument(&'a Term<'a>),
+    NonPolymorphicInstantiation(&'a Value<'a>),
+    BuiltinTermArgumentExpected(&'a Term<'a>),
 }

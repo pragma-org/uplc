@@ -12,8 +12,8 @@ pub enum Context<'a> {
     FrameConstr(
         &'a Env<'a>,
         usize,
-        BumpVec<'a, Term<'a>>,
-        BumpVec<'a, Value<'a>>,
+        &'a [Term<'a>],
+        BumpVec<'a, &'a Value<'a>>,
         &'a Context<'a>,
     ),
     FrameCases(&'a Env<'a>, BumpVec<'a, Term<'a>>, &'a Context<'a>),
@@ -54,14 +54,35 @@ impl<'a> Context<'a> {
         arena.alloc(Context::FrameForce(context))
     }
 
-    pub fn frame_constr(
+    pub fn frame_constr_empty(
         arena: &'a Bump,
         env: &'a Env<'a>,
         index: usize,
-        terms: BumpVec<'a, Term<'a>>,
-        values: BumpVec<'a, Value<'a>>,
+        terms: &'a [Term<'a>],
         context: &'a Context<'a>,
     ) -> &'a Context<'a> {
+        arena.alloc(Context::FrameConstr(
+            env,
+            index,
+            terms,
+            BumpVec::new_in(arena),
+            context,
+        ))
+    }
+
+    pub fn frame_constr_push(
+        arena: &'a Bump,
+        resolved_value: &'a Value<'a>,
+        env: &'a Env<'a>,
+        index: usize,
+        terms: &'a [Term<'a>],
+        values: &'a BumpVec<'a, &'a Value<'a>>,
+        context: &'a Context<'a>,
+    ) -> &'a Context<'a> {
+        let mut values = values.clone();
+
+        values.push(resolved_value);
+
         arena.alloc(Context::FrameConstr(env, index, terms, values, context))
     }
 

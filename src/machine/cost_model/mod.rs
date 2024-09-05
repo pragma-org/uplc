@@ -1,4 +1,4 @@
-mod builtin_costs;
+pub mod builtin_costs;
 pub mod ex_budget;
 mod machine_costs;
 
