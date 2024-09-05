@@ -55,20 +55,14 @@ impl<'a> Machine<'a> {
                 Ok(state)
             }
             Term::Lambda { parameter, body } => {
-                let value = self.arena.alloc(Value::Lambda {
-                    parameter: *parameter,
-                    body,
-                    env,
-                });
+                let value = Value::lambda(self.arena, *parameter, body, env);
 
                 let state = MachineState::return_(self.arena, context, value);
 
                 Ok(state)
             }
             Term::Apply { function, argument } => {
-                let frame = self
-                    .arena
-                    .alloc(Context::FrameAwaitFunTerm(env, argument, context));
+                let frame = Context::frame_await_fun_term(self.arena, env, argument, context);
 
                 let state = MachineState::compute(self.arena, frame, env, function);
 
@@ -105,7 +99,7 @@ impl<'a> Machine<'a> {
     ) -> Result<&'a mut MachineState<'a>, MachineError<'a>> {
         match context {
             Context::FrameAwaitFunTerm(arg_env, argument, context) => {
-                let context = self.arena.alloc(Context::FrameAwaitArg(value, context));
+                let context = Context::frame_await_arg(self.arena, value, context);
 
                 let state = MachineState::compute(self.arena, context, arg_env, argument);
 
@@ -139,7 +133,13 @@ impl<'a> Machine<'a> {
                 parameter,
                 body,
                 env,
-            } => todo!(),
+            } => {
+                let new_env = env.push(self.arena, argument);
+
+                let state = MachineState::compute(self.arena, context, new_env, body);
+
+                Ok(state)
+            }
             Value::Builtin(runtime) => {
                 if !runtime.needs_force() && runtime.is_arrow() {
                     let runtime = runtime.push(self.arena, argument);
@@ -154,10 +154,12 @@ impl<'a> Machine<'a> {
 
                     Ok(state)
                 } else {
-                    todo!("Add proper error")
+                    let term = discharge::value_as_term(self.arena, function);
+
+                    Err(MachineError::UnexpectedBuiltinTermArgument(term))
                 }
             }
-            rest => todo!("Add Proper Error"),
+            rest => Err(MachineError::NonFunctionApplication(argument, rest)),
         }
     }
 
