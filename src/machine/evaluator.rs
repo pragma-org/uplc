@@ -1,7 +1,5 @@
 use bumpalo::Bump;
 
-use bumpalo::collections::Vec as BumpVec;
-
 use crate::{
     machine::{context::Context, env::Env, state::MachineState},
     term::Term,
