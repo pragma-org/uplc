@@ -25,6 +25,19 @@ impl<'a> Value<'a> {
         arena.alloc(Value::Con(constant))
     }
 
+    pub fn lambda(
+        arena: &'a Bump,
+        parameter: usize,
+        body: &'a Term<'a>,
+        env: &'a Env<'a>,
+    ) -> &'a Value<'a> {
+        arena.alloc(Value::Lambda {
+            parameter,
+            body,
+            env,
+        })
+    }
+
     pub fn integer(arena: &'a Bump, i: &'a Integer) -> &'a Value<'a> {
         let con = arena.alloc(Constant::Integer(i));
 
