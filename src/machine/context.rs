@@ -1,4 +1,4 @@
-use bumpalo::collections::Vec as BumpVec;
+use bumpalo::{collections::Vec as BumpVec, Bump};
 
 use crate::term::Term;
 
@@ -18,4 +18,10 @@ pub enum Context<'a> {
     ),
     FrameCases(&'a Env<'a>, BumpVec<'a, Term<'a>>, &'a Context<'a>),
     NoFrame,
+}
+
+impl<'a> Context<'a> {
+    pub fn no_frame(arena: &'a Bump) -> &'a Context<'a> {
+        arena.alloc(Context::NoFrame)
+    }
 }

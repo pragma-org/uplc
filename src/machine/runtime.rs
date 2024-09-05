@@ -16,6 +16,26 @@ pub struct Runtime<'a> {
 }
 
 impl<'a> Runtime<'a> {
+    pub fn new(arena: &'a Bump, fun: &'a DefaultFunction) -> &'a Self {
+        arena.alloc(Self {
+            args: BumpVec::new_in(arena),
+            fun,
+            forces: 0,
+        })
+    }
+
+    pub fn push(&self, arena: &'a Bump, arg: &'a Value<'a>) -> &'a Self {
+        let new_runtime = arena.alloc(Runtime {
+            args: self.args.clone(),
+            fun: self.fun,
+            forces: self.forces,
+        });
+
+        new_runtime.args.push(arg);
+
+        new_runtime
+    }
+
     pub fn needs_force(&self) -> bool {
         self.forces < self.fun.force_count()
     }

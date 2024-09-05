@@ -21,6 +21,20 @@ pub enum Value<'a> {
 }
 
 impl<'a> Value<'a> {
+    pub fn con(arena: &'a Bump, constant: &'a Constant<'a>) -> &'a Value<'a> {
+        arena.alloc(Value::Con(constant))
+    }
+
+    pub fn integer(arena: &'a Bump, i: &'a Integer) -> &'a Value<'a> {
+        let con = arena.alloc(Constant::Integer(i));
+
+        Value::con(arena, con)
+    }
+
+    pub fn builtin(arena: &'a Bump, runtime: &'a Runtime<'a>) -> &'a Value<'a> {
+        arena.alloc(Value::Builtin(runtime))
+    }
+
     pub fn unwrap_integer(&'a self) -> Result<&'a Integer, MachineError<'a>> {
         let inner = self.unwrap_constant()?;
 
@@ -29,12 +43,6 @@ impl<'a> Value<'a> {
         };
 
         Ok(integer)
-    }
-
-    pub fn integer(arena: &'a Bump, i: &'a Integer) -> &'a Value<'a> {
-        let con = arena.alloc(Constant::Integer(i));
-
-        arena.alloc(Value::Con(con))
     }
 
     pub fn unwrap_constant(&'a self) -> Result<&'a Constant<'a>, MachineError<'a>> {
