@@ -45,13 +45,14 @@ pub fn value_as_term<'a>(arena: &'a Bump, value: &'a Value<'a>) -> &'a Term<'a> 
             // ),
             todo!()
         } // Value::Constr { tag, fields } => {
-          //     //     Term::Constr {
-          //     //     tag,
-          //     //     fields: fields.into_iter().map(value_as_term).collect(),
-          //     // },
+        //     //     Term::Constr {
+        //     //     tag,
+        //     //     fields: fields.into_iter().map(value_as_term).collect(),
+        //     // },
 
-          //     todo!()
-          // }
+        //     todo!()
+        // }
+        _ => todo!(),
     }
 }
 
