@@ -19,13 +19,10 @@ impl<'a> Machine<'a> {
     }
 
     pub fn run(mut self, term: &'a Term<'a>) -> EvalResult<'a> {
-        let initial_context = self.arena.alloc(Context::NoFrame);
+        let initial_context = Context::no_frame(self.arena);
 
-        let mut state = self.arena.alloc(MachineState::Compute(
-            initial_context,
-            Env::new_in(self.arena),
-            term,
-        ));
+        let mut state =
+            MachineState::compute(self.arena, initial_context, Env::new_in(self.arena), term);
 
         loop {
             let step = match state {
@@ -55,7 +52,9 @@ impl<'a> Machine<'a> {
                     .lookup(*name)
                     .ok_or(MachineError::OpenTermEvaluated(term))?;
 
-                Ok(self.arena.alloc(MachineState::Return(context, value)))
+                let state = MachineState::return_(self.arena, context, value);
+
+                Ok(state)
             }
             Term::Lambda { parameter, body } => {
                 let value = self.arena.alloc(Value::Lambda {
@@ -64,7 +63,7 @@ impl<'a> Machine<'a> {
                     env,
                 });
 
-                let state = self.arena.alloc(MachineState::Return(context, value));
+                let state = MachineState::return_(self.arena, context, value);
 
                 Ok(state)
             }
@@ -73,9 +72,7 @@ impl<'a> Machine<'a> {
                     .arena
                     .alloc(Context::FrameAwaitFunTerm(env, argument, context));
 
-                let state = self
-                    .arena
-                    .alloc(MachineState::Compute(frame, env, function));
+                let state = MachineState::compute(self.arena, frame, env, function);
 
                 Ok(state)
             }
@@ -84,22 +81,18 @@ impl<'a> Machine<'a> {
             Term::Case { constr, branches } => todo!(),
             Term::Constr { tag, fields } => todo!(),
             Term::Constant(constant) => {
-                let value = self.arena.alloc(Value::Con(constant));
+                let value = Value::con(self.arena, constant);
 
-                let state = self.arena.alloc(MachineState::Return(context, value));
+                let state = MachineState::return_(self.arena, context, value);
 
                 Ok(state)
             }
-            Term::Builtin(def_fun) => {
-                let runtime = self.arena.alloc(Runtime {
-                    args: BumpVec::new_in(self.arena),
-                    fun: def_fun,
-                    forces: 0,
-                });
+            Term::Builtin(fun) => {
+                let runtime = Runtime::new(self.arena, fun);
 
-                let value = self.arena.alloc(Value::Builtin(runtime));
+                let value = Value::builtin(self.arena, runtime);
 
-                let state = self.arena.alloc(MachineState::Return(context, value));
+                let state = MachineState::return_(self.arena, context, value);
 
                 Ok(state)
             }
@@ -116,9 +109,7 @@ impl<'a> Machine<'a> {
             Context::FrameAwaitFunTerm(arg_env, argument, context) => {
                 let context = self.arena.alloc(Context::FrameAwaitArg(value, context));
 
-                let state = self
-                    .arena
-                    .alloc(MachineState::Compute(context, arg_env, argument));
+                let state = MachineState::compute(self.arena, context, arg_env, argument);
 
                 Ok(state)
             }
@@ -132,7 +123,7 @@ impl<'a> Machine<'a> {
             Context::NoFrame => {
                 let term = discharge::value_as_term(self.arena, value);
 
-                let state = self.arena.alloc(MachineState::Done(term));
+                let state = MachineState::done(self.arena, term);
 
                 Ok(state)
             }
@@ -153,21 +144,15 @@ impl<'a> Machine<'a> {
             } => todo!(),
             Value::Builtin(runtime) => {
                 if !runtime.needs_force() && runtime.is_arrow() {
-                    let runtime = self.arena.alloc(Runtime {
-                        args: runtime.args.clone(),
-                        fun: runtime.fun,
-                        forces: runtime.forces,
-                    });
-
-                    runtime.args.push(argument);
+                    let runtime = runtime.push(self.arena, argument);
 
                     let value = if runtime.is_ready() {
                         self.eval_builtin_app(runtime)?
                     } else {
-                        self.arena.alloc(Value::Builtin(runtime))
+                        Value::builtin(self.arena, runtime)
                     };
 
-                    let state = self.arena.alloc(MachineState::Return(context, value));
+                    let state = MachineState::return_(self.arena, context, value);
 
                     Ok(state)
                 } else {
