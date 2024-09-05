@@ -5,6 +5,10 @@ edition = "2021"
 
 [dependencies]
 bumpalo = { version = "3.16.0", features = ["collections"] }
+rug = { version = "1.26.0", default-features = false, features = [
+    "integer",
+    "std",
+] }
 
 [dev-dependencies]
 pretty_assertions = "1.4.0"

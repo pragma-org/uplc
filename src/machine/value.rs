@@ -1,6 +1,10 @@
 use bumpalo::Bump;
 
-use crate::{constant::Constant, term::Term, typ::Type};
+use crate::{
+    constant::{Constant, Integer},
+    term::Term,
+    typ::Type,
+};
 
 use super::{env::Env, runtime::Runtime, MachineError};
 
@@ -17,18 +21,19 @@ pub enum Value<'a> {
 }
 
 impl<'a> Value<'a> {
-    pub fn unwrap_integer(&'a self) -> Result<i128, MachineError<'a>> {
+    pub fn unwrap_integer(&'a self) -> Result<&'a Integer, MachineError<'a>> {
         let inner = self.unwrap_constant()?;
 
         let Constant::Integer(integer) = inner else {
             return Err(MachineError::TypeMismatch(Type::Integer, inner));
         };
 
-        Ok(*integer)
+        Ok(integer)
     }
 
-    pub fn integer(arena: &'a Bump, i: i128) -> &'a Value<'a> {
+    pub fn integer(arena: &'a Bump, i: &'a Integer) -> &'a Value<'a> {
         let con = arena.alloc(Constant::Integer(i));
+
         arena.alloc(Value::Con(con))
     }
 
