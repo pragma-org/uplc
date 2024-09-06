@@ -276,9 +276,9 @@ impl<'a> Machine<'a> {
         &mut self,
         runtime: &'a Runtime<'a>,
     ) -> Result<&'a Value<'a>, MachineError<'a>> {
-        let cost = runtime.to_ex_budget(&self.costs.builtin_costs);
+        // let cost = runtime.to_ex_budget(&self.costs.builtin_costs);
 
-        self.spend_budget(cost)?;
+        // self.spend_budget(cost)?;
 
         runtime.call(self.arena)
     }
