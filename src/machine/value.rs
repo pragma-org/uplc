@@ -48,17 +48,16 @@ impl<'a> Value<'a> {
         arena.alloc(Value::Constr(tag, BumpVec::new_in(arena)))
     }
 
-    pub fn constr_push(
+    pub fn constr(
         arena: &'a Bump,
         tag: usize,
-        value: &'a Value<'a>,
-        values: &'a BumpVec<'a, &'a Value<'a>>,
+        values: BumpVec<'a, &'a Value<'a>>,
     ) -> &'a Value<'a> {
-        let mut values = values.clone();
-
-        values.push(value);
-
         arena.alloc(Value::Constr(tag, values))
+    }
+
+    pub fn builtin(arena: &'a Bump, runtime: &'a Runtime<'a>) -> &'a Value<'a> {
+        arena.alloc(Value::Builtin(runtime))
     }
 
     pub fn integer(arena: &'a Bump, i: &'a Integer) -> &'a Value<'a> {
@@ -67,8 +66,10 @@ impl<'a> Value<'a> {
         Value::con(arena, con)
     }
 
-    pub fn builtin(arena: &'a Bump, runtime: &'a Runtime<'a>) -> &'a Value<'a> {
-        arena.alloc(Value::Builtin(runtime))
+    pub fn bool(arena: &'a Bump, b: bool) -> &'a Value<'a> {
+        let con = arena.alloc(Constant::Boolean(b));
+
+        Value::con(arena, con)
     }
 
     pub fn unwrap_integer(&'a self) -> Result<&'a Integer, MachineError<'a>> {
@@ -79,6 +80,16 @@ impl<'a> Value<'a> {
         };
 
         Ok(integer)
+    }
+
+    pub fn unwrap_bool(&'a self) -> Result<bool, MachineError<'a>> {
+        let inner = self.unwrap_constant()?;
+
+        let Constant::Boolean(b) = inner else {
+            return Err(MachineError::TypeMismatch(Type::Bool, inner));
+        };
+
+        Ok(*b)
     }
 
     pub fn unwrap_constant(&'a self) -> Result<&'a Constant<'a>, MachineError<'a>> {

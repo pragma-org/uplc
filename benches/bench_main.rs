@@ -4,4 +4,5 @@ mod benchmarks;
 
 criterion_main! {
     benchmarks::add_integer,
+    benchmarks::fibonacci,
 }

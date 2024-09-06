@@ -15,6 +15,10 @@ impl ExBudget {
         ExBudget { mem, cpu }
     }
 
+    pub fn max() -> Self {
+        Self::machine_max()
+    }
+
     pub fn occurrences(&mut self, n: i64) {
         self.mem *= n;
         self.cpu *= n;
@@ -24,6 +28,13 @@ impl ExBudget {
         ExBudget {
             mem: 14_000_000,
             cpu: 10_000_000_000,
+        }
+    }
+
+    pub fn machine_max() -> Self {
+        ExBudget {
+            mem: 14_000_000_000_000,
+            cpu: 10_000_000_000_000_000,
         }
     }
 

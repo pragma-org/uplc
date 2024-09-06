@@ -129,7 +129,11 @@ impl<'a> Machine<'a> {
             Term::Case { constr, branches } => {
                 self.step_and_maybe_spend(StepKind::Case)?;
 
-                todo!()
+                let frame = Context::frame_cases(self.arena, env, branches, context);
+
+                let state = MachineState::compute(self.arena, frame, env, constr);
+
+                Ok(state)
             }
             Term::Constant(constant) => {
                 self.step_and_maybe_spend(StepKind::Constant)?;
@@ -171,32 +175,43 @@ impl<'a> Machine<'a> {
             Context::FrameAwaitArg(function, context) => {
                 self.apply_evaluate(context, function, value)
             }
-            Context::FrameAwaitFunValue(_, _) => todo!(),
+            Context::FrameAwaitFunValue(argument, context) => {
+                self.apply_evaluate(context, value, argument)
+            }
             Context::FrameForce(context) => self.force_evaluate(context, value),
             Context::FrameConstr(env, tag, terms, values, context) => {
+                let mut values = values.clone();
+
+                values.push(value);
+
                 if let Some((first, terms)) = terms.split_first() {
-                    let frame = Context::frame_constr_push(
-                        &self.arena,
-                        value,
-                        env,
-                        *tag,
-                        terms,
-                        values,
-                        context,
-                    );
+                    let frame =
+                        Context::frame_constr(&self.arena, env, *tag, terms, values, context);
 
                     let state = MachineState::compute(self.arena, frame, env, first);
 
                     Ok(state)
                 } else {
-                    let value = Value::constr_push(self.arena, *tag, value, values);
+                    let value = Value::constr(self.arena, *tag, values);
 
                     let state = MachineState::return_(self.arena, context, value);
 
                     Ok(state)
                 }
             }
-            Context::FrameCases(_, _, _) => todo!(),
+            Context::FrameCases(env, branches, context) => match value {
+                Value::Constr(tag, fields) => match branches.get(*tag) {
+                    Some(branch) => {
+                        let frame = self.transfer_arg_stack(fields, context);
+
+                        let state = MachineState::compute(self.arena, frame, env, branch);
+
+                        Ok(state)
+                    }
+                    None => Err(MachineError::MissingCaseBranch(branches, value)),
+                },
+                v => Err(MachineError::NonConstrScrutinized(v)),
+            },
             Context::NoFrame => {
                 let term = discharge::value_as_term(self.arena, value);
 
@@ -281,6 +296,20 @@ impl<'a> Machine<'a> {
         // self.spend_budget(cost)?;
 
         runtime.call(self.arena)
+    }
+
+    fn transfer_arg_stack(
+        &mut self,
+        fields: &'a [&'a Value<'a>],
+        context: &'a Context<'a>,
+    ) -> &'a Context<'a> {
+        if let Some((first, rest)) = fields.split_first() {
+            let context = Context::frame_await_fun_value(self.arena, first, context);
+
+            self.transfer_arg_stack(rest, context)
+        } else {
+            context
+        }
     }
 
     fn step_and_maybe_spend(&mut self, step: StepKind) -> Result<(), MachineError<'a>> {

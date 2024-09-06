@@ -12,11 +12,11 @@ pub enum Context<'a> {
     FrameConstr(
         &'a Env<'a>,
         usize,
-        &'a [Term<'a>],
+        &'a [&'a Term<'a>],
         BumpVec<'a, &'a Value<'a>>,
         &'a Context<'a>,
     ),
-    FrameCases(&'a Env<'a>, BumpVec<'a, Term<'a>>, &'a Context<'a>),
+    FrameCases(&'a Env<'a>, &'a [&'a Term<'a>], &'a Context<'a>),
     NoFrame,
 }
 
@@ -44,10 +44,10 @@ impl<'a> Context<'a> {
 
     pub fn frame_await_fun_value(
         arena: &'a Bump,
-        function: &'a Value<'a>,
+        argument: &'a Value<'a>,
         context: &'a Context<'a>,
     ) -> &'a Context<'a> {
-        arena.alloc(Context::FrameAwaitFunValue(function, context))
+        arena.alloc(Context::FrameAwaitFunValue(argument, context))
     }
 
     pub fn frame_force(arena: &'a Bump, context: &'a Context<'a>) -> &'a Context<'a> {
@@ -58,7 +58,7 @@ impl<'a> Context<'a> {
         arena: &'a Bump,
         env: &'a Env<'a>,
         index: usize,
-        terms: &'a [Term<'a>],
+        terms: &'a [&'a Term<'a>],
         context: &'a Context<'a>,
     ) -> &'a Context<'a> {
         arena.alloc(Context::FrameConstr(
@@ -70,26 +70,21 @@ impl<'a> Context<'a> {
         ))
     }
 
-    pub fn frame_constr_push(
+    pub fn frame_constr(
         arena: &'a Bump,
-        resolved_value: &'a Value<'a>,
         env: &'a Env<'a>,
         index: usize,
-        terms: &'a [Term<'a>],
-        values: &'a BumpVec<'a, &'a Value<'a>>,
+        terms: &'a [&'a Term<'a>],
+        values: BumpVec<'a, &'a Value<'a>>,
         context: &'a Context<'a>,
     ) -> &'a Context<'a> {
-        let mut values = values.clone();
-
-        values.push(resolved_value);
-
         arena.alloc(Context::FrameConstr(env, index, terms, values, context))
     }
 
     pub fn frame_cases(
         arena: &'a Bump,
         env: &'a Env<'a>,
-        terms: BumpVec<'a, Term<'a>>,
+        terms: &'a [&'a Term<'a>],
         context: &'a Context<'a>,
     ) -> &'a Context<'a> {
         arena.alloc(Context::FrameCases(env, terms, context))

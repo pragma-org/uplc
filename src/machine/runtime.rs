@@ -78,9 +78,44 @@ impl<'a> Runtime<'a> {
 
                 Ok(value)
             }
+            DefaultFunction::SubtractInteger => {
+                let arg1 = self.args[0].unwrap_integer()?;
+                let arg2 = self.args[1].unwrap_integer()?;
+
+                let result = arg1 - arg2;
+
+                let new = constant::integer(arena);
+
+                new.assign(result);
+
+                let value = Value::integer(arena, new);
+
+                Ok(value)
+            }
             DefaultFunction::EqualsInteger => todo!(),
+            DefaultFunction::LessThanEqualsInteger => {
+                let arg1 = self.args[0].unwrap_integer()?;
+                let arg2 = self.args[1].unwrap_integer()?;
+
+                let result = arg1 <= arg2;
+
+                let value = Value::bool(arena, result);
+
+                Ok(value)
+            }
             DefaultFunction::AddByteString => todo!(),
             DefaultFunction::EqualsByteString => todo!(),
+            DefaultFunction::IfThenElse => {
+                let arg1 = self.args[0].unwrap_bool()?;
+                let arg2 = self.args[1];
+                let arg3 = self.args[2];
+
+                if arg1 {
+                    Ok(arg2)
+                } else {
+                    Ok(arg3)
+                }
+            }
         }
     }
 }

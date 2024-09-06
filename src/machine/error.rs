@@ -13,4 +13,6 @@ pub enum MachineError<'a> {
     UnexpectedBuiltinTermArgument(&'a Term<'a>),
     NonPolymorphicInstantiation(&'a Value<'a>),
     BuiltinTermArgumentExpected(&'a Term<'a>),
+    NonConstrScrutinized(&'a Value<'a>),
+    MissingCaseBranch(&'a [&'a Term<'a>], &'a Value<'a>),
 }

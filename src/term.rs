@@ -5,7 +5,7 @@ use crate::{
     constant::{integer_from, Constant, Integer},
 };
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Term<'a> {
     Var(usize),
 
@@ -25,13 +25,13 @@ pub enum Term<'a> {
 
     Case {
         constr: &'a Term<'a>,
-        branches: BumpVec<'a, Term<'a>>,
+        branches: BumpVec<'a, &'a Term<'a>>,
     },
 
     Constr {
         // TODO: revisit what the best type is for this
         tag: usize,
-        fields: BumpVec<'a, Term<'a>>,
+        fields: BumpVec<'a, &'a Term<'a>>,
     },
 
     Constant(&'a Constant<'a>),
@@ -53,8 +53,27 @@ impl<'a> Term<'a> {
         })
     }
 
+    pub fn lambda(&'a self, arena: &'a Bump, parameter: usize) -> &'a Term<'a> {
+        arena.alloc(Term::Lambda {
+            parameter,
+            body: self,
+        })
+    }
+
+    pub fn force(&'a self, arena: &'a Bump) -> &'a Term<'a> {
+        arena.alloc(Term::Force(self))
+    }
+
+    pub fn delay(&'a self, arena: &'a Bump) -> &'a Term<'a> {
+        arena.alloc(Term::Delay(self))
+    }
+
     pub fn constant(arena: &'a Bump, constant: &'a Constant<'a>) -> &'a Term<'a> {
         arena.alloc(Term::Constant(constant))
+    }
+
+    pub fn constr(arena: &'a Bump, tag: usize, fields: BumpVec<'a, &'a Term<'a>>) -> &'a Term<'a> {
+        arena.alloc(Term::Constr { tag, fields })
     }
 
     pub fn integer(arena: &'a Bump, i: &'a Integer) -> &'a Term<'a> {
@@ -67,12 +86,32 @@ impl<'a> Term<'a> {
         Self::integer(arena, integer_from(arena, i))
     }
 
+    pub fn unit(arena: &'a Bump) -> &'a Term<'a> {
+        let constant = Constant::unit(arena);
+
+        Term::constant(arena, constant)
+    }
+
     pub fn builtin(arena: &'a Bump, fun: &'a DefaultFunction) -> &'a Term<'a> {
         arena.alloc(Term::Builtin(fun))
     }
 
     pub fn add_integer(arena: &'a Bump) -> &'a Term<'a> {
         let fun = arena.alloc(DefaultFunction::AddInteger);
+        Term::builtin(arena, fun)
+    }
+
+    pub fn subtract_integer(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::SubtractInteger);
+        Term::builtin(arena, fun)
+    }
+    pub fn less_than_equals_integer(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::LessThanEqualsInteger);
+        Term::builtin(arena, fun)
+    }
+
+    pub fn if_then_else(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::IfThenElse);
         Term::builtin(arena, fun)
     }
 }

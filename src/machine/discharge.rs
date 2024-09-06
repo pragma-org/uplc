@@ -1,3 +1,4 @@
+use bumpalo::collections::CollectIn;
 use bumpalo::Bump;
 
 use crate::term::Term;
@@ -8,99 +9,76 @@ pub fn value_as_term<'a>(arena: &'a Bump, value: &'a Value<'a>) -> &'a Term<'a> 
     match value {
         Value::Con(x) => arena.alloc(Term::Constant(x)),
         Value::Builtin(runtime) => {
-            // let mut term = Term::Builtin(fun);
+            let mut term = Term::builtin(arena, runtime.fun);
 
-            // for _ in 0..runtime.forces {
-            //     term = term.force();
-            // }
+            for _ in 0..runtime.forces {
+                term = term.force(arena);
+            }
 
-            // for arg in runtime.args {
-            //     term = term.apply(value_as_term(arg));
-            // }
+            for arg in &runtime.args {
+                term = term.apply(arena, value_as_term(arena, arg));
+            }
 
-            // term
-            todo!()
+            term
         }
-        Value::Delay(body, env) => {
-            // with_env(0, env, Term::Delay(body)),
-            //
-            todo!()
-        }
+        Value::Delay(body, env) => with_env(arena, 0, env, body.delay(arena)),
         Value::Lambda {
             parameter,
             body,
             env,
-        } => {
-            // with_env(
-            //     0,
-            //     env,
-            //     Term::Lambda {
-            //         parameter_name: NamedDeBruijn {
-            //             text: parameter_name.text.clone(),
-            //             index: 0.into(),
-            //         }
-            //         .into(),
-            //         body,
-            //     },
-            // ),
-            todo!()
-        } // Value::Constr { tag, fields } => {
-        //     //     Term::Constr {
-        //     //     tag,
-        //     //     fields: fields.into_iter().map(value_as_term).collect(),
-        //     // },
-
-        //     todo!()
-        // }
-        _ => todo!(),
+        } => with_env(arena, 0, env, body.lambda(arena, *parameter)),
+        Value::Constr(tag, fields) => Term::constr(
+            arena,
+            *tag,
+            fields
+                .into_iter()
+                .map(|value| value_as_term(arena, value))
+                .collect_in(arena),
+        ),
     }
 }
 
-fn with_env<'a>(lam_cnt: usize, env: &'a Env<'a>, term: &'a Term<'a>) -> &'a Term<'a> {
-    // match term {
-    //     Term::Var(name) => {
-    //         let index: usize = name.index.into();
+fn with_env<'a>(
+    arena: &'a Bump,
+    lam_cnt: usize,
+    env: &'a Env<'a>,
+    term: &'a Term<'a>,
+) -> &'a Term<'a> {
+    match term {
+        Term::Var(name) => {
+            let index = *name;
 
-    //         if lam_cnt >= index {
-    //             Term::Var(name)
-    //         } else {
-    //             env.get::<usize>(env.len() - (index - lam_cnt))
-    //                 .cloned()
-    //                 .map_or(Term::Var(name), value_as_term)
-    //         }
-    //     }
-    //     Term::Lambda {
-    //         parameter_name,
-    //         body,
-    //     } => {
-    //         let body = with_env(lam_cnt + 1, env, body.as_ref().clone());
+            if lam_cnt >= index {
+                Term::var(arena, *name)
+            } else {
+                env.lookup(index - lam_cnt).map_or_else(
+                    || Term::var(arena, *name),
+                    |value| value_as_term(arena, value),
+                )
+            }
+        }
+        Term::Lambda { parameter, body } => {
+            let body = with_env(arena, lam_cnt + 1, env, body);
 
-    //         Term::Lambda {
-    //             parameter_name,
-    //             body: body.into(),
-    //         }
-    //     }
-    //     Term::Apply { function, argument } => {
-    //         let function = with_env(lam_cnt, env.clone(), function.as_ref().clone());
-    //         let argument = with_env(lam_cnt, env, argument.as_ref().clone());
+            body.lambda(arena, *parameter)
+        }
+        Term::Apply { function, argument } => {
+            let function = with_env(arena, lam_cnt, env, function);
+            let argument = with_env(arena, lam_cnt, env, argument);
 
-    //         Term::Apply {
-    //             function: function.into(),
-    //             argument: argument.into(),
-    //         }
-    //     }
+            function.apply(arena, argument)
+        }
 
-    //     Term::Delay(x) => {
-    //         let delay = with_env(lam_cnt, env, x.as_ref().clone());
+        Term::Delay(x) => {
+            let body = with_env(arena, lam_cnt, env, x);
 
-    //         Term::Delay(delay.into())
-    //     }
-    //     Term::Force(x) => {
-    //         let force = with_env(lam_cnt, env, x.as_ref().clone());
+            body.delay(arena)
+        }
+        Term::Force(x) => {
+            let body = with_env(arena, lam_cnt, env, x);
 
-    //         Term::Force(force.into())
-    //     }
-    //     rest => rest,
-    // }
-    todo!()
+            body.force(arena)
+        }
+        rest => rest,
+    }
 }
