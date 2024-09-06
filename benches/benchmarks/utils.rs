@@ -44,18 +44,11 @@ pub fn setup_term<F>(term_builder: F) -> BenchState
 where
     F: for<'this> FnOnce(&'this Bump) -> &'this Term<'this>,
 {
-    let arena = Bump::new();
+    setup_program(|arena| {
+        let term = term_builder(arena);
 
-    let builder = BenchStateBuilder {
-        arena,
-        program_builder: |arena| {
-            let term = term_builder(arena);
+        let version = Version::plutus_v3(arena);
 
-            let version = Version::plutus_v3(arena);
-
-            Program::new(arena, version, term)
-        },
-    };
-
-    builder.build()
+        Program::new(arena, version, term)
+    })
 }
