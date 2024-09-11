@@ -114,12 +114,12 @@ mod tests {
             .lambda(arena, 0)
             .apply(arena, Term::integer_from(arena, 15));
 
-        let version = Version::plutus_v3(&arena);
+        let version = Version::plutus_v3(arena);
 
-        let program = Program::new(&arena, version, term);
+        let program = Program::new(arena, version, term);
 
-        let result = program.eval(&arena);
+        let result = program.eval(arena);
 
-        assert_eq!(result.result.unwrap(), Term::integer_from(&arena, 610));
+        assert_eq!(result.result.unwrap(), Term::integer_from(arena, 610));
     }
 }

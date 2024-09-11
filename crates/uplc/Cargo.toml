@@ -1,0 +1,21 @@
+[package]
+name = "uplc"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bumpalo = { version = "3.16.0", features = ["collections"] }
+rug = { version = "1.26.0", default-features = false, features = [
+    "integer",
+    "std",
+] }
+
+[dev-dependencies]
+criterion = { version = "0.5.1", features = ["html_reports"] }
+ouroboros = "0.18.4"
+pretty_assertions = "1.4.0"
+uplc_macros = { version = "0.1.0", path = "../uplc_macros" }
+
+[[bench]]
+name = "bench_main"
+harness = false

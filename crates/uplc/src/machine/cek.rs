@@ -186,7 +186,7 @@ impl<'a> Machine<'a> {
 
                 if let Some((first, terms)) = terms.split_first() {
                     let frame =
-                        Context::frame_constr(&self.arena, env, *tag, terms, values, context);
+                        Context::frame_constr(self.arena, env, *tag, terms, values, context);
 
                     let state = MachineState::compute(self.arena, frame, env, first);
 
