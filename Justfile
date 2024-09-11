@@ -4,6 +4,7 @@ test:
 
 download-plutus-tests:
     set -euo pipefail
+    rm -rf tests/conformance
     echo "Downloading Plutus repository..."
     curl -L https://github.com/IntersectMBO/plutus/archive/master.tar.gz | tar xz -C /tmp
     echo "Moving specific test cases..."
