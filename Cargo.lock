@@ -555,6 +555,17 @@ dependencies = [
  "ouroboros",
  "pretty_assertions",
  "rug",
+ "uplc_macros",
+]
+
+[[package]]
+name = "uplc_macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+ "walkdir",
 ]
 
 [[package]]
