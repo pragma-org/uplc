@@ -96,6 +96,10 @@ impl<'a> Term<'a> {
         arena.alloc(Term::Builtin(fun))
     }
 
+    pub fn error(arena: &'a Bump) -> &'a Term<'a> {
+        arena.alloc(Term::Error)
+    }
+
     pub fn add_integer(arena: &'a Bump) -> &'a Term<'a> {
         let fun = arena.alloc(DefaultFunction::AddInteger);
         Term::builtin(arena, fun)

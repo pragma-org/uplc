@@ -5,6 +5,27 @@ use crate::{
     term::Term,
 };
 
+#[derive(Debug)]
+pub struct Program<'a> {
+    pub version: &'a Version<'a>,
+    pub term: &'a Term<'a>,
+}
+
+impl<'a> Program<'a> {
+    pub fn new(arena: &'a Bump, version: &'a Version<'a>, term: &'a Term<'a>) -> &'a mut Self {
+        let program = Program { version, term };
+
+        arena.alloc(program)
+    }
+
+    pub fn eval(&'a self, arena: &'a Bump) -> EvalResult<'a> {
+        let machine = Machine::new(arena, ExBudget::default(), CostModel::default());
+
+        machine.run(self.term)
+    }
+}
+
+#[derive(Debug)]
 pub struct Version<'a>(&'a (u8, u8, u8));
 
 impl<'a> Version<'a> {
@@ -37,23 +58,8 @@ impl<'a> Version<'a> {
     pub fn is_plutus_v3(&'a self) -> bool {
         self.0 .0 == 1 && self.0 .1 == 1 && self.0 .2 == 0
     }
-}
 
-pub struct Program<'a> {
-    pub version: &'a Version<'a>,
-    pub term: &'a Term<'a>,
-}
-
-impl<'a> Program<'a> {
-    pub fn new(arena: &'a Bump, version: &'a Version<'a>, term: &'a Term<'a>) -> &'a mut Self {
-        let program = Program { version, term };
-
-        arena.alloc(program)
-    }
-
-    pub fn eval(&'a self, arena: &'a Bump) -> EvalResult<'a> {
-        let machine = Machine::new(arena, ExBudget::default(), CostModel::default());
-
-        machine.run(self.term)
+    pub fn is_valid_version(&'a self) -> bool {
+        self.is_plutus_v2() || self.is_plutus_v3()
     }
 }
