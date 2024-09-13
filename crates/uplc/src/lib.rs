@@ -2,6 +2,7 @@ pub mod builtin;
 pub mod constant;
 pub mod machine;
 pub mod program;
+pub mod syn;
 pub mod term;
 pub mod typ;
 
