@@ -43,18 +43,21 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
             // Lambda
             text::keyword("lambda")
                 .ignore_then(text::ident())
+                .map_with(|v, e: &mut MapExtra<'a, '_>| {
+                    let state = e.state();
+
+                    state.env.push(v);
+
+                    0
+                })
                 .then(t.clone())
                 .delimited_by(just('('), just(')'))
                 .map_with(|(v, term), e| {
                     let state = e.state();
 
-                    state.env.push(v);
-
-                    let lambda = term.lambda(state.arena, 0);
-
                     state.env.pop();
 
-                    lambda
+                    term.lambda(state.arena, v)
                 }),
             // Apply
             t.clone()
