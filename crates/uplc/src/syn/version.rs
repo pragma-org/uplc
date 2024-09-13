@@ -2,7 +2,7 @@ use chumsky::{prelude::*, Parser};
 
 use crate::program::Version;
 
-use super::types::{Extra, MapExtra};
+use super::types::{Context, Extra, MapExtra};
 
 pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a mut Version<'a>, Extra<'a>> {
     text::int(10)
@@ -14,7 +14,12 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a mut Version<'a>, Extra<'a>> 
 
             let version = Version::new(state.arena, major, minor, patch);
 
-            if !version.is_valid_version() {
+            if version.is_v1_0_0() {
+                state.set_context(Context::V1_0_0)
+            } else if version.is_v1_1_0() {
+                state.set_context(Context::V1_1_0)
+            } else {
+                // TODO: emit invalid version erro
                 // emit(Simple);
             }
 
