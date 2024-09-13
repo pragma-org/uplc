@@ -1,7 +1,8 @@
 use crate::term::Term;
 
-use super::MachineError;
+use super::{info::MachineInfo, MachineError};
 
 pub struct EvalResult<'a> {
-    pub result: Result<&'a Term<'a>, MachineError<'a>>,
+    pub term: Result<&'a Term<'a>, MachineError<'a>>,
+    pub info: MachineInfo,
 }

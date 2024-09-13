@@ -105,3 +105,14 @@ impl ExBudget {
         }
     }
 }
+
+impl std::ops::Sub for ExBudget {
+    type Output = ExBudget;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        ExBudget {
+            mem: self.mem - rhs.mem,
+            cpu: self.cpu - rhs.cpu,
+        }
+    }
+}

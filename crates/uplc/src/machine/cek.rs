@@ -6,7 +6,7 @@ use crate::{
 };
 
 use super::{
-    cost_model::StepKind, discharge, runtime::Runtime, value::Value, CostModel, EvalResult,
+    cost_model::StepKind, discharge, info::MachineInfo, runtime::Runtime, value::Value, CostModel,
     ExBudget, MachineError,
 };
 
@@ -16,6 +16,7 @@ pub struct Machine<'a> {
     unbudgeted_steps: [u8; 10],
     costs: CostModel,
     slippage: u8,
+    logs: Vec<String>,
 }
 
 impl<'a> Machine<'a> {
@@ -26,13 +27,19 @@ impl<'a> Machine<'a> {
             unbudgeted_steps: [0; 10],
             costs,
             slippage: 200,
+            logs: Vec::new(),
         }
     }
 
-    pub fn run(mut self, term: &'a Term<'a>) -> EvalResult<'a> {
-        if let Err(e) = self.spend_budget(ExBudget::start_up()) {
-            return EvalResult { result: Err(e) };
-        };
+    pub fn info(self) -> MachineInfo {
+        MachineInfo {
+            consumed_budget: self.ex_budget,
+            logs: self.logs,
+        }
+    }
+
+    pub fn run(&mut self, term: &'a Term<'a>) -> Result<&'a Term<'a>, MachineError<'a>> {
+        self.spend_budget(ExBudget::start_up())?;
 
         let initial_context = Context::no_frame(self.arena);
 
@@ -44,13 +51,13 @@ impl<'a> Machine<'a> {
                 MachineState::Compute(context, env, term) => self.compute(context, env, term),
                 MachineState::Return(context, value) => self.return_compute(context, value),
                 MachineState::Done(term) => {
-                    return EvalResult { result: Ok(term) };
+                    return Ok(term);
                 }
             };
 
             state = match step {
                 Ok(new_state) => new_state,
-                Err(error) => return EvalResult { result: Err(error) },
+                Err(error) => return Err(error),
             };
         }
     }

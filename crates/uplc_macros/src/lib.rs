@@ -23,8 +23,6 @@ pub fn generate_tests(input: TokenStream) -> TokenStream {
         let path = entry.path();
 
         if path.extension().and_then(OsStr::to_str) == Some("uplc") {
-            let file_name = path.file_name().unwrap().to_str().unwrap();
-
             let test_name = path
                 .strip_prefix(&dir_path)
                 .unwrap()
@@ -36,17 +34,24 @@ pub fn generate_tests(input: TokenStream) -> TokenStream {
             let test_ident = Ident::new(&test_name, proc_macro2::Span::call_site());
 
             let file_contents = fs::read_to_string(path).expect("Failed to read file");
+
             let expected_contents = fs::read_to_string(path.with_extension("uplc.expected"))
                 .expect("Failed to read file");
+
             let expected_budget = fs::read_to_string(path.with_extension("uplc.budget.expected"))
                 .expect("Failed to read file");
 
             let test_fn = quote! {
                 #[test]
                 fn #test_ident() {
-                    assert!(false);
+                    run_test(
+                        #file_contents,
+                        #expected_contents,
+                        #expected_budget,
+                    );
                 }
             };
+
             test_functions.push(test_fn);
         }
     }

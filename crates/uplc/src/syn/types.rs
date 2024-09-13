@@ -4,6 +4,7 @@ use chumsky::{input, prelude::*};
 pub struct State<'a> {
     pub arena: &'a Bump,
     pub env: Vec<&'a str>,
+    pub context: Context,
 }
 
 impl<'a> State<'a> {
@@ -11,7 +12,12 @@ impl<'a> State<'a> {
         Self {
             arena,
             env: Vec::new(),
+            context: Context::default(),
         }
+    }
+
+    pub fn set_context(&mut self, context: Context) {
+        self.context = context;
     }
 }
 

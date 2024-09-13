@@ -19,9 +19,14 @@ impl<'a> Program<'a> {
     }
 
     pub fn eval(&'a self, arena: &'a Bump) -> EvalResult<'a> {
-        let machine = Machine::new(arena, ExBudget::default(), CostModel::default());
+        let mut machine = Machine::new(arena, ExBudget::default(), CostModel::default());
 
-        machine.run(self.term)
+        let term = machine.run(self.term);
+        let mut info = machine.info();
+
+        info.consumed_budget = ExBudget::default() - info.consumed_budget;
+
+        EvalResult { term, info }
     }
 }
 
@@ -47,19 +52,15 @@ impl<'a> Version<'a> {
         Self::new(arena, 1, 1, 0)
     }
 
-    pub fn is_plutus_v1(&'a self) -> bool {
+    pub fn is_v1_0_0(&'a self) -> bool {
         self.0 .0 == 1 && self.0 .1 == 0 && self.0 .2 == 0
     }
 
-    pub fn is_plutus_v2(&'a self) -> bool {
-        self.0 .0 == 1 && self.0 .1 == 0 && self.0 .2 == 0
-    }
-
-    pub fn is_plutus_v3(&'a self) -> bool {
+    pub fn is_v1_1_0(&'a self) -> bool {
         self.0 .0 == 1 && self.0 .1 == 1 && self.0 .2 == 0
     }
 
     pub fn is_valid_version(&'a self) -> bool {
-        self.is_plutus_v2() || self.is_plutus_v3()
+        self.is_v1_0_0() || self.is_v1_1_0()
     }
 }

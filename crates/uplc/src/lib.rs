@@ -29,7 +29,7 @@ mod tests {
 
         let result = program.eval(&arena);
 
-        assert_eq!(result.result.unwrap(), Term::integer_from(&arena, 4));
+        assert_eq!(result.term.unwrap(), Term::integer_from(&arena, 4));
     }
 
     #[test]
@@ -121,6 +121,6 @@ mod tests {
 
         let result = program.eval(arena);
 
-        assert_eq!(result.result.unwrap(), Term::integer_from(arena, 610));
+        assert_eq!(result.term.unwrap(), Term::integer_from(arena, 610));
     }
 }
