@@ -92,6 +92,12 @@ impl<'a> Term<'a> {
         Term::constant(arena, constant)
     }
 
+    pub fn bool(arena: &'a Bump, v: bool) -> &'a Term<'a> {
+        let constant = arena.alloc(Constant::Boolean(v));
+
+        Term::constant(arena, constant)
+    }
+
     pub fn unit(arena: &'a Bump) -> &'a Term<'a> {
         let constant = Constant::unit(arena);
 

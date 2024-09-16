@@ -74,25 +74,32 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
                     // integer
                     text::keyword("integer")
                         .padded()
-                        .ignore_then(text::int(10).padded().map_with(
-                            |v, e: &mut MapExtra<'a, '_>| {
-                                let state = e.state();
+                        .ignore_then(text::int(10).padded())
+                        .map_with(|v, e: &mut MapExtra<'a, '_>| {
+                            let state = e.state();
 
-                                Term::integer_from(state.arena, v.parse().unwrap())
-                            },
-                        )),
+                            Term::integer_from(state.arena, v.parse().unwrap())
+                        }),
                     // bytestring
-                    text::keyword("bytestring").padded().ignore_then(
-                        just('#').ignore_then(hex_bytes()).padded().map_with(
-                            |v, e: &mut MapExtra<'a, '_>| {
-                                let state = e.state();
+                    text::keyword("bytestring")
+                        .padded()
+                        .ignore_then(just('#').ignore_then(hex_bytes()).padded())
+                        .map_with(|v, e: &mut MapExtra<'a, '_>| {
+                            let state = e.state();
 
-                                let bytes = BumpVec::from_iter_in(v, state.arena);
+                            let bytes = BumpVec::from_iter_in(v, state.arena);
 
-                                Term::bytestring(state.arena, bytes)
-                            },
-                        ),
-                    ),
+                            Term::bytestring(state.arena, bytes)
+                        }),
+                    // bool
+                    text::keyword("bool")
+                        .padded()
+                        .ignore_then(choice((just("False"), just("True"))).padded())
+                        .map_with(|v, e: &mut MapExtra<'a, '_>| {
+                            let state = e.state();
+
+                            Term::bool(state.arena, v == "True")
+                        }),
                     // unit
                     text::keyword("unit")
                         .padded()
