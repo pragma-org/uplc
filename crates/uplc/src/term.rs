@@ -102,20 +102,24 @@ impl<'a> Term<'a> {
 
     pub fn add_integer(arena: &'a Bump) -> &'a Term<'a> {
         let fun = arena.alloc(DefaultFunction::AddInteger);
+
         Term::builtin(arena, fun)
     }
 
     pub fn subtract_integer(arena: &'a Bump) -> &'a Term<'a> {
         let fun = arena.alloc(DefaultFunction::SubtractInteger);
+
         Term::builtin(arena, fun)
     }
     pub fn less_than_equals_integer(arena: &'a Bump) -> &'a Term<'a> {
         let fun = arena.alloc(DefaultFunction::LessThanEqualsInteger);
+
         Term::builtin(arena, fun)
     }
 
     pub fn if_then_else(arena: &'a Bump) -> &'a Term<'a> {
         let fun = arena.alloc(DefaultFunction::IfThenElse);
+
         Term::builtin(arena, fun)
     }
 }

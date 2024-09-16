@@ -6,9 +6,11 @@ use super::{term, types::Extra, version};
 
 pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a mut Program<'a>, Extra<'a>> {
     text::keyword("program")
-        .ignore_then(version::parser())
-        .then(term::parser())
+        .padded()
+        .ignore_then(version::parser().padded())
+        .then(term::parser().padded())
         .delimited_by(just('('), just(')'))
+        .then_ignore(end())
         .map_with(|(version, term), e| {
             let state = e.state();
 

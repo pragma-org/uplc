@@ -21,11 +21,11 @@ fn run_test(file_contents: &str, expected_output: &str, expected_budget: &str) {
         return;
     };
 
-    let expected = uplc::syn::parse_term(&arena, expected_output)
+    let expected = uplc::syn::parse_program(&arena, expected_output)
         .into_result()
         .unwrap();
 
-    pretty_assertions::assert_eq!(expected, term);
+    pretty_assertions::assert_eq!(expected.term, term);
 
     let consumed_budget = format!(
         "({{cpu: {}\n| mem: {}}})",

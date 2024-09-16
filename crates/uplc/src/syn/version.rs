@@ -7,7 +7,9 @@ use super::types::{Context, Extra, MapExtra};
 pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a mut Version<'a>, Extra<'a>> {
     text::int(10)
         .map(|v: &str| v.parse().unwrap())
+        .then_ignore(just('.'))
         .then(text::int(10).map(|v: &str| v.parse().unwrap()))
+        .then_ignore(just('.'))
         .then(text::int(10).map(|v: &str| v.parse().unwrap()))
         .validate(|((major, minor), patch), e: &mut MapExtra<'a, '_>, emit| {
             let state = e.state();
