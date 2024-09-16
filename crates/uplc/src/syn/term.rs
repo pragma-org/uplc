@@ -1,3 +1,4 @@
+use bumpalo::collections::Vec as BumpVec;
 use chumsky::{prelude::*, Parser};
 
 use crate::term::Term;
@@ -70,6 +71,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
             text::keyword("con")
                 .padded()
                 .ignore_then(choice((
+                    // integer
                     text::keyword("integer")
                         .padded()
                         .ignore_then(text::int(10).padded().map_with(
@@ -79,6 +81,19 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
                                 Term::integer_from(state.arena, v.parse().unwrap())
                             },
                         )),
+                    // bytestring
+                    text::keyword("bytestring").padded().ignore_then(
+                        just('#').ignore_then(hex_bytes()).padded().map_with(
+                            |v, e: &mut MapExtra<'a, '_>| {
+                                let state = e.state();
+
+                                let bytes = BumpVec::from_iter_in(v, state.arena);
+
+                                Term::bytestring(state.arena, bytes)
+                            },
+                        ),
+                    ),
+                    // unit
                     text::keyword("unit")
                         .padded()
                         .ignore_then(just("()").padded())
@@ -103,4 +118,16 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
         ))
         .boxed()
     })
+}
+
+fn hex_digit<'a>() -> impl Parser<'a, &'a str, u8, Extra<'a>> {
+    one_of("0123456789abcdefABCDEF").map(|c: char| c.to_digit(16).unwrap() as u8)
+}
+
+fn hex_bytes<'a>() -> impl Parser<'a, &'a str, Vec<u8>, Extra<'a>> {
+    hex_digit()
+        .then(hex_digit())
+        .map(|(high, low)| (high << 4) | low)
+        .repeated()
+        .collect()
 }

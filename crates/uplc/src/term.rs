@@ -86,6 +86,12 @@ impl<'a> Term<'a> {
         Self::integer(arena, integer_from(arena, i))
     }
 
+    pub fn bytestring(arena: &'a Bump, bytes: BumpVec<'a, u8>) -> &'a Self {
+        let constant = arena.alloc(Constant::ByteString(bytes));
+
+        Term::constant(arena, constant)
+    }
+
     pub fn unit(arena: &'a Bump) -> &'a Term<'a> {
         let constant = Constant::unit(arena);
 
