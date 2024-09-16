@@ -26,6 +26,8 @@ pub fn generate_tests(input: TokenStream) -> TokenStream {
             let test_name = path
                 .strip_prefix(&dir_path)
                 .unwrap()
+                .parent()
+                .unwrap()
                 .to_str()
                 .unwrap()
                 .replace(|c: char| !c.is_alphanumeric(), "_")
