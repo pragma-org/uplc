@@ -23,8 +23,8 @@ impl<'a> State<'a> {
 
 #[derive(Default)]
 pub enum Context {
-    V1_0_0,
     #[default]
+    V1_0_0,
     V1_1_0,
 }
 

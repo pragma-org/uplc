@@ -67,8 +67,32 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
                     a.apply(state.arena, b)
                 })
                 .delimited_by(just('['), just(']')),
+            text::keyword("con")
+                .padded()
+                .ignore_then(choice((
+                    text::keyword("integer")
+                        .padded()
+                        .ignore_then(text::int(10).padded().map_with(
+                            |v, e: &mut MapExtra<'a, '_>| {
+                                let state = e.state();
+
+                                Term::integer_from(state.arena, v.parse().unwrap())
+                            },
+                        )),
+                    text::keyword("unit")
+                        .padded()
+                        .ignore_then(just("()").padded())
+                        .ignored()
+                        .map_with(|_v, e: &mut MapExtra<'a, '_>| {
+                            let state = e.state();
+
+                            Term::unit(state.arena)
+                        }),
+                )))
+                .delimited_by(just('('), just(')')),
             // Error
             text::keyword("error")
+                .padded()
                 .ignored()
                 .delimited_by(just('('), just(')'))
                 .map_with(|_, e: &mut MapExtra<'a, '_>| {

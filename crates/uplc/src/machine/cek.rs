@@ -220,6 +220,10 @@ impl<'a> Machine<'a> {
                 v => Err(MachineError::NonConstrScrutinized(v)),
             },
             Context::NoFrame => {
+                if self.unbudgeted_steps[9] > 0 {
+                    self.spend_unbudgeted_steps()?;
+                }
+
                 let term = discharge::value_as_term(self.arena, value);
 
                 let state = MachineState::done(self.arena, term);
