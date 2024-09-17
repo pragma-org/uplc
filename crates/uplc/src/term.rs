@@ -1,4 +1,7 @@
-use bumpalo::{collections::Vec as BumpVec, Bump};
+use bumpalo::{
+    collections::{String as BumpString, Vec as BumpVec},
+    Bump,
+};
 
 use crate::{
     builtin::DefaultFunction,
@@ -86,8 +89,14 @@ impl<'a> Term<'a> {
         Self::integer(arena, integer_from(arena, i))
     }
 
-    pub fn bytestring(arena: &'a Bump, bytes: BumpVec<'a, u8>) -> &'a Self {
+    pub fn bytestring(arena: &'a Bump, bytes: BumpVec<'a, u8>) -> &'a Term<'a> {
         let constant = arena.alloc(Constant::ByteString(bytes));
+
+        Term::constant(arena, constant)
+    }
+
+    pub fn string(arena: &'a Bump, s: BumpString<'a>) -> &'a Term<'a> {
+        let constant = arena.alloc(Constant::String(s));
 
         Term::constant(arena, constant)
     }

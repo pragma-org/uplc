@@ -1,4 +1,4 @@
-use bumpalo::collections::Vec as BumpVec;
+use bumpalo::collections::{String as BumpString, Vec as BumpVec};
 use chumsky::{prelude::*, Parser};
 
 use crate::term::Term;
@@ -68,6 +68,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
                     a.apply(state.arena, b)
                 })
                 .delimited_by(just('['), just(']')),
+            // constant
             text::keyword("con")
                 .padded()
                 .ignore_then(choice((
@@ -90,6 +91,22 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
                             let bytes = BumpVec::from_iter_in(v, state.arena);
 
                             Term::bytestring(state.arena, bytes)
+                        }),
+                    // string any utf8 encoded string surrounded in double quotes
+                    text::keyword("string")
+                        .padded()
+                        .ignore_then(
+                            just('"')
+                                .ignore_then(string_content())
+                                .then_ignore(just('"'))
+                                .padded(),
+                        )
+                        .map_with(|v, e: &mut MapExtra<'a, '_>| {
+                            let state = e.state();
+
+                            let string = BumpString::from_str_in(&v, state.arena);
+
+                            Term::string(state.arena, string)
                         }),
                     // bool
                     text::keyword("bool")
@@ -137,4 +154,29 @@ fn hex_bytes<'a>() -> impl Parser<'a, &'a str, Vec<u8>, Extra<'a>> {
         .map(|(high, low)| (high << 4) | low)
         .repeated()
         .collect()
+}
+
+fn string_content<'a>() -> impl Parser<'a, &'a str, String, Extra<'a>> {
+    let escape_sequence = choice((
+        just("\\t").to('\t'),
+        just("\\n").to('\n'),
+        just("\\r").to('\r'),
+        // Hex escape sequences
+        just("\\x")
+            .ignore_then(text::digits(16).exactly(2).collect::<String>())
+            .map(|digits: String| u8::from_str_radix(&digits, 16).unwrap() as char),
+        // Handle octal sequences
+        just("\\o")
+            .ignore_then(text::digits(8).exactly(3).collect::<String>())
+            .map(|digits: String| u8::from_str_radix(&digits, 8).unwrap() as char),
+    ));
+
+    choice((
+        escape_sequence,
+        // Unicode escape sequences
+        any().filter(|c: &char| c.is_alphanumeric() || c.is_whitespace() || !c.is_ascii()),
+        none_of("\\\""),
+    ))
+    .repeated()
+    .collect::<String>()
 }
