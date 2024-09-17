@@ -157,26 +157,60 @@ fn hex_bytes<'a>() -> impl Parser<'a, &'a str, Vec<u8>, Extra<'a>> {
 }
 
 fn string_content<'a>() -> impl Parser<'a, &'a str, String, Extra<'a>> {
-    let escape_sequence = choice((
-        just("\\t").to('\t'),
-        just("\\n").to('\n'),
-        just("\\r").to('\r'),
-        // Hex escape sequences
-        just("\\x")
-            .ignore_then(text::digits(16).exactly(2).collect::<String>())
-            .map(|digits: String| u8::from_str_radix(&digits, 16).unwrap() as char),
-        // Handle octal sequences
-        just("\\o")
-            .ignore_then(text::digits(8).exactly(3).collect::<String>())
-            .map(|digits: String| u8::from_str_radix(&digits, 8).unwrap() as char),
-    ));
+    let escape_sequence = just('\\').ignore_then(choice((
+        just('a').to('\u{07}'),
+        just('b').to('\u{08}'),
+        just('f').to('\u{0C}'),
+        just('n').to('\n'),
+        just('r').to('\r'),
+        just('t').to('\t'),
+        just('v').to('\u{0B}'),
+        just('\\'),
+        just('"'),
+        just('\''),
+        just('&'),
+        just('x').ignore_then(
+            any()
+                .filter(|c: &char| c.is_ascii_hexdigit())
+                .repeated()
+                .at_least(1)
+                .collect::<String>()
+                .validate(|s, _e, emit| {
+                    u32::from_str_radix(&s, 16)
+                        .ok()
+                        .and_then(char::from_u32)
+                        .unwrap()
+                    // .ok_or_else(|| emit(Simple::custom(span, "Invalid hex escape")))
+                }),
+        ),
+        just('o').ignore_then(
+            any()
+                .filter(|c: &char| c.is_digit(8))
+                .repeated()
+                .at_least(1)
+                .collect::<String>()
+                .validate(|s, _e, emit| {
+                    u32::from_str_radix(&s, 8)
+                        .ok()
+                        .and_then(char::from_u32)
+                        .unwrap()
+                    // .ok_or_else(|| emit(Simple::custom(span, "Invalid octal escape")))
+                }),
+        ),
+        any()
+            .filter(|c: &char| c.is_ascii_digit())
+            .repeated()
+            .at_least(1)
+            .collect::<String>()
+            .validate(|s, _e, emit| {
+                s.parse::<u32>().ok().and_then(char::from_u32).unwrap()
+                // .ok_or_else(|| emit(Simple::custom(span, "Invalid decimal escape")))
+            }),
+    )));
 
-    choice((
-        escape_sequence,
-        // Unicode escape sequences
-        any().filter(|c: &char| c.is_alphanumeric() || c.is_whitespace() || !c.is_ascii()),
-        none_of("\\\""),
-    ))
-    .repeated()
-    .collect::<String>()
+    let regular_char = none_of("\\\"");
+
+    choice((regular_char, escape_sequence))
+        .repeated()
+        .collect::<String>()
 }
