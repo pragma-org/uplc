@@ -1,9 +1,13 @@
-use bumpalo::{collections::Vec as BumpVec, Bump};
+use bumpalo::{
+    collections::{String as BumpString, Vec as BumpVec},
+    Bump,
+};
 
 #[derive(Debug, PartialEq)]
 pub enum Constant<'a> {
     Integer(&'a Integer),
     ByteString(BumpVec<'a, u8>),
+    String(BumpString<'a>),
     Boolean(bool),
     Unit,
 }
