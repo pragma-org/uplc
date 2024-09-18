@@ -3,12 +3,15 @@ use bumpalo::{
     Bump,
 };
 
+use crate::data::PlutusData;
+
 #[derive(Debug, PartialEq)]
 pub enum Constant<'a> {
     Integer(&'a Integer),
     ByteString(BumpVec<'a, u8>),
     String(BumpString<'a>),
     Boolean(bool),
+    Data(&'a PlutusData<'a>),
     Unit,
 }
 

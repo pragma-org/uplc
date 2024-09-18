@@ -6,6 +6,7 @@ use bumpalo::{
 use crate::{
     builtin::DefaultFunction,
     constant::{integer_from, Constant, Integer},
+    data::PlutusData,
 };
 
 #[derive(Debug, PartialEq, Clone)]
@@ -89,7 +90,7 @@ impl<'a> Term<'a> {
         Self::integer(arena, integer_from(arena, i))
     }
 
-    pub fn bytestring(arena: &'a Bump, bytes: BumpVec<'a, u8>) -> &'a Term<'a> {
+    pub fn byte_string(arena: &'a Bump, bytes: BumpVec<'a, u8>) -> &'a Term<'a> {
         let constant = arena.alloc(Constant::ByteString(bytes));
 
         Term::constant(arena, constant)
@@ -105,6 +106,30 @@ impl<'a> Term<'a> {
         let constant = arena.alloc(Constant::Boolean(v));
 
         Term::constant(arena, constant)
+    }
+
+    pub fn data(arena: &'a Bump, d: &'a PlutusData<'a>) -> &'a Term<'a> {
+        let constant = arena.alloc(Constant::Data(d));
+
+        Term::constant(arena, constant)
+    }
+
+    pub fn data_byte_string(arena: &'a Bump, bytes: BumpVec<'a, u8>) -> &'a Term<'a> {
+        let data = PlutusData::byte_string(arena, bytes);
+
+        Term::data(arena, data)
+    }
+
+    pub fn data_integer(arena: &'a Bump, i: &'a Integer) -> &'a Term<'a> {
+        let data = PlutusData::integer(arena, i);
+
+        Term::data(arena, data)
+    }
+
+    pub fn data_integer_from(arena: &'a Bump, i: i128) -> &'a Term<'a> {
+        let data = PlutusData::integer_from(arena, i);
+
+        Term::data(arena, data)
     }
 
     pub fn unit(arena: &'a Bump) -> &'a Term<'a> {
