@@ -15,15 +15,23 @@ pub enum PlutusData<'a> {
 }
 
 impl<'a> PlutusData<'a> {
-    pub fn integer(arena: &'a Bump, i: &'a Integer) -> &'a mut PlutusData<'a> {
+    pub fn constr(
+        arena: &'a Bump,
+        tag: u64,
+        fields: BumpVec<'a, &'a PlutusData<'a>>,
+    ) -> &'a PlutusData<'a> {
+        arena.alloc(PlutusData::Constr { tag, fields })
+    }
+
+    pub fn integer(arena: &'a Bump, i: &'a Integer) -> &'a PlutusData<'a> {
         arena.alloc(PlutusData::Integer(i))
     }
 
-    pub fn integer_from(arena: &'a Bump, i: i128) -> &'a mut PlutusData<'a> {
+    pub fn integer_from(arena: &'a Bump, i: i128) -> &'a PlutusData<'a> {
         arena.alloc(PlutusData::Integer(integer_from(arena, i)))
     }
 
-    pub fn byte_string(arena: &'a bumpalo::Bump, bytes: BumpVec<'a, u8>) -> &'a mut PlutusData<'a> {
+    pub fn byte_string(arena: &'a bumpalo::Bump, bytes: BumpVec<'a, u8>) -> &'a PlutusData<'a> {
         arena.alloc(PlutusData::ByteString(bytes))
     }
 }
