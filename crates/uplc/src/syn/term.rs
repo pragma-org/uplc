@@ -90,7 +90,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
 
                             let bytes = BumpVec::from_iter_in(v, state.arena);
 
-                            Term::bytestring(state.arena, bytes)
+                            Term::byte_string(state.arena, bytes)
                         }),
                     // string any utf8 encoded string surrounded in double quotes
                     text::keyword("string")
@@ -108,6 +108,30 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
 
                             Term::string(state.arena, string)
                         }),
+                    // plutus data
+                    text::keyword("data").padded().ignore_then(
+                        choice((
+                            just('B')
+                                .padded()
+                                .ignore_then(just('#').ignore_then(hex_bytes()).padded())
+                                .map_with(|v, e: &mut MapExtra<'a, '_>| {
+                                    let state = e.state();
+
+                                    let bytes = BumpVec::from_iter_in(v, state.arena);
+
+                                    Term::data_byte_string(state.arena, bytes)
+                                }),
+                            just('I')
+                                .padded()
+                                .ignore_then(text::int(10).padded())
+                                .map_with(|v, e: &mut MapExtra<'a, '_>| {
+                                    let state = e.state();
+
+                                    Term::data_integer_from(state.arena, v.parse().unwrap())
+                                }),
+                        ))
+                        .delimited_by(just('('), just(')')),
+                    ),
                     // bool
                     text::keyword("bool")
                         .padded()
