@@ -1,9 +1,11 @@
 use bumpalo::Bump;
 use chumsky::{prelude::*, ParseResult, Parser};
 
+mod data;
 mod program;
 mod term;
 mod types;
+mod utils;
 mod version;
 
 use crate::{program::Program, term::Term};

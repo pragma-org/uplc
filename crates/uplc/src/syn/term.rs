@@ -3,10 +3,14 @@ use chumsky::{prelude::*, Parser};
 
 use crate::term::Term;
 
-use super::types::{Extra, MapExtra};
+use super::{
+    data,
+    types::{Extra, MapExtra},
+    utils::hex_bytes,
+};
 
 pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
-    recursive(|t: Recursive<dyn Parser<'_, &str, &Term<'_>, Extra<'a>>>| {
+    recursive(|term| {
         choice((
             // Var
             text::ident().validate(|v, e: &mut MapExtra<'a, '_>, emit| {
@@ -25,16 +29,16 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
             }),
             // Delay
             text::keyword("delay")
-                .ignore_then(t.clone())
+                .ignore_then(term.clone())
                 .delimited_by(just('('), just(')'))
-                .map_with(|term, e| {
+                .map_with(|term: &Term<'_>, e: &mut MapExtra<'a, '_>| {
                     let state = e.state();
 
                     term.delay(state.arena)
                 }),
             // Force
             text::keyword("force")
-                .ignore_then(t.clone())
+                .ignore_then(term.clone())
                 .delimited_by(just('('), just(')'))
                 .map_with(|term, e| {
                     let state = e.state();
@@ -51,7 +55,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
 
                     0
                 })
-                .then(t.clone())
+                .then(term.clone())
                 .delimited_by(just('('), just(')'))
                 .map_with(|(v, term), e| {
                     let state = e.state();
@@ -61,8 +65,8 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
                     term.lambda(state.arena, v)
                 }),
             // Apply
-            t.clone()
-                .foldl_with(t.repeated().at_least(1), |a, b, e| {
+            term.clone()
+                .foldl_with(term.repeated().at_least(1), |a, b, e| {
                     let state = e.state();
 
                     a.apply(state.arena, b)
@@ -109,29 +113,14 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
                             Term::string(state.arena, string)
                         }),
                     // plutus data
-                    text::keyword("data").padded().ignore_then(
-                        choice((
-                            just('B')
-                                .padded()
-                                .ignore_then(just('#').ignore_then(hex_bytes()).padded())
-                                .map_with(|v, e: &mut MapExtra<'a, '_>| {
-                                    let state = e.state();
+                    text::keyword("data")
+                        .padded()
+                        .ignore_then(data::parser().delimited_by(just('('), just(')')))
+                        .map_with(|v, e: &mut MapExtra<'a, '_>| {
+                            let state = e.state();
 
-                                    let bytes = BumpVec::from_iter_in(v, state.arena);
-
-                                    Term::data_byte_string(state.arena, bytes)
-                                }),
-                            just('I')
-                                .padded()
-                                .ignore_then(text::int(10).padded())
-                                .map_with(|v, e: &mut MapExtra<'a, '_>| {
-                                    let state = e.state();
-
-                                    Term::data_integer_from(state.arena, v.parse().unwrap())
-                                }),
-                        ))
-                        .delimited_by(just('('), just(')')),
-                    ),
+                            Term::data(state.arena, v)
+                        }),
                     // bool
                     text::keyword("bool")
                         .padded()
@@ -166,18 +155,6 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
         ))
         .boxed()
     })
-}
-
-fn hex_digit<'a>() -> impl Parser<'a, &'a str, u8, Extra<'a>> {
-    one_of("0123456789abcdefABCDEF").map(|c: char| c.to_digit(16).unwrap() as u8)
-}
-
-fn hex_bytes<'a>() -> impl Parser<'a, &'a str, Vec<u8>, Extra<'a>> {
-    hex_digit()
-        .then(hex_digit())
-        .map(|(high, low)| (high << 4) | low)
-        .repeated()
-        .collect()
 }
 
 fn string_content<'a>() -> impl Parser<'a, &'a str, String, Extra<'a>> {
