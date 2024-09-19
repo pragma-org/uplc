@@ -28,5 +28,5 @@ pub enum Context {
     V1_1_0,
 }
 
-pub type Extra<'a> = extra::Full<Simple<'a, char>, State<'a>, Context>;
+pub type Extra<'a> = extra::Full<Rich<'a, char>, State<'a>, Context>;
 pub type MapExtra<'a, 'b> = input::MapExtra<'a, 'b, &'a str, Extra<'a>>;
