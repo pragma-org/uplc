@@ -39,6 +39,17 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Type<'a>, Extra<'a>> {
 
                     Type::string(state.arena)
                 }),
+            // pair
+            text::keyword("pair")
+                .padded()
+                .ignore_then(rec_typ.clone().padded())
+                .then(rec_typ.clone().padded())
+                .delimited_by(just('('), just(')'))
+                .map_with(|(fst_type, snd_type), e: &mut MapExtra<'a, '_>| {
+                    let state = e.state();
+
+                    Type::pair(state.arena, fst_type, snd_type)
+                }),
             // list
             text::keyword("list")
                 .padded()
