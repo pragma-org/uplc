@@ -146,7 +146,14 @@ fn value_parser<'a>() -> impl Parser<'a, &'a str, TempConstant<'a>, Extra<'a>> {
                     TempConstant::ProtoList(fields)
                 }),
             // pair
-
+            con.clone()
+                .padded()
+                .then_ignore(just(','))
+                .then(con.padded())
+                .delimited_by(just('('), just(')'))
+                .map(|(fst_value, snd_value)| {
+                    TempConstant::ProtoPair(fst_value.into(), snd_value.into())
+                }),
             // bool
             choice((just("False"), just("True")))
                 .padded()
@@ -177,12 +184,15 @@ fn string_content<'a>() -> impl Parser<'a, &'a str, String, Extra<'a>> {
                 .repeated()
                 .at_least(1)
                 .collect::<String>()
-                .validate(|s, _e, emit| {
+                .validate(|s, e, emitter| {
                     u32::from_str_radix(&s, 16)
                         .ok()
                         .and_then(char::from_u32)
-                        .unwrap()
-                    // .ok_or_else(|| emit(Simple::custom(span, "Invalid hex escape")))
+                        .unwrap_or_else(|| {
+                            emitter.emit(Rich::custom(e.span(), "Invalid hex escape"));
+
+                            '0'
+                        })
                 }),
         ),
         just('o').ignore_then(
@@ -191,12 +201,15 @@ fn string_content<'a>() -> impl Parser<'a, &'a str, String, Extra<'a>> {
                 .repeated()
                 .at_least(1)
                 .collect::<String>()
-                .validate(|s, _e, emit| {
+                .validate(|s, e, emitter| {
                     u32::from_str_radix(&s, 8)
                         .ok()
                         .and_then(char::from_u32)
-                        .unwrap()
-                    // .ok_or_else(|| emit(Simple::custom(span, "Invalid octal escape")))
+                        .unwrap_or_else(|| {
+                            emitter.emit(Rich::custom(e.span(), "Invalid octal escape"));
+
+                            '0'
+                        })
                 }),
         ),
         any()
@@ -204,9 +217,15 @@ fn string_content<'a>() -> impl Parser<'a, &'a str, String, Extra<'a>> {
             .repeated()
             .at_least(1)
             .collect::<String>()
-            .validate(|s, _e, emit| {
-                s.parse::<u32>().ok().and_then(char::from_u32).unwrap()
-                // .ok_or_else(|| emit(Simple::custom(span, "Invalid decimal escape")))
+            .validate(|s, e, emitter| {
+                s.parse::<u32>()
+                    .ok()
+                    .and_then(char::from_u32)
+                    .unwrap_or_else(|| {
+                        emitter.emit(Rich::custom(e.span(), "Invalid decimal escape"));
+
+                        '0'
+                    })
             }),
     )));
 

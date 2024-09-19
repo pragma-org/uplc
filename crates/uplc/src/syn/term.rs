@@ -11,19 +11,22 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
     recursive(|term| {
         choice((
             // Var
-            text::ident().validate(|v, e: &mut MapExtra<'a, '_>, emit| {
+            text::ident().validate(|v, e: &mut MapExtra<'a, '_>, emitter| {
                 let state = e.state();
 
                 let position = state.env.iter().rev().position(|&x| x == v);
 
                 if position.is_none() {
-                    // TODO: return OpenTermError
-                    // emit(Simple);
+                    let placeholder = Term::var(state.arena, 0);
+
+                    emitter.emit(Rich::custom(e.span(), "open term"));
+
+                    placeholder
+                } else {
+                    let debruijn_index = state.env.len() - position.unwrap_or_default();
+
+                    Term::var(state.arena, debruijn_index)
                 }
-
-                let debruijn_index = state.env.len() - position.unwrap_or_default();
-
-                Term::var(state.arena, debruijn_index)
             }),
             // Delay
             text::keyword("delay")

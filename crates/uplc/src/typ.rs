@@ -43,4 +43,8 @@ impl<'a> Type<'a> {
     pub fn list(arena: &'a Bump, inner: &'a Type<'a>) -> &'a Type<'a> {
         arena.alloc(Type::List(inner))
     }
+
+    pub fn pair(arena: &'a Bump, fst: &'a Type<'a>, snd: &'a Type<'a>) -> &'a Type<'a> {
+        arena.alloc(Type::Pair(fst, snd))
+    }
 }
