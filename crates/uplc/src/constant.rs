@@ -3,7 +3,7 @@ use bumpalo::{
     Bump,
 };
 
-use crate::data::PlutusData;
+use crate::{data::PlutusData, typ::Type};
 
 #[derive(Debug, PartialEq)]
 pub enum Constant<'a> {
@@ -12,6 +12,13 @@ pub enum Constant<'a> {
     String(BumpString<'a>),
     Boolean(bool),
     Data(&'a PlutusData<'a>),
+    ProtoList(&'a Type<'a>, BumpVec<'a, &'a Constant<'a>>),
+    ProtoPair(
+        &'a Type<'a>,
+        &'a Type<'a>,
+        &'a Constant<'a>,
+        &'a Constant<'a>,
+    ),
     Unit,
 }
 
@@ -26,8 +33,8 @@ pub fn integer_from(arena: &Bump, i: i128) -> &mut Integer {
 }
 
 impl<'a> Constant<'a> {
-    pub fn integer(arena: &'a Bump) -> &'a mut Constant {
-        arena.alloc(Constant::Integer(integer(arena)))
+    pub fn integer(arena: &'a Bump, i: &'a Integer) -> &'a Constant<'a> {
+        arena.alloc(Constant::Integer(i))
     }
 
     pub fn integer_from(arena: &'a Bump, i: i128) -> &'a Constant {
@@ -52,5 +59,28 @@ impl<'a> Constant<'a> {
 
     pub fn unit(arena: &'a Bump) -> &'a Constant {
         arena.alloc(Constant::Unit)
+    }
+
+    pub fn proto_list(
+        arena: &'a Bump,
+        inner: &'a Type<'a>,
+        values: BumpVec<'a, &'a Constant<'a>>,
+    ) -> &'a Constant<'a> {
+        arena.alloc(Constant::ProtoList(inner, values))
+    }
+
+    pub fn proto_pair(
+        arena: &'a Bump,
+        first_type: &'a Type<'a>,
+        second_type: &'a Type<'a>,
+        first_value: &'a Constant<'a>,
+        second_value: &'a Constant<'a>,
+    ) -> &'a Constant<'a> {
+        arena.alloc(Constant::ProtoPair(
+            first_type,
+            second_type,
+            first_value,
+            second_value,
+        ))
     }
 }
