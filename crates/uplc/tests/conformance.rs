@@ -3,7 +3,7 @@ use uplc_macros::generate_tests;
 fn run_test(file_contents: &str, expected_output: &str, expected_budget: &str) {
     let arena = bumpalo::Bump::new();
 
-    let Ok(program) = dbg!(uplc::syn::parse_program(&arena, file_contents).into_result()) else {
+    let Ok(program) = uplc::syn::parse_program(&arena, file_contents).into_result() else {
         pretty_assertions::assert_eq!("parse error", expected_output);
         pretty_assertions::assert_eq!("parse error", expected_budget);
 
