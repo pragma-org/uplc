@@ -30,11 +30,27 @@ impl<'a> Constant<'a> {
         arena.alloc(Constant::Integer(integer(arena)))
     }
 
-    pub fn integer_from(arena: &'a Bump, i: i128) -> &'a mut Constant {
+    pub fn integer_from(arena: &'a Bump, i: i128) -> &'a Constant {
         arena.alloc(Constant::Integer(integer_from(arena, i)))
     }
 
-    pub fn unit(arena: &'a Bump) -> &'a mut Constant {
+    pub fn byte_string(arena: &'a Bump, bytes: BumpVec<'a, u8>) -> &'a Constant<'a> {
+        arena.alloc(Constant::ByteString(bytes))
+    }
+
+    pub fn string(arena: &'a Bump, s: BumpString<'a>) -> &'a Constant<'a> {
+        arena.alloc(Constant::String(s))
+    }
+
+    pub fn bool(arena: &'a Bump, v: bool) -> &'a Constant<'a> {
+        arena.alloc(Constant::Boolean(v))
+    }
+
+    pub fn data(arena: &'a Bump, d: &'a PlutusData<'a>) -> &'a Constant<'a> {
+        arena.alloc(Constant::Data(d))
+    }
+
+    pub fn unit(arena: &'a Bump) -> &'a Constant {
         arena.alloc(Constant::Unit)
     }
 }

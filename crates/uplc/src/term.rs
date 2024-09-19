@@ -91,25 +91,25 @@ impl<'a> Term<'a> {
     }
 
     pub fn byte_string(arena: &'a Bump, bytes: BumpVec<'a, u8>) -> &'a Term<'a> {
-        let constant = arena.alloc(Constant::ByteString(bytes));
+        let constant = Constant::byte_string(arena, bytes);
 
         Term::constant(arena, constant)
     }
 
     pub fn string(arena: &'a Bump, s: BumpString<'a>) -> &'a Term<'a> {
-        let constant = arena.alloc(Constant::String(s));
+        let constant = Constant::string(arena, s);
 
         Term::constant(arena, constant)
     }
 
     pub fn bool(arena: &'a Bump, v: bool) -> &'a Term<'a> {
-        let constant = arena.alloc(Constant::Boolean(v));
+        let constant = Constant::bool(arena, v);
 
         Term::constant(arena, constant)
     }
 
     pub fn data(arena: &'a Bump, d: &'a PlutusData<'a>) -> &'a Term<'a> {
-        let constant = arena.alloc(Constant::Data(d));
+        let constant = Constant::data(arena, d);
 
         Term::constant(arena, constant)
     }
