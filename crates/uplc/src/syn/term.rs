@@ -70,7 +70,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
                     a.apply(state.arena, b)
                 })
                 .delimited_by(just('['), just(']')),
-            // constant
+            // Constant
             constant::parser().map_with(|c, e: &mut MapExtra<'a, '_>| {
                 let state = e.state();
 

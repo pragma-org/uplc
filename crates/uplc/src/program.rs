@@ -12,7 +12,7 @@ pub struct Program<'a> {
 }
 
 impl<'a> Program<'a> {
-    pub fn new(arena: &'a Bump, version: &'a Version<'a>, term: &'a Term<'a>) -> &'a mut Self {
+    pub fn new(arena: &'a Bump, version: &'a Version<'a>, term: &'a Term<'a>) -> &'a Self {
         let program = Program { version, term };
 
         arena.alloc(program)
