@@ -23,6 +23,17 @@ impl<'a> PlutusData<'a> {
         arena.alloc(PlutusData::Constr { tag, fields })
     }
 
+    pub fn list(arena: &'a Bump, items: BumpVec<'a, &'a PlutusData<'a>>) -> &'a PlutusData<'a> {
+        arena.alloc(PlutusData::List(items))
+    }
+
+    pub fn map(
+        arena: &'a Bump,
+        items: BumpVec<'a, (&'a PlutusData<'a>, &'a PlutusData<'a>)>,
+    ) -> &'a PlutusData<'a> {
+        arena.alloc(PlutusData::Map(items))
+    }
+
     pub fn integer(arena: &'a Bump, i: &'a Integer) -> &'a PlutusData<'a> {
         arena.alloc(PlutusData::Integer(i))
     }
