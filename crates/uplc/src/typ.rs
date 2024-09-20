@@ -47,4 +47,12 @@ impl<'a> Type<'a> {
     pub fn pair(arena: &'a Bump, fst: &'a Type<'a>, snd: &'a Type<'a>) -> &'a Type<'a> {
         arena.alloc(Type::Pair(fst, snd))
     }
+
+    pub fn g1(arena: &'a Bump) -> &'a Type<'a> {
+        arena.alloc(Type::Bls12_381G1Element)
+    }
+
+    pub fn g2(arena: &'a Bump) -> &'a Type<'a> {
+        arena.alloc(Type::Bls12_381G2Element)
+    }
 }

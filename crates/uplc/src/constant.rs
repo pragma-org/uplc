@@ -20,6 +20,9 @@ pub enum Constant<'a> {
         &'a Constant<'a>,
     ),
     Unit,
+    Bls12_381G1Element(&'a blst::blst_p1),
+    Bls12_381G2Element(&'a blst::blst_p2),
+    Bls12_381MlResult(&'a blst::blst_fp12),
 }
 
 pub type Integer = rug::Integer;
@@ -82,5 +85,13 @@ impl<'a> Constant<'a> {
             first_value,
             second_value,
         ))
+    }
+
+    pub fn g1(arena: &'a Bump, g1: &'a blst::blst_p1) -> &'a Constant<'a> {
+        arena.alloc(Constant::Bls12_381G1Element(g1))
+    }
+
+    pub fn g2(arena: &'a Bump, g2: &'a blst::blst_p2) -> &'a Constant<'a> {
+        arena.alloc(Constant::Bls12_381G2Element(g2))
     }
 }
