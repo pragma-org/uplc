@@ -76,6 +76,22 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Type<'a>, Extra<'a>> {
 
                     Type::unit(state.arena)
                 }),
+            // g1
+            text::keyword("bls12_381_G1_element").ignored().map_with(
+                |_, e: &mut MapExtra<'a, '_>| {
+                    let state = e.state();
+
+                    Type::g1(state.arena)
+                },
+            ),
+            // g2
+            text::keyword("bls12_381_G2_element").ignored().map_with(
+                |_, e: &mut MapExtra<'a, '_>| {
+                    let state = e.state();
+
+                    Type::g2(state.arena)
+                },
+            ),
         ))
         .boxed()
     })

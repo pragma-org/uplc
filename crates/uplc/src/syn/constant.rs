@@ -6,6 +6,7 @@ use chumsky::prelude::*;
 use rug::ops::NegAssign;
 
 use crate::{
+    bls::Compressable,
     constant::{self, Constant, Integer},
     data::PlutusData,
     typ::Type,
@@ -49,6 +50,7 @@ fn check_type<'a>(
         (TempConstant::Boolean(b), Type::Bool) => Constant::bool(arena, b),
         (TempConstant::Data(d), Type::Data) => Constant::data(arena, d),
         (TempConstant::Unit, Type::Unit) => Constant::unit(arena),
+
         (TempConstant::ProtoList(list), Type::List(inner)) => {
             let mut constants = BumpVec::with_capacity_in(list.len(), arena);
 
@@ -75,6 +77,22 @@ fn check_type<'a>(
 
             Constant::proto_pair(arena, fst_ty, snd_ty, fst, snd)
         }
+
+        (TempConstant::BlsElement(element), Type::Bls12_381G1Element) => {
+            let Ok(element) = blst::blst_p1::uncompress(arena, &element) else {
+                return (Constant::unit(arena), false);
+            };
+
+            Constant::g1(arena, element)
+        }
+
+        (TempConstant::BlsElement(element), Type::Bls12_381G2Element) => {
+            let Ok(element) = blst::blst_p2::uncompress(arena, &element) else {
+                return (Constant::unit(arena), false);
+            };
+
+            Constant::g2(arena, element)
+        }
         _ => return (Constant::unit(arena), false),
     };
 
@@ -90,6 +108,7 @@ enum TempConstant<'a> {
     Data(&'a PlutusData<'a>),
     ProtoList(BumpVec<'a, TempConstant<'a>>),
     ProtoPair(Box<TempConstant<'a>>, Box<TempConstant<'a>>),
+    BlsElement(Vec<u8>),
     Unit,
 }
 
@@ -118,6 +137,11 @@ fn value_parser<'a>() -> impl Parser<'a, &'a str, TempConstant<'a>, Extra<'a>> {
 
                     TempConstant::Integer(i)
                 }),
+            // bls element
+            just("0x")
+                .ignore_then(hex_bytes())
+                .padded()
+                .map(TempConstant::BlsElement),
             just('0')
                 .padded()
                 .to_slice()

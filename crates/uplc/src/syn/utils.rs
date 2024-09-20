@@ -13,3 +13,10 @@ pub fn hex_bytes<'a>() -> impl Parser<'a, &'a str, Vec<u8>, Extra<'a>> {
         .repeated()
         .collect()
 }
+
+pub fn comments<'a>() -> impl Parser<'a, &'a str, (), Extra<'a>> {
+    just("--")
+        .then(any().and_is(just('\n').not()).repeated())
+        .padded()
+        .repeated()
+}
