@@ -3,6 +3,7 @@ use bumpalo::{
     Bump,
 };
 use chumsky::prelude::*;
+use rug::ops::NegAssign;
 
 use crate::{
     constant::{self, Constant, Integer},
@@ -96,12 +97,36 @@ fn value_parser<'a>() -> impl Parser<'a, &'a str, TempConstant<'a>, Extra<'a>> {
     recursive(|con| {
         choice((
             // integer
-            text::int(10)
+            just('-')
+                .ignored()
+                .or_not()
                 .padded()
+                .then_ignore(just('+').padded().or_not())
+                .then_ignore(just('0').repeated().or_not())
+                .then(text::int(10))
+                .padded()
+                .map_with(|(maybe_negative, v), e: &mut MapExtra<'a, '_>| {
+                    let state = e.state();
+
+                    let i = state.arena.alloc(Integer::from_str_radix(v, 10).unwrap());
+
+                    i.neg_assign();
+
+                    if maybe_negative.is_some() {
+                        i.neg_assign();
+                    };
+
+                    TempConstant::Integer(i)
+                }),
+            just('0')
+                .padded()
+                .to_slice()
                 .map_with(|v, e: &mut MapExtra<'a, '_>| {
                     let state = e.state();
 
-                    let i = constant::integer_from(state.arena, v.parse().unwrap());
+                    let value = v.parse::<i128>().unwrap();
+
+                    let i = constant::integer_from(state.arena, value);
 
                     TempConstant::Integer(i)
                 }),
