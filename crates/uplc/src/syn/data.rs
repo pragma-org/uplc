@@ -1,7 +1,8 @@
 use bumpalo::collections::Vec as BumpVec;
 use chumsky::prelude::*;
+use rug::ops::NegAssign;
 
-use crate::data::PlutusData;
+use crate::{constant::Integer, data::PlutusData};
 
 use super::{
     types::{Extra, MapExtra},
@@ -15,8 +16,6 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a PlutusData<'a>, Extra<'a>> {
                 .padded()
                 .ignore_then(just('#').ignore_then(hex_bytes()).padded())
                 .map_with(|v, e: &mut MapExtra<'a, '_>| {
-                    dbg!("b", &v);
-
                     let state = e.state();
 
                     let bytes = BumpVec::from_iter_in(v, state.arena);
@@ -26,22 +25,23 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a PlutusData<'a>, Extra<'a>> {
             just('I')
                 .padded()
                 .ignore_then(
-                    text::int(10)
-                        .or(just('-').padded().ignore_then(text::int(10)))
+                    just('-')
+                        .ignored()
+                        .or_not()
+                        .padded()
+                        .then(text::int(10))
                         .padded(),
                 )
-                .map_with(|v, e: &mut MapExtra<'a, '_>| {
-                    dbg!("i", &v);
-
+                .map_with(|(maybe_negative, v), e: &mut MapExtra<'a, '_>| {
                     let state = e.state();
 
-                    let value = if let Some(v) = v.strip_prefix('-') {
-                        -(v.parse::<i128>().unwrap())
-                    } else {
-                        v.parse::<i128>().unwrap()
+                    let value = state.arena.alloc(Integer::from_str_radix(v, 10).unwrap());
+
+                    if maybe_negative.is_some() {
+                        value.neg_assign();
                     };
 
-                    PlutusData::integer_from(state.arena, value)
+                    PlutusData::integer(state.arena, value)
                 }),
             just("Constr")
                 .padded()
@@ -54,8 +54,6 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a PlutusData<'a>, Extra<'a>> {
                 )
                 .map_with(
                     |(tag, fields): (_, Vec<&PlutusData<'_>>), e: &mut MapExtra<'a, '_>| {
-                        dbg!("c", &tag, &fields);
-
                         let state = e.state();
 
                         let fields = BumpVec::from_iter_in(fields, state.arena);
@@ -72,8 +70,6 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a PlutusData<'a>, Extra<'a>> {
                         .delimited_by(just('['), just(']')),
                 )
                 .map_with(|items: Vec<&PlutusData<'_>>, e: &mut MapExtra<'a, '_>| {
-                    dbg!("c", &items);
-
                     let state = e.state();
 
                     let fields = BumpVec::from_iter_in(items, state.arena);
