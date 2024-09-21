@@ -1,3 +1,4 @@
+use bumpalo::Bump;
 use chumsky::{prelude::*, Parser};
 
 use crate::term::Term;
@@ -67,7 +68,8 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
                 }),
             // Apply
             term.clone()
-                .foldl_with(term.repeated().at_least(1), |a, b, e| {
+                .padded()
+                .foldl_with(term.padded().repeated().at_least(1), |a, b, e| {
                     let state = e.state();
 
                     a.apply(state.arena, b)
@@ -79,6 +81,24 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
 
                 Term::constant(state.arena, c)
             }),
+            // Builtin
+            text::keyword("builtin")
+                .padded()
+                .ignore_then(text::ident().padded())
+                .delimited_by(just('('), just(')'))
+                .validate(|v, e: &mut MapExtra<'a, '_>, emitter| {
+                    let state = e.state();
+
+                    if let Some(builtin) = from_str(state.arena, v) {
+                        builtin
+                    } else {
+                        let builtin = Term::error(state.arena);
+
+                        emitter.emit(Rich::custom(e.span(), "unknown builtin"));
+
+                        builtin
+                    }
+                }),
             // Error
             text::keyword("error")
                 .padded()
@@ -92,4 +112,15 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
         ))
         .boxed()
     })
+}
+
+pub fn from_str<'a>(arena: &'a Bump, name: &str) -> Option<&'a Term<'a>> {
+    match name {
+        "addInteger" => Some(Term::add_integer(arena)),
+        "lessThanEqualsInteger" => Some(Term::less_than_equals_integer(arena)),
+        "lessThanInteger" => Some(Term::less_than_integer(arena)),
+        "subtractInteger" => Some(Term::subtract_integer(arena)),
+        "ifThenElse" => Some(Term::if_then_else(arena)),
+        _ => None,
+    }
 }

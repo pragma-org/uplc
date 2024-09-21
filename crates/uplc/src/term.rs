@@ -157,8 +157,15 @@ impl<'a> Term<'a> {
 
         Term::builtin(arena, fun)
     }
+
     pub fn less_than_equals_integer(arena: &'a Bump) -> &'a Term<'a> {
         let fun = arena.alloc(DefaultFunction::LessThanEqualsInteger);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn less_than_integer(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::LessThanInteger);
 
         Term::builtin(arena, fun)
     }
