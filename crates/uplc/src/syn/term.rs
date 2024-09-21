@@ -52,9 +52,9 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
                     term.force(state.arena)
                 }),
             // Lambda
-            text::keyword("lambda")
+            text::keyword("lam")
                 .padded()
-                .ignore_then(text::ident())
+                .ignore_then(text::ident().padded())
                 .map_with(|v, e: &mut MapExtra<'a, '_>| {
                     let state = e.state();
 
@@ -62,7 +62,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
 
                     0
                 })
-                .then(term.clone())
+                .then(term.clone().padded())
                 .delimited_by(just('('), just(')'))
                 .map_with(|(v, term), e| {
                     let state = e.state();
