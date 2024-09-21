@@ -28,6 +28,12 @@ impl<'a> Program<'a> {
 
         EvalResult { term, info }
     }
+
+    pub fn apply(&'a self, arena: &'a Bump, term: &'a Term<'a>) -> &'a Self {
+        let term = self.term.apply(arena, term);
+
+        Self::new(arena, self.version, term)
+    }
 }
 
 #[derive(Debug)]

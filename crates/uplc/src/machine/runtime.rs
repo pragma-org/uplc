@@ -125,7 +125,20 @@ impl<'a> Runtime<'a> {
                     Ok(arg3)
                 }
             }
-            DefaultFunction::MultiplyInteger => todo!(),
+            DefaultFunction::MultiplyInteger => {
+                let arg1 = self.args[0].unwrap_integer()?;
+                let arg2 = self.args[1].unwrap_integer()?;
+
+                let result = arg1 * arg2;
+
+                let new = constant::integer(arena);
+
+                new.assign(result);
+
+                let value = Value::integer(arena, new);
+
+                Ok(value)
+            }
             DefaultFunction::DivideInteger => todo!(),
             DefaultFunction::QuotientInteger => todo!(),
             DefaultFunction::RemainderInteger => todo!(),

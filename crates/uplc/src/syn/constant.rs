@@ -129,8 +129,6 @@ fn value_parser<'a>() -> impl Parser<'a, &'a str, TempConstant<'a>, Extra<'a>> {
 
                     let i = state.arena.alloc(Integer::from_str_radix(v, 10).unwrap());
 
-                    i.neg_assign();
-
                     if maybe_negative.is_some() {
                         i.neg_assign();
                     };

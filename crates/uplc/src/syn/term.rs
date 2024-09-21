@@ -12,26 +12,29 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
     recursive(|term| {
         choice((
             // Var
-            text::ident().validate(|v, e: &mut MapExtra<'a, '_>, emitter| {
-                let state = e.state();
+            text::ident()
+                .padded()
+                .validate(|v, e: &mut MapExtra<'a, '_>, emitter| {
+                    let state = e.state();
 
-                let position = state.env.iter().rev().position(|&x| x == v);
+                    let position = state.env.iter().rev().position(|&x| x == v);
 
-                if position.is_none() {
-                    let placeholder = Term::var(state.arena, 0);
+                    if position.is_none() {
+                        let placeholder = Term::var(state.arena, 0);
 
-                    emitter.emit(Rich::custom(e.span(), "open term"));
+                        emitter.emit(Rich::custom(e.span(), "open term"));
 
-                    placeholder
-                } else {
-                    let debruijn_index = state.env.len() - position.unwrap_or_default();
+                        placeholder
+                    } else {
+                        let debruijn_index = state.env.len() - position.unwrap_or_default();
 
-                    Term::var(state.arena, debruijn_index)
-                }
-            }),
+                        Term::var(state.arena, debruijn_index)
+                    }
+                }),
             // Delay
             text::keyword("delay")
-                .ignore_then(term.clone())
+                .padded()
+                .ignore_then(term.clone().padded())
                 .delimited_by(just('('), just(')'))
                 .map_with(|term: &Term<'_>, e: &mut MapExtra<'a, '_>| {
                     let state = e.state();
@@ -40,7 +43,8 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
                 }),
             // Force
             text::keyword("force")
-                .ignore_then(term.clone())
+                .padded()
+                .ignore_then(term.clone().padded())
                 .delimited_by(just('('), just(')'))
                 .map_with(|term, e| {
                     let state = e.state();
@@ -49,6 +53,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
                 }),
             // Lambda
             text::keyword("lambda")
+                .padded()
                 .ignore_then(text::ident())
                 .map_with(|v, e: &mut MapExtra<'a, '_>| {
                     let state = e.state();
