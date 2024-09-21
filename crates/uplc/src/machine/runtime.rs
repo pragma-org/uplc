@@ -92,7 +92,16 @@ impl<'a> Runtime<'a> {
 
                 Ok(value)
             }
-            DefaultFunction::EqualsInteger => todo!(),
+            DefaultFunction::EqualsInteger => {
+                let arg1 = self.args[0].unwrap_integer()?;
+                let arg2 = self.args[1].unwrap_integer()?;
+
+                let result = arg1 == arg2;
+
+                let value = Value::bool(arena, result);
+
+                Ok(value)
+            }
             DefaultFunction::LessThanEqualsInteger => {
                 let arg1 = self.args[0].unwrap_integer()?;
                 let arg2 = self.args[1].unwrap_integer()?;
@@ -103,7 +112,7 @@ impl<'a> Runtime<'a> {
 
                 Ok(value)
             }
-            DefaultFunction::AddByteString => todo!(),
+            DefaultFunction::AppendByteString => todo!(),
             DefaultFunction::EqualsByteString => todo!(),
             DefaultFunction::IfThenElse => {
                 let arg1 = self.args[0].unwrap_bool()?;
@@ -116,6 +125,83 @@ impl<'a> Runtime<'a> {
                     Ok(arg3)
                 }
             }
+            DefaultFunction::MultiplyInteger => todo!(),
+            DefaultFunction::DivideInteger => todo!(),
+            DefaultFunction::QuotientInteger => todo!(),
+            DefaultFunction::RemainderInteger => todo!(),
+            DefaultFunction::ModInteger => todo!(),
+            DefaultFunction::LessThanInteger => {
+                let arg1 = self.args[0].unwrap_integer()?;
+                let arg2 = self.args[1].unwrap_integer()?;
+
+                let result = arg1 < arg2;
+
+                let value = Value::bool(arena, result);
+
+                Ok(value)
+            }
+            DefaultFunction::ConsByteString => todo!(),
+            DefaultFunction::SliceByteString => todo!(),
+            DefaultFunction::LengthOfByteString => todo!(),
+            DefaultFunction::IndexByteString => todo!(),
+            DefaultFunction::LessThanByteString => todo!(),
+            DefaultFunction::LessThanEqualsByteString => todo!(),
+            DefaultFunction::Sha2_256 => todo!(),
+            DefaultFunction::Sha3_256 => todo!(),
+            DefaultFunction::Blake2b_256 => todo!(),
+            DefaultFunction::Keccak_256 => todo!(),
+            DefaultFunction::Blake2b_224 => todo!(),
+            DefaultFunction::VerifyEd25519Signature => todo!(),
+            DefaultFunction::VerifyEcdsaSecp256k1Signature => todo!(),
+            DefaultFunction::VerifySchnorrSecp256k1Signature => todo!(),
+            DefaultFunction::AppendString => todo!(),
+            DefaultFunction::EqualsString => todo!(),
+            DefaultFunction::EncodeUtf8 => todo!(),
+            DefaultFunction::DecodeUtf8 => todo!(),
+            DefaultFunction::ChooseUnit => todo!(),
+            DefaultFunction::Trace => todo!(),
+            DefaultFunction::FstPair => todo!(),
+            DefaultFunction::SndPair => todo!(),
+            DefaultFunction::ChooseList => todo!(),
+            DefaultFunction::MkCons => todo!(),
+            DefaultFunction::HeadList => todo!(),
+            DefaultFunction::TailList => todo!(),
+            DefaultFunction::NullList => todo!(),
+            DefaultFunction::ChooseData => todo!(),
+            DefaultFunction::ConstrData => todo!(),
+            DefaultFunction::MapData => todo!(),
+            DefaultFunction::ListData => todo!(),
+            DefaultFunction::IData => todo!(),
+            DefaultFunction::BData => todo!(),
+            DefaultFunction::UnConstrData => todo!(),
+            DefaultFunction::UnMapData => todo!(),
+            DefaultFunction::UnListData => todo!(),
+            DefaultFunction::UnIData => todo!(),
+            DefaultFunction::UnBData => todo!(),
+            DefaultFunction::EqualsData => todo!(),
+            DefaultFunction::SerialiseData => todo!(),
+            DefaultFunction::MkPairData => todo!(),
+            DefaultFunction::MkNilData => todo!(),
+            DefaultFunction::MkNilPairData => todo!(),
+            DefaultFunction::Bls12_381_G1_Add => todo!(),
+            DefaultFunction::Bls12_381_G1_Neg => todo!(),
+            DefaultFunction::Bls12_381_G1_ScalarMul => todo!(),
+            DefaultFunction::Bls12_381_G1_Equal => todo!(),
+            DefaultFunction::Bls12_381_G1_Compress => todo!(),
+            DefaultFunction::Bls12_381_G1_Uncompress => todo!(),
+            DefaultFunction::Bls12_381_G1_HashToGroup => todo!(),
+            DefaultFunction::Bls12_381_G2_Add => todo!(),
+            DefaultFunction::Bls12_381_G2_Neg => todo!(),
+            DefaultFunction::Bls12_381_G2_ScalarMul => todo!(),
+            DefaultFunction::Bls12_381_G2_Equal => todo!(),
+            DefaultFunction::Bls12_381_G2_Compress => todo!(),
+            DefaultFunction::Bls12_381_G2_Uncompress => todo!(),
+            DefaultFunction::Bls12_381_G2_HashToGroup => todo!(),
+            DefaultFunction::Bls12_381_MillerLoop => todo!(),
+            DefaultFunction::Bls12_381_MulMlResult => todo!(),
+            DefaultFunction::Bls12_381_FinalVerify => todo!(),
+            DefaultFunction::IntegerToByteString => todo!(),
+            DefaultFunction::ByteStringToInteger => todo!(),
         }
     }
 }
