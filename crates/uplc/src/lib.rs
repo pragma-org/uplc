@@ -8,6 +8,8 @@ pub mod syn;
 pub mod term;
 pub mod typ;
 
+pub use bumpalo;
+
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_eq;

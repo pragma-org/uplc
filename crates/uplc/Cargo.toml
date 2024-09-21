@@ -2,6 +2,7 @@
 name = "uplc"
 version = "0.1.0"
 edition = "2021"
+publish = false
 
 [dependencies]
 blst = "0.3.13"
