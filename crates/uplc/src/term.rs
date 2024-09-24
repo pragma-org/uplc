@@ -175,4 +175,10 @@ impl<'a> Term<'a> {
 
         Term::builtin(arena, fun)
     }
+
+    pub fn append_byte_string(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::AppendByteString);
+
+        Term::builtin(arena, fun)
+    }
 }

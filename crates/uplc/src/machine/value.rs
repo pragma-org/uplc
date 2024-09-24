@@ -66,6 +66,12 @@ impl<'a> Value<'a> {
         Value::con(arena, con)
     }
 
+    pub fn byte_string(arena: &'a Bump, b: BumpVec<'a, u8>) -> &'a Value<'a> {
+        let con = arena.alloc(Constant::ByteString(b));
+
+        Value::con(arena, con)
+    }
+
     pub fn bool(arena: &'a Bump, b: bool) -> &'a Value<'a> {
         let con = arena.alloc(Constant::Boolean(b));
 
@@ -80,6 +86,16 @@ impl<'a> Value<'a> {
         };
 
         Ok(integer)
+    }
+
+    pub fn unwrap_byte_string(&'a self) -> Result<&BumpVec<'a, u8>, MachineError<'a>> {
+        let inner = self.unwrap_constant()?;
+
+        let Constant::ByteString(byte_string) = inner else {
+            return Err(MachineError::TypeMismatch(Type::ByteString, inner));
+        };
+
+        Ok(byte_string)
     }
 
     pub fn unwrap_bool(&'a self) -> Result<bool, MachineError<'a>> {
