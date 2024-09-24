@@ -181,4 +181,10 @@ impl<'a> Term<'a> {
 
         Term::builtin(arena, fun)
     }
+
+    pub fn equals_byte_string(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::EqualsByteString);
+
+        Term::builtin(arena, fun)
+    }
 }

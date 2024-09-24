@@ -125,7 +125,16 @@ impl<'a> Runtime<'a> {
 
                 Ok(value)
             }
-            DefaultFunction::EqualsByteString => todo!(),
+            DefaultFunction::EqualsByteString => {
+                let arg1 = self.args[0].unwrap_byte_string()?;
+                let arg2 = self.args[1].unwrap_byte_string()?;
+
+                let result = arg1 == arg2;
+
+                let value = Value::bool(arena, result);
+
+                Ok(value)
+            }
             DefaultFunction::IfThenElse => {
                 let arg1 = self.args[0].unwrap_bool()?;
                 let arg2 = self.args[1];
