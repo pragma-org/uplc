@@ -176,7 +176,19 @@ impl<'a> Runtime<'a> {
             }
             DefaultFunction::ConsByteString => todo!(),
             DefaultFunction::SliceByteString => todo!(),
-            DefaultFunction::LengthOfByteString => todo!(),
+            DefaultFunction::LengthOfByteString => {
+                let arg1 = self.args[0].unwrap_byte_string()?;
+
+                let result = arg1.len();
+
+                let new = constant::integer(arena);
+
+                new.assign(result as i64);
+
+                let value = Value::integer(arena, new);
+
+                Ok(value)
+            }
             DefaultFunction::IndexByteString => todo!(),
             DefaultFunction::LessThanByteString => todo!(),
             DefaultFunction::LessThanEqualsByteString => todo!(),
