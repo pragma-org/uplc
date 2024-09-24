@@ -128,6 +128,7 @@ pub fn builtin_from_str<'a>(arena: &'a Bump, name: &str) -> Option<&'a Term<'a>>
         "ifThenElse" => Some(Term::if_then_else(arena)),
         "appendByteString" => Some(Term::append_byte_string(arena)),
         "equalsByteString" => Some(Term::equals_byte_string(arena)),
+        "lengthOfByteString" => Some(Term::length_of_byte_string(arena)),
         _ => None,
     }
 }

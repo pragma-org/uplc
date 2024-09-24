@@ -187,4 +187,10 @@ impl<'a> Term<'a> {
 
         Term::builtin(arena, fun)
     }
+
+    pub fn length_of_byte_string(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::LengthOfByteString);
+
+        Term::builtin(arena, fun)
+    }
 }
