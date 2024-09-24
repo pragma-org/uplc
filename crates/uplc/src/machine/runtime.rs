@@ -112,7 +112,19 @@ impl<'a> Runtime<'a> {
 
                 Ok(value)
             }
-            DefaultFunction::AppendByteString => todo!(),
+            DefaultFunction::AppendByteString => {
+                let arg1 = self.args[0].unwrap_byte_string()?;
+                let arg2 = self.args[1].unwrap_byte_string()?;
+
+                let mut result = BumpVec::with_capacity_in(arg1.len() + arg2.len(), arena);
+
+                result.extend_from_slice(arg1);
+                result.extend_from_slice(arg2);
+
+                let value = Value::byte_string(arena, result);
+
+                Ok(value)
+            }
             DefaultFunction::EqualsByteString => todo!(),
             DefaultFunction::IfThenElse => {
                 let arg1 = self.args[0].unwrap_bool()?;

@@ -126,6 +126,7 @@ pub fn from_str<'a>(arena: &'a Bump, name: &str) -> Option<&'a Term<'a>> {
         "lessThanInteger" => Some(Term::less_than_integer(arena)),
         "subtractInteger" => Some(Term::subtract_integer(arena)),
         "ifThenElse" => Some(Term::if_then_else(arena)),
+        "appendByteString" => Some(Term::append_byte_string(arena)),
         _ => None,
     }
 }
