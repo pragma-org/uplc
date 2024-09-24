@@ -94,7 +94,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
                 .validate(|v, e: &mut MapExtra<'a, '_>, emitter| {
                     let state = e.state();
 
-                    if let Some(builtin) = from_str(state.arena, v) {
+                    if let Some(builtin) = builtin_from_str(state.arena, v) {
                         builtin
                     } else {
                         let builtin = Term::error(state.arena);
@@ -119,7 +119,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
     })
 }
 
-pub fn from_str<'a>(arena: &'a Bump, name: &str) -> Option<&'a Term<'a>> {
+pub fn builtin_from_str<'a>(arena: &'a Bump, name: &str) -> Option<&'a Term<'a>> {
     match name {
         "addInteger" => Some(Term::add_integer(arena)),
         "lessThanEqualsInteger" => Some(Term::less_than_equals_integer(arena)),
@@ -127,6 +127,7 @@ pub fn from_str<'a>(arena: &'a Bump, name: &str) -> Option<&'a Term<'a>> {
         "subtractInteger" => Some(Term::subtract_integer(arena)),
         "ifThenElse" => Some(Term::if_then_else(arena)),
         "appendByteString" => Some(Term::append_byte_string(arena)),
+        "equalsByteString" => Some(Term::equals_byte_string(arena)),
         _ => None,
     }
 }
