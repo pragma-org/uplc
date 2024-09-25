@@ -189,9 +189,46 @@ impl<'a> Runtime<'a> {
 
                 Ok(value)
             }
-            DefaultFunction::IndexByteString => todo!(),
-            DefaultFunction::LessThanByteString => todo!(),
-            DefaultFunction::LessThanEqualsByteString => todo!(),
+            DefaultFunction::IndexByteString => {
+                let arg1 = self.args[0].unwrap_byte_string()?;
+                let arg2 = self.args[1].unwrap_integer()?;
+
+                let index: i128 = arg2.try_into().unwrap();
+
+                if 0 <= index && (index as usize) < arg1.len() {
+                    let result = arg1[index as usize];
+
+                    let new = constant::integer(arena);
+
+                    new.assign(result as i64);
+
+                    let value = Value::integer(arena, new);
+
+                    Ok(value)
+                } else {
+                    Err(MachineError::byte_string_out_of_bounds(arg1, arg2))
+                }
+            }
+            DefaultFunction::LessThanByteString => {
+                let arg1 = self.args[0].unwrap_byte_string()?;
+                let arg2 = self.args[1].unwrap_byte_string()?;
+
+                let result = arg1 < arg2;
+
+                let value = Value::bool(arena, result);
+
+                Ok(value)
+            }
+            DefaultFunction::LessThanEqualsByteString => {
+                let arg1 = self.args[0].unwrap_byte_string()?;
+                let arg2 = self.args[1].unwrap_byte_string()?;
+
+                let result = arg1 <= arg2;
+
+                let value = Value::bool(arena, result);
+
+                Ok(value)
+            }
             DefaultFunction::Sha2_256 => todo!(),
             DefaultFunction::Sha3_256 => todo!(),
             DefaultFunction::Blake2b_256 => todo!(),

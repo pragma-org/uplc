@@ -122,6 +122,8 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
 pub fn builtin_from_str<'a>(arena: &'a Bump, name: &str) -> Option<&'a Term<'a>> {
     match name {
         "addInteger" => Some(Term::add_integer(arena)),
+        "multiplyInteger" => Some(Term::multiply_integer(arena)),
+        "equalsInteger" => Some(Term::equals_integer(arena)),
         "lessThanEqualsInteger" => Some(Term::less_than_equals_integer(arena)),
         "lessThanInteger" => Some(Term::less_than_integer(arena)),
         "subtractInteger" => Some(Term::subtract_integer(arena)),
@@ -129,6 +131,9 @@ pub fn builtin_from_str<'a>(arena: &'a Bump, name: &str) -> Option<&'a Term<'a>>
         "appendByteString" => Some(Term::append_byte_string(arena)),
         "equalsByteString" => Some(Term::equals_byte_string(arena)),
         "lengthOfByteString" => Some(Term::length_of_byte_string(arena)),
+        "indexByteString" => Some(Term::index_byte_string(arena)),
+        "lessThanByteString" => Some(Term::less_than_byte_string(arena)),
+        "lessThanEqualsByteString" => Some(Term::less_than_equals_byte_string(arena)),
         _ => None,
     }
 }
