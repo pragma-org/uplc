@@ -152,8 +152,20 @@ impl<'a> Term<'a> {
         Term::builtin(arena, fun)
     }
 
+    pub fn multiply_integer(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::MultiplyInteger);
+
+        Term::builtin(arena, fun)
+    }
+
     pub fn subtract_integer(arena: &'a Bump) -> &'a Term<'a> {
         let fun = arena.alloc(DefaultFunction::SubtractInteger);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn equals_integer(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::EqualsInteger);
 
         Term::builtin(arena, fun)
     }
@@ -190,6 +202,24 @@ impl<'a> Term<'a> {
 
     pub fn length_of_byte_string(arena: &'a Bump) -> &'a Term<'a> {
         let fun = arena.alloc(DefaultFunction::LengthOfByteString);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn index_byte_string(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::IndexByteString);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn less_than_byte_string(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::LessThanByteString);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn less_than_equals_byte_string(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::LessThanEqualsByteString);
 
         Term::builtin(arena, fun)
     }

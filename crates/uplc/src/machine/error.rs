@@ -1,4 +1,10 @@
-use crate::{constant::Constant, term::Term, typ::Type};
+use bumpalo::collections::Vec as BumpVec;
+
+use crate::{
+    constant::{Constant, Integer},
+    term::Term,
+    typ::Type,
+};
 
 use super::{value::Value, ExBudget};
 
@@ -15,4 +21,20 @@ pub enum MachineError<'a> {
     BuiltinTermArgumentExpected(&'a Term<'a>),
     NonConstrScrutinized(&'a Value<'a>),
     MissingCaseBranch(&'a [&'a Term<'a>], &'a Value<'a>),
+    Runtime(RuntimeError<'a>),
+}
+
+#[derive(Debug)]
+pub enum RuntimeError<'a> {
+    ByteStringOutOfBounds(&'a BumpVec<'a, u8>, &'a Integer),
+}
+
+impl<'a> MachineError<'a> {
+    pub fn runtime(runtime_error: RuntimeError<'a>) -> Self {
+        MachineError::Runtime(runtime_error)
+    }
+
+    pub fn byte_string_out_of_bounds(byte_string: &'a BumpVec<'a, u8>, index: &'a Integer) -> Self {
+        MachineError::runtime(RuntimeError::ByteStringOutOfBounds(byte_string, index))
+    }
 }
