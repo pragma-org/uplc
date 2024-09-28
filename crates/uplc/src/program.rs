@@ -37,10 +37,10 @@ impl<'a> Program<'a> {
 }
 
 #[derive(Debug)]
-pub struct Version<'a>(&'a (u8, u8, u8));
+pub struct Version<'a>(&'a (usize, usize, usize));
 
 impl<'a> Version<'a> {
-    pub fn new(arena: &'a Bump, major: u8, minor: u8, patch: u8) -> &'a mut Self {
+    pub fn new(arena: &'a Bump, major: usize, minor: usize, patch: usize) -> &'a mut Self {
         let version = arena.alloc((major, minor, patch));
 
         arena.alloc(Version(version))
