@@ -80,6 +80,14 @@ impl<'a> Term<'a> {
         arena.alloc(Term::Constr { tag, fields })
     }
 
+    pub fn case(
+        arena: &'a Bump,
+        constr: &'a Term<'a>,
+        branches: BumpVec<'a, &'a Term<'a>>,
+    ) -> &'a Term<'a> {
+        arena.alloc(Term::Case { constr, branches })
+    }
+
     pub fn integer(arena: &'a Bump, i: &'a Integer) -> &'a Term<'a> {
         let constant = arena.alloc(Constant::Integer(i));
 
