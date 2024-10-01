@@ -1,7 +1,10 @@
 pub mod decode;
 mod zigzag;
 
-use bumpalo::{collections::Vec as BumpVec, Bump};
+use bumpalo::{
+    collections::{String as BumpString, Vec as BumpVec},
+    Bump,
+};
 use decode::{Decoder, FlatDecodeError};
 
 use crate::{
@@ -125,7 +128,14 @@ fn decode_constant<'a>(
 
             Ok(Constant::byte_string(arena, b))
         }
-        [2] => todo!("string"),
+        [2] => {
+            let utf8_bytes = d.bytes(arena)?;
+
+            let s = BumpString::from_utf8(utf8_bytes)
+                .map_err(|e| FlatDecodeError::DecodeUtf8(e.utf8_error()))?;
+
+            Ok(Constant::string(arena, s))
+        }
         [3] => Ok(Constant::unit(arena)),
         [4] => {
             let v = d.bit()?;

@@ -12,8 +12,8 @@ pub enum FlatDecodeError {
     NotEnoughBytes(usize),
     #[error("Not enough data available, required {0} bits")]
     NotEnoughBits(usize),
-    #[error(transparent)]
-    DecodeUtf8(#[from] std::string::FromUtf8Error),
+    #[error("{0}")]
+    DecodeUtf8(std::str::Utf8Error),
     #[error("Decoding u32 to char {0}")]
     DecodeChar(u32),
     #[error("{0}")]
