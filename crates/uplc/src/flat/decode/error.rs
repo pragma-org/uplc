@@ -18,6 +18,8 @@ pub enum FlatDecodeError {
     DecodeChar(u32),
     #[error("{0}")]
     Message(String),
+    #[error("Default Function not found: {0}")]
+    DefaultFunctionNotFound(u8),
     #[error("Unknown term constructor tag: {0}")]
     UnknownTermConstructor(u8),
     #[error("Unknown constant constructor tag: {0:#?}")]
