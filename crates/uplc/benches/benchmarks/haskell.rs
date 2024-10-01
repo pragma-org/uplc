@@ -11,10 +11,16 @@ pub fn run(c: &mut Criterion) {
         let path = entry.path();
 
         if path.is_file() {
-            let file_name = path.file_name().unwrap().to_str().unwrap();
+            let file_name = path
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .replace(".flat", "");
+
             let script = std::fs::read(&path).unwrap();
 
-            c.bench_function(file_name, |b| {
+            c.bench_function(&file_name, |b| {
                 b.iter(|| {
                     let arena = Bump::new();
 
