@@ -136,7 +136,11 @@ fn decode_constant<'a>(
 
         [7, 7, 6, rest @ ..] => todo!("pair"),
 
-        [8] => todo!("data"),
+        [8] => {
+            let cbor = d.bytes(arena)?;
+
+            todo!("data")
+        }
 
         x => Err(FlatDecodeError::UnknownConstantConstructor(x.to_vec())),
     }
