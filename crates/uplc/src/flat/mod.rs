@@ -5,11 +5,13 @@ use bumpalo::{
     collections::{String as BumpString, Vec as BumpVec},
     Bump,
 };
-use decode::{Decoder, FlatDecodeError};
+use decode::{Ctx, Decoder, FlatDecodeError};
+use minicbor::data::{IanaTag, UnknownTag};
 
 use crate::{
     builtin::DefaultFunction,
     constant::Constant,
+    data::PlutusData,
     program::{Program, Version},
     term::Term,
 };
@@ -27,7 +29,9 @@ pub fn decode<'a>(arena: &'a Bump, bytes: &[u8]) -> Result<&'a Program<'a>, Flat
 
     let version = Version::new(arena, major, minor, patch);
 
-    let term = decode_term(arena, &mut decoder)?;
+    let mut ctx = Ctx { arena };
+
+    let term = decode_term(&mut ctx, &mut decoder)?;
 
     decoder.filler()?;
 
@@ -37,74 +41,74 @@ pub fn decode<'a>(arena: &'a Bump, bytes: &[u8]) -> Result<&'a Program<'a>, Flat
 }
 
 fn decode_term<'a>(
-    arena: &'a Bump,
+    ctx: &mut Ctx<'a>,
     decoder: &mut Decoder<'_>,
 ) -> Result<&'a Term<'a>, FlatDecodeError> {
     let tag = decoder.bits8(TERM_TAG_WIDTH)?;
 
     match tag {
         // Var
-        0 => Ok(Term::var(arena, decoder.word()?)),
+        0 => Ok(Term::var(ctx.arena, decoder.word()?)),
         // Delay
         1 => {
-            let term = decode_term(arena, decoder)?;
+            let term = decode_term(ctx, decoder)?;
 
-            Ok(term.delay(arena))
+            Ok(term.delay(ctx.arena))
         }
         // Lambda
         2 => {
-            let term = decode_term(arena, decoder)?;
+            let term = decode_term(ctx, decoder)?;
 
-            Ok(term.lambda(arena, 0))
+            Ok(term.lambda(ctx.arena, 0))
         }
         // Apply
         3 => {
-            let function = decode_term(arena, decoder)?;
-            let argument = decode_term(arena, decoder)?;
+            let function = decode_term(ctx, decoder)?;
+            let argument = decode_term(ctx, decoder)?;
 
-            let term = function.apply(arena, argument);
+            let term = function.apply(ctx.arena, argument);
 
             Ok(term)
         }
         // Constant
         4 => {
-            let constant = decode_constant(arena, decoder)?;
+            let constant = decode_constant(ctx, decoder)?;
 
-            Ok(Term::constant(arena, constant))
+            Ok(Term::constant(ctx.arena, constant))
         }
         // Force
         5 => {
-            let term = decode_term(arena, decoder)?;
+            let term = decode_term(ctx, decoder)?;
 
-            Ok(term.force(arena))
+            Ok(term.force(ctx.arena))
         }
         // Error
-        6 => Ok(Term::error(arena)),
+        6 => Ok(Term::error(ctx.arena)),
         // Builtin
         7 => {
             let builtin_tag = decoder.bits8(BUILTIN_TAG_WIDTH)?;
 
-            let function = try_from_builtin_tag(arena, builtin_tag)?;
+            let function = try_from_builtin_tag(ctx.arena, builtin_tag)?;
 
-            let term = Term::builtin(arena, function);
+            let term = Term::builtin(ctx.arena, function);
 
             Ok(term)
         }
         // Constr
         8 => {
             let tag = decoder.word()?;
-            let fields = decoder.list_with(arena, decode_term)?;
+            let fields = decoder.list_with(ctx, decode_term)?;
 
-            let term = Term::constr(arena, tag, fields);
+            let term = Term::constr(ctx.arena, tag, fields);
 
             Ok(term)
         }
         // Case
         9 => {
-            let constr = decode_term(arena, decoder)?;
-            let branches = decoder.list_with(arena, decode_term)?;
+            let constr = decode_term(ctx, decoder)?;
+            let branches = decoder.list_with(ctx, decode_term)?;
 
-            Ok(Term::case(arena, constr, branches))
+            Ok(Term::case(ctx.arena, constr, branches))
         }
         _ => Err(FlatDecodeError::UnknownTermConstructor(tag)),
     }
@@ -112,44 +116,46 @@ fn decode_term<'a>(
 
 // BLS literals not supported
 fn decode_constant<'a>(
-    arena: &'a Bump,
+    ctx: &mut Ctx<'a>,
     d: &mut Decoder,
 ) -> Result<&'a Constant<'a>, FlatDecodeError> {
-    let tags = decode_constant_tags(arena, d)?;
+    let tags = decode_constant_tags(ctx, d)?;
 
     match &tags.as_slice() {
         [0] => {
             let v = d.integer()?;
 
-            Ok(Constant::integer_from(arena, v))
+            Ok(Constant::integer_from(ctx.arena, v))
         }
         [1] => {
-            let b = d.bytes(arena)?;
+            let b = d.bytes(ctx.arena)?;
 
-            Ok(Constant::byte_string(arena, b))
+            Ok(Constant::byte_string(ctx.arena, b))
         }
         [2] => {
-            let utf8_bytes = d.bytes(arena)?;
+            let utf8_bytes = d.bytes(ctx.arena)?;
 
             let s = BumpString::from_utf8(utf8_bytes)
                 .map_err(|e| FlatDecodeError::DecodeUtf8(e.utf8_error()))?;
 
-            Ok(Constant::string(arena, s))
+            Ok(Constant::string(ctx.arena, s))
         }
-        [3] => Ok(Constant::unit(arena)),
+        [3] => Ok(Constant::unit(ctx.arena)),
         [4] => {
             let v = d.bit()?;
 
-            Ok(Constant::bool(arena, v))
+            Ok(Constant::bool(ctx.arena, v))
         }
         [7, 5, rest @ ..] => todo!("list"),
 
         [7, 7, 6, rest @ ..] => todo!("pair"),
 
         [8] => {
-            let cbor = d.bytes(arena)?;
+            let cbor = d.bytes(ctx.arena)?;
 
-            todo!("data")
+            let data = minicbor::decode_with(&cbor, ctx)?;
+
+            Ok(Constant::data(ctx.arena, data))
         }
 
         x => Err(FlatDecodeError::UnknownConstantConstructor(x.to_vec())),
@@ -157,13 +163,13 @@ fn decode_constant<'a>(
 }
 
 fn decode_constant_tags<'a>(
-    arena: &'a Bump,
+    ctx: &mut Ctx<'a>,
     d: &mut Decoder,
 ) -> Result<BumpVec<'a, u8>, FlatDecodeError> {
-    d.list_with(arena, |_arena, d| decode_constant_tag(d))
+    d.list_with(ctx, |_arena, d| decode_constant_tag(d))
 }
 
-pub fn decode_constant_tag(d: &mut Decoder) -> Result<u8, FlatDecodeError> {
+fn decode_constant_tag(d: &mut Decoder) -> Result<u8, FlatDecodeError> {
     d.bits8(CONST_TAG_WIDTH)
 }
 
@@ -354,5 +360,89 @@ fn try_from_builtin_tag(arena: &Bump, v: u8) -> Result<&DefaultFunction, FlatDec
         }
 
         _ => Err(FlatDecodeError::DefaultFunctionNotFound(v)),
+    }
+}
+
+impl<'a, 'b> minicbor::decode::Decode<'b, Ctx<'a>> for &'a PlutusData<'a> {
+    fn decode(
+        decoder: &mut minicbor::Decoder<'b>,
+        ctx: &mut Ctx<'a>,
+    ) -> Result<Self, minicbor::decode::Error> {
+        let typ = decoder.datatype()?;
+
+        match typ {
+            minicbor::data::Type::Tag => {
+                let mut probe = decoder.probe();
+
+                let tag = probe.tag()?;
+
+                if matches!(tag.as_u64(), 121..=127 | 1280..=1400 | 102) {
+                    let x = decoder.tag()?.as_u64();
+
+                    return match x {
+                        121..=127 => {
+                            let mut fields = BumpVec::new_in(ctx.arena);
+
+                            for x in decoder.array_iter_with(ctx)? {
+                                fields.push(x?);
+                            }
+
+                            let data = PlutusData::constr(ctx.arena, x - 121, fields);
+
+                            Ok(data)
+                        }
+                        1280..=1400 => {
+                            let mut fields = BumpVec::new_in(ctx.arena);
+
+                            for x in decoder.array_iter_with(ctx)? {
+                                fields.push(x?);
+                            }
+
+                            let data = PlutusData::constr(ctx.arena, (x - 1280) + 7, fields);
+
+                            Ok(data)
+                        }
+                        102 => {
+                            todo!("tagged data")
+                        }
+                        _ => {
+                            let e = minicbor::decode::Error::message(format!(
+                                "unknown tag for plutus data tag: {}",
+                                tag
+                            ));
+
+                            Err(e)
+                        }
+                    };
+                }
+
+                match tag.try_into() {
+                    Ok(IanaTag::PosBignum | IanaTag::NegBignum) => {
+                        todo!("bignum")
+                    }
+
+                    _ => {
+                        let e = minicbor::decode::Error::message(format!(
+                            "unknown tag for plutus data tag: {}",
+                            tag
+                        ));
+
+                        Err(e)
+                    }
+                }
+            }
+            minicbor::data::Type::Bytes => {
+                let mut bs = BumpVec::new_in(ctx.arena);
+
+                for chunk in decoder.bytes_iter()? {
+                    let chunk = chunk?;
+
+                    bs.extend_from_slice(chunk);
+                }
+
+                Ok(PlutusData::byte_string(ctx.arena, bs))
+            }
+            _ => todo!("{:#?}", typ),
+        }
     }
 }

@@ -10,6 +10,10 @@ pub struct Decoder<'b> {
     pub pos: usize,
 }
 
+pub struct Ctx<'a> {
+    pub arena: &'a Bump,
+}
+
 impl<'b> Decoder<'b> {
     pub fn new(bytes: &'b [u8]) -> Decoder<'b> {
         Decoder {
@@ -58,16 +62,16 @@ impl<'b> Decoder<'b> {
     /// Returns a list of items decoded with the decoder function.
     pub fn list_with<'a, T, F>(
         &mut self,
-        arena: &'a Bump,
+        ctx: &mut Ctx<'a>,
         decoder_func: F,
     ) -> Result<BumpVec<'a, T>, FlatDecodeError>
     where
-        F: Copy + FnOnce(&'a Bump, &mut Decoder) -> Result<T, FlatDecodeError>,
+        F: Copy + FnOnce(&mut Ctx<'a>, &mut Decoder) -> Result<T, FlatDecodeError>,
     {
-        let mut vec_array = BumpVec::new_in(arena);
+        let mut vec_array = BumpVec::new_in(ctx.arena);
 
         while self.bit()? {
-            vec_array.push(decoder_func(arena, self)?)
+            vec_array.push(decoder_func(ctx, self)?)
         }
 
         Ok(vec_array)

@@ -8,6 +8,7 @@ publish = false
 blst = "0.3.13"
 bumpalo = { version = "3.16.0", features = ["collections"] }
 chumsky = { version = "1.0.0-alpha.7", features = ["pratt"] }
+minicbor = { version = "0.25.1", features = ["std"] }
 rug = { version = "1.26.0", default-features = false, features = [
     "integer",
     "std",
