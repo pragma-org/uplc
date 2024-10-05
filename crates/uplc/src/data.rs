@@ -1,6 +1,9 @@
 use bumpalo::{collections::Vec as BumpVec, Bump};
 
-use crate::constant::{integer_from, Integer};
+use crate::{
+    constant::{integer_from, Integer},
+    flat::decode::Ctx,
+};
 
 #[derive(Debug, PartialEq)]
 pub enum PlutusData<'a> {
@@ -42,7 +45,14 @@ impl<'a> PlutusData<'a> {
         arena.alloc(PlutusData::Integer(integer_from(arena, i)))
     }
 
-    pub fn byte_string(arena: &'a bumpalo::Bump, bytes: BumpVec<'a, u8>) -> &'a PlutusData<'a> {
+    pub fn byte_string(arena: &'a Bump, bytes: BumpVec<'a, u8>) -> &'a PlutusData<'a> {
         arena.alloc(PlutusData::ByteString(bytes))
+    }
+
+    pub fn from_cbor(
+        arena: &'a Bump,
+        cbor: &'_ [u8],
+    ) -> Result<&'a PlutusData<'a>, minicbor::decode::Error> {
+        minicbor::decode_with(cbor, &mut Ctx { arena })
     }
 }
