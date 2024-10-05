@@ -423,15 +423,25 @@ impl<'a, 'b> minicbor::decode::Decode<'b, Ctx<'a>> for &'a PlutusData<'a> {
 
                     _ => {
                         let e = minicbor::decode::Error::message(format!(
-                            "unknown tag for plutus data tag: {}",
-                            tag
+                            "unknown tag for plutus data tag: {tag}",
                         ));
 
                         Err(e)
                     }
                 }
             }
-            minicbor::data::Type::Bytes => {
+            minicbor::data::Type::Map | minicbor::data::Type::MapIndef => {
+                let mut fields = BumpVec::new_in(ctx.arena);
+
+                for x in decoder.map_iter_with(ctx)? {
+                    let x = x?;
+
+                    fields.push(x);
+                }
+
+                Ok(PlutusData::map(ctx.arena, fields))
+            }
+            minicbor::data::Type::Bytes | minicbor::data::Type::BytesIndef => {
                 let mut bs = BumpVec::new_in(ctx.arena);
 
                 for chunk in decoder.bytes_iter()? {
@@ -442,7 +452,22 @@ impl<'a, 'b> minicbor::decode::Decode<'b, Ctx<'a>> for &'a PlutusData<'a> {
 
                 Ok(PlutusData::byte_string(ctx.arena, bs))
             }
-            _ => todo!("{:#?}", typ),
+            minicbor::data::Type::Array | minicbor::data::Type::ArrayIndef => {
+                let mut fields = BumpVec::new_in(ctx.arena);
+
+                for x in decoder.array_iter_with(ctx)? {
+                    fields.push(x?);
+                }
+
+                Ok(PlutusData::list(ctx.arena, fields))
+            }
+            any => {
+                let e = minicbor::decode::Error::message(format!(
+                    "bad cbor data type ({any:?}) for plutus data"
+                ));
+
+                Err(e)
+            }
         }
     }
 }
