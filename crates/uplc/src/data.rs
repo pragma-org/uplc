@@ -3,6 +3,7 @@ use bumpalo::{collections::Vec as BumpVec, Bump};
 use crate::{
     constant::{integer_from, Integer},
     flat::decode::Ctx,
+    machine::MachineError,
 };
 
 #[derive(Debug, PartialEq)]
@@ -54,5 +55,14 @@ impl<'a> PlutusData<'a> {
         cbor: &'_ [u8],
     ) -> Result<&'a PlutusData<'a>, minicbor::decode::Error> {
         minicbor::decode_with(cbor, &mut Ctx { arena })
+    }
+
+    pub fn unwrap_constr(
+        &'a self,
+    ) -> Result<(&'a u64, &'a BumpVec<&'a PlutusData<'a>>), MachineError<'a>> {
+        match self {
+            PlutusData::Constr { tag, fields } => Ok((tag, fields)),
+            _ => Err(MachineError::malformed_data(self)),
+        }
     }
 }
