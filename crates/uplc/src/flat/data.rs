@@ -103,6 +103,19 @@ impl<'a, 'b> minicbor::decode::Decode<'b, Ctx<'a>> for &'a PlutusData<'a> {
 
                 Ok(PlutusData::list(ctx.arena, fields))
             }
+            minicbor::data::Type::U8
+            | minicbor::data::Type::U16
+            | minicbor::data::Type::U32
+            | minicbor::data::Type::U64
+            | minicbor::data::Type::I8
+            | minicbor::data::Type::I16
+            | minicbor::data::Type::I32
+            | minicbor::data::Type::I64
+            | minicbor::data::Type::Int => {
+                let i: i128 = decoder.int()?.into();
+
+                Ok(PlutusData::integer_from(ctx.arena, i))
+            }
             any => {
                 let e = minicbor::decode::Error::message(format!(
                     "bad cbor data type ({any:?}) for plutus data"
