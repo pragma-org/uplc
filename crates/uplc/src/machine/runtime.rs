@@ -1,9 +1,13 @@
-use bumpalo::{collections::Vec as BumpVec, Bump};
+use bumpalo::{
+    collections::{CollectIn, Vec as BumpVec},
+    Bump,
+};
 use rug::Assign;
 
 use crate::{
     builtin::DefaultFunction,
-    constant::{self},
+    constant::{self, Constant},
+    typ::Type,
 };
 
 use super::{cost_model::builtin_costs::BuiltinCosts, value::Value, ExBudget, MachineError};
@@ -243,8 +247,20 @@ impl<'a> Runtime<'a> {
             DefaultFunction::DecodeUtf8 => todo!(),
             DefaultFunction::ChooseUnit => todo!(),
             DefaultFunction::Trace => todo!(),
-            DefaultFunction::FstPair => todo!(),
-            DefaultFunction::SndPair => todo!(),
+            DefaultFunction::FstPair => {
+                let (_, _, first, _) = self.args[0].unwrap_pair()?;
+
+                let value = Value::con(arena, first);
+
+                Ok(value)
+            }
+            DefaultFunction::SndPair => {
+                let (_, _, _, second) = self.args[0].unwrap_pair()?;
+
+                let value = Value::con(arena, second);
+
+                Ok(value)
+            }
             DefaultFunction::ChooseList => todo!(),
             DefaultFunction::MkCons => todo!(),
             DefaultFunction::HeadList => todo!(),
@@ -256,7 +272,31 @@ impl<'a> Runtime<'a> {
             DefaultFunction::ListData => todo!(),
             DefaultFunction::IData => todo!(),
             DefaultFunction::BData => todo!(),
-            DefaultFunction::UnConstrData => todo!(),
+            DefaultFunction::UnConstrData => {
+                let arg1 = self.args[0].unwrap_constant()?;
+                let plutus_data = arg1.unwrap_data()?;
+
+                let (tag, fields) = plutus_data.unwrap_constr()?;
+
+                let constant = Constant::proto_pair(
+                    arena,
+                    Type::integer(arena),
+                    Type::list(arena, Type::data(arena)),
+                    Constant::integer_from(arena, *tag as i128),
+                    Constant::proto_list(
+                        arena,
+                        Type::data(arena),
+                        fields
+                            .iter()
+                            .map(|d| Constant::data(arena, d))
+                            .collect_in(arena),
+                    ),
+                );
+
+                let value = Value::con(arena, constant);
+
+                Ok(value)
+            }
             DefaultFunction::UnMapData => todo!(),
             DefaultFunction::UnListData => todo!(),
             DefaultFunction::UnIData => todo!(),

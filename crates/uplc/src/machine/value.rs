@@ -108,6 +108,26 @@ impl<'a> Value<'a> {
         Ok(*b)
     }
 
+    pub(super) fn unwrap_pair(
+        &'a self,
+    ) -> Result<
+        (
+            &'a Type<'a>,
+            &'a Type<'a>,
+            &'a Constant<'a>,
+            &'a Constant<'a>,
+        ),
+        MachineError<'a>,
+    > {
+        let inner = self.unwrap_constant()?;
+
+        let Constant::ProtoPair(t1, t2, first, second) = inner else {
+            return Err(MachineError::ExpectedPair(inner));
+        };
+
+        Ok((t1, t2, first, second))
+    }
+
     pub fn unwrap_constant(&'a self) -> Result<&'a Constant<'a>, MachineError<'a>> {
         let Value::Con(item) = self else {
             return Err(MachineError::NotAConstant(self));

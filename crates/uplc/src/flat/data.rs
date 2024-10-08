@@ -1,5 +1,6 @@
 use bumpalo::collections::Vec as BumpVec;
 use minicbor::data::IanaTag;
+use rug::ops::NegAssign;
 
 use crate::data::PlutusData;
 
@@ -59,8 +60,24 @@ impl<'a, 'b> minicbor::decode::Decode<'b, Ctx<'a>> for &'a PlutusData<'a> {
                 }
 
                 match tag.try_into() {
-                    Ok(IanaTag::PosBignum | IanaTag::NegBignum) => {
-                        todo!("bignum")
+                    Ok(x @ IanaTag::PosBignum | x @ IanaTag::NegBignum) => {
+                        let mut bytes = BumpVec::new_in(ctx.arena);
+
+                        for chunk in decoder.bytes_iter()? {
+                            let chunk = chunk?;
+
+                            bytes.extend_from_slice(chunk);
+                        }
+
+                        let integer = ctx
+                            .arena
+                            .alloc(rug::Integer::from_digits(&bytes, rug::integer::Order::Msf));
+
+                        if x == IanaTag::NegBignum {
+                            integer.neg_assign();
+                        }
+
+                        Ok(PlutusData::integer(ctx.arena, integer))
                     }
 
                     _ => {
