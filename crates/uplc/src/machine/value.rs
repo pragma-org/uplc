@@ -82,7 +82,7 @@ impl<'a> Value<'a> {
         let inner = self.unwrap_constant()?;
 
         let Constant::Integer(integer) = inner else {
-            return Err(MachineError::TypeMismatch(Type::Integer, inner));
+            return Err(MachineError::type_mismatch(Type::Integer, inner));
         };
 
         Ok(integer)
@@ -92,7 +92,7 @@ impl<'a> Value<'a> {
         let inner = self.unwrap_constant()?;
 
         let Constant::ByteString(byte_string) = inner else {
-            return Err(MachineError::TypeMismatch(Type::ByteString, inner));
+            return Err(MachineError::type_mismatch(Type::ByteString, inner));
         };
 
         Ok(byte_string)
@@ -102,13 +102,13 @@ impl<'a> Value<'a> {
         let inner = self.unwrap_constant()?;
 
         let Constant::Boolean(b) = inner else {
-            return Err(MachineError::TypeMismatch(Type::Bool, inner));
+            return Err(MachineError::type_mismatch(Type::Bool, inner));
         };
 
         Ok(*b)
     }
 
-    pub(super) fn unwrap_pair(
+    pub fn unwrap_pair(
         &'a self,
     ) -> Result<
         (
@@ -122,10 +122,22 @@ impl<'a> Value<'a> {
         let inner = self.unwrap_constant()?;
 
         let Constant::ProtoPair(t1, t2, first, second) = inner else {
-            return Err(MachineError::ExpectedPair(inner));
+            return Err(MachineError::expected_pair(inner));
         };
 
         Ok((t1, t2, first, second))
+    }
+
+    pub fn unwrap_list(
+        &'a self,
+    ) -> Result<(&'a Type<'a>, &'a BumpVec<'a, &'a Constant<'a>>), MachineError<'a>> {
+        let inner = self.unwrap_constant()?;
+
+        let Constant::ProtoList(t1, list) = inner else {
+            return Err(MachineError::expected_list(inner));
+        };
+
+        Ok((t1, list))
     }
 
     pub fn unwrap_constant(&'a self) -> Result<&'a Constant<'a>, MachineError<'a>> {
