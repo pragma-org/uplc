@@ -1,3 +1,5 @@
+use std::array::TryFromSliceError;
+
 use bumpalo::{
     collections::{CollectIn, Vec as BumpVec},
     Bump,
@@ -7,6 +9,7 @@ use rug::Assign;
 use crate::{
     builtin::DefaultFunction,
     constant::{self, Constant},
+    data::PlutusData,
     typ::Type,
 };
 
@@ -238,7 +241,35 @@ impl<'a> Runtime<'a> {
             DefaultFunction::Blake2b_256 => todo!(),
             DefaultFunction::Keccak_256 => todo!(),
             DefaultFunction::Blake2b_224 => todo!(),
-            DefaultFunction::VerifyEd25519Signature => todo!(),
+            DefaultFunction::VerifyEd25519Signature => {
+                use cryptoxide::ed25519;
+
+                let public_key = self.args[0].unwrap_byte_string()?;
+                let message = self.args[1].unwrap_byte_string()?;
+                let signature = self.args[2].unwrap_byte_string()?;
+
+                let public_key: [u8; 32] =
+                    public_key
+                        .as_slice()
+                        .try_into()
+                        .map_err(|e: TryFromSliceError| {
+                            MachineError::unexpected_ed25519_public_key_length(e)
+                        })?;
+
+                let signature: [u8; 64] =
+                    signature
+                        .as_slice()
+                        .try_into()
+                        .map_err(|e: TryFromSliceError| {
+                            MachineError::unexpected_ed25519_signature_length(e)
+                        })?;
+
+                let valid = ed25519::verify(message, &public_key, &signature);
+
+                let value = Value::bool(arena, valid);
+
+                Ok(value)
+            }
             DefaultFunction::VerifyEcdsaSecp256k1Signature => todo!(),
             DefaultFunction::VerifySchnorrSecp256k1Signature => todo!(),
             DefaultFunction::AppendString => todo!(),
@@ -261,22 +292,66 @@ impl<'a> Runtime<'a> {
 
                 Ok(value)
             }
-            DefaultFunction::ChooseList => todo!(),
+            DefaultFunction::ChooseList => {
+                let (_, list) = self.args[0].unwrap_list()?;
+
+                if list.is_empty() {
+                    Ok(self.args[1])
+                } else {
+                    Ok(self.args[2])
+                }
+            }
             DefaultFunction::MkCons => todo!(),
-            DefaultFunction::HeadList => todo!(),
-            DefaultFunction::TailList => todo!(),
+            DefaultFunction::HeadList => {
+                let (_, list) = self.args[0].unwrap_list()?;
+
+                if list.is_empty() {
+                    Err(MachineError::empty_list(list))
+                } else {
+                    let value = Value::con(arena, list[0]);
+
+                    Ok(value)
+                }
+            }
+            DefaultFunction::TailList => {
+                let (t1, list) = self.args[0].unwrap_list()?;
+
+                if list.is_empty() {
+                    Err(MachineError::empty_list(list))
+                } else {
+                    let mut tail = BumpVec::with_capacity_in(list.len(), arena);
+
+                    tail.extend_from_slice(&list[1..]);
+
+                    let constant = Constant::proto_list(arena, t1, tail);
+
+                    let value = Value::con(arena, constant);
+
+                    Ok(value)
+                }
+            }
             DefaultFunction::NullList => todo!(),
-            DefaultFunction::ChooseData => todo!(),
+            DefaultFunction::ChooseData => {
+                let con = self.args[0].unwrap_constant()?.unwrap_data()?;
+
+                match con {
+                    PlutusData::Constr { .. } => Ok(self.args[1]),
+                    PlutusData::Map(_) => Ok(self.args[2]),
+                    PlutusData::List(_) => Ok(self.args[3]),
+                    PlutusData::Integer(_) => Ok(self.args[4]),
+                    PlutusData::ByteString(_) => Ok(self.args[5]),
+                }
+            }
             DefaultFunction::ConstrData => todo!(),
             DefaultFunction::MapData => todo!(),
             DefaultFunction::ListData => todo!(),
             DefaultFunction::IData => todo!(),
             DefaultFunction::BData => todo!(),
             DefaultFunction::UnConstrData => {
-                let arg1 = self.args[0].unwrap_constant()?;
-                let plutus_data = arg1.unwrap_data()?;
-
-                let (tag, fields) = plutus_data.unwrap_constr()?;
+                let (tag, fields) = self.args[0]
+                    .unwrap_constant()?
+                    .unwrap_data()?
+                    .unwrap_constr()?;
 
                 let constant = Constant::proto_pair(
                     arena,
@@ -298,9 +373,44 @@ impl<'a> Runtime<'a> {
                 Ok(value)
             }
             DefaultFunction::UnMapData => todo!(),
-            DefaultFunction::UnListData => todo!(),
-            DefaultFunction::UnIData => todo!(),
-            DefaultFunction::UnBData => todo!(),
+            DefaultFunction::UnListData => {
+                let list = self.args[0]
+                    .unwrap_constant()?
+                    .unwrap_data()?
+                    .unwrap_list()?;
+
+                let constant = Constant::proto_list(
+                    arena,
+                    Type::data(arena),
+                    list.iter()
+                        .map(|d| Constant::data(arena, d))
+                        .collect_in(arena),
+                );
+
+                let value = Value::con(arena, constant);
+
+                Ok(value)
+            }
+            DefaultFunction::UnIData => {
+                let i = self.args[0]
+                    .unwrap_constant()?
+                    .unwrap_data()?
+                    .unwrap_integer()?;
+
+                let value = Value::integer(arena, i);
+
+                Ok(value)
+            }
+            DefaultFunction::UnBData => {
+                let bs = self.args[0]
+                    .unwrap_constant()?
+                    .unwrap_data()?
+                    .unwrap_byte_string()?;
+
+                let value = Value::byte_string(arena, bs.clone());
+
+                Ok(value)
+            }
             DefaultFunction::EqualsData => todo!(),
             DefaultFunction::SerialiseData => todo!(),
             DefaultFunction::MkPairData => todo!(),

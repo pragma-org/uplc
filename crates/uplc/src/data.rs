@@ -65,4 +65,34 @@ impl<'a> PlutusData<'a> {
             _ => Err(MachineError::malformed_data(self)),
         }
     }
+
+    pub fn unwrap_map(
+        &'a self,
+    ) -> Result<&'a BumpVec<(&'a PlutusData<'a>, &'a PlutusData<'a>)>, MachineError<'a>> {
+        match self {
+            PlutusData::Map(fields) => Ok(fields),
+            _ => Err(MachineError::malformed_data(self)),
+        }
+    }
+
+    pub fn unwrap_integer(&'a self) -> Result<&'a Integer, MachineError<'a>> {
+        match self {
+            PlutusData::Integer(i) => Ok(i),
+            _ => Err(MachineError::malformed_data(self)),
+        }
+    }
+
+    pub fn unwrap_byte_string(&'a self) -> Result<&'a BumpVec<u8>, MachineError<'a>> {
+        match self {
+            PlutusData::ByteString(bytes) => Ok(bytes),
+            _ => Err(MachineError::malformed_data(self)),
+        }
+    }
+
+    pub fn unwrap_list(&'a self) -> Result<&'a BumpVec<&'a PlutusData<'a>>, MachineError<'a>> {
+        match self {
+            PlutusData::List(items) => Ok(items),
+            _ => Err(MachineError::malformed_data(self)),
+        }
+    }
 }
