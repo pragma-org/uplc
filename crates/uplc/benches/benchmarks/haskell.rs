@@ -2,14 +2,17 @@ use std::fs;
 
 use bumpalo::Bump;
 use criterion::{criterion_group, Criterion};
+use itertools::Itertools;
 
 pub fn run(c: &mut Criterion) {
     let data_dir = std::path::Path::new("benches/benchmarks/data");
 
-    for entry in fs::read_dir(data_dir).unwrap() {
-        let entry = entry.unwrap();
-        let path = entry.path();
-
+    for path in fs::read_dir(data_dir)
+        .unwrap()
+        .map(|entry| entry.unwrap())
+        .map(|entry| entry.path())
+        .sorted()
+    {
         if path.is_file() {
             let file_name = path
                 .file_name()
@@ -28,7 +31,7 @@ pub fn run(c: &mut Criterion) {
 
                     let result = program.eval(&arena);
 
-                    let term = result.term.expect("Failed to evaluate");
+                    let _term = result.term.expect("Failed to evaluate");
                 })
             });
         }

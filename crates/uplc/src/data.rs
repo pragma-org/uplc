@@ -1,7 +1,7 @@
 use bumpalo::{collections::Vec as BumpVec, Bump};
 
 use crate::{
-    constant::{integer_from, Integer},
+    constant::{integer_from, Constant, Integer},
     flat::decode::Ctx,
     machine::MachineError,
 };
@@ -94,5 +94,9 @@ impl<'a> PlutusData<'a> {
             PlutusData::List(items) => Ok(items),
             _ => Err(MachineError::malformed_data(self)),
         }
+    }
+
+    pub fn constant(&'a self, arena: &'a Bump) -> &'a Constant<'a> {
+        Constant::data(arena, self)
     }
 }
