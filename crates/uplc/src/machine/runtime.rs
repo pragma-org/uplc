@@ -4,7 +4,7 @@ use bumpalo::{
     collections::{CollectIn, Vec as BumpVec},
     Bump,
 };
-use rug::{ops::AddFrom, Assign, Complete};
+use rug::Assign;
 
 use crate::{
     builtin::DefaultFunction,
