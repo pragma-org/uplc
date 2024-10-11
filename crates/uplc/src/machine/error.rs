@@ -37,6 +37,8 @@ pub enum RuntimeError<'a> {
     EmptyList(&'a BumpVec<'a, &'a Constant<'a>>),
     UnexpectedEd25519PublicKeyLength(TryFromSliceError),
     UnexpectedEd25519SignatureLength(TryFromSliceError),
+    DivisionByZero(&'a Integer, &'a Integer),
+    MkConsTypeMismatch(&'a Constant<'a>),
 }
 
 impl<'a> MachineError<'a> {
@@ -46,6 +48,10 @@ impl<'a> MachineError<'a> {
 
     pub fn type_mismatch(expected: Type<'a>, constant: &'a Constant<'a>) -> Self {
         MachineError::runtime(RuntimeError::TypeMismatch(expected, constant))
+    }
+
+    pub fn mk_cons_type_mismatch(constant: &'a Constant<'a>) -> Self {
+        MachineError::runtime(RuntimeError::MkConsTypeMismatch(constant))
     }
 
     pub fn expected_pair(constant: &'a Constant<'a>) -> Self {
@@ -78,5 +84,9 @@ impl<'a> MachineError<'a> {
 
     pub fn unexpected_ed25519_signature_length(length: TryFromSliceError) -> Self {
         MachineError::runtime(RuntimeError::UnexpectedEd25519SignatureLength(length))
+    }
+
+    pub fn division_by_zero(numerator: &'a Integer, denominator: &'a Integer) -> Self {
+        MachineError::runtime(RuntimeError::DivisionByZero(numerator, denominator))
     }
 }

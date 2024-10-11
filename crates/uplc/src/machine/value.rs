@@ -147,4 +147,20 @@ impl<'a> Value<'a> {
 
         Ok(item)
     }
+
+    pub fn unwrap_unit(&'a self) -> Result<(), MachineError<'a>> {
+        let inner = self.unwrap_constant()?;
+
+        let Constant::Unit = inner else {
+            return Err(MachineError::type_mismatch(Type::Unit, inner));
+        };
+
+        Ok(())
+    }
+}
+
+impl<'a> Constant<'a> {
+    pub fn value(&'a self, arena: &'a Bump) -> &'a Value<'a> {
+        Value::con(arena, self)
+    }
 }

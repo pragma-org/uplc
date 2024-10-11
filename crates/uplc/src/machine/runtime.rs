@@ -4,7 +4,7 @@ use bumpalo::{
     collections::{CollectIn, Vec as BumpVec},
     Bump,
 };
-use rug::Assign;
+use rug::{ops::AddFrom, Assign, Complete};
 
 use crate::{
     builtin::DefaultFunction,
@@ -168,8 +168,48 @@ impl<'a> Runtime<'a> {
                 Ok(value)
             }
             DefaultFunction::DivideInteger => todo!(),
-            DefaultFunction::QuotientInteger => todo!(),
-            DefaultFunction::RemainderInteger => todo!(),
+            DefaultFunction::QuotientInteger => {
+                let arg1 = self.args[0].unwrap_integer()?;
+                let arg2 = self.args[1].unwrap_integer()?;
+
+                if !arg2.is_zero() {
+                    let computation = arg1.div_rem_ref(arg2);
+
+                    let q = constant::integer(arena);
+                    let r = constant::integer(arena);
+
+                    let mut result = (q, r);
+
+                    result.assign(computation);
+
+                    let value = Value::integer(arena, result.0);
+
+                    Ok(value)
+                } else {
+                    Err(MachineError::division_by_zero(arg1, arg2))
+                }
+            }
+            DefaultFunction::RemainderInteger => {
+                let arg1 = self.args[0].unwrap_integer()?;
+                let arg2 = self.args[1].unwrap_integer()?;
+
+                if !arg2.is_zero() {
+                    let computation = arg1.div_rem_ref(arg2);
+
+                    let q = constant::integer(arena);
+                    let r = constant::integer(arena);
+
+                    let mut result = (q, r);
+
+                    result.assign(computation);
+
+                    let value = Value::integer(arena, result.1);
+
+                    Ok(value)
+                } else {
+                    Err(MachineError::division_by_zero(arg1, arg2))
+                }
+            }
             DefaultFunction::ModInteger => todo!(),
             DefaultFunction::LessThanInteger => {
                 let arg1 = self.args[0].unwrap_integer()?;
@@ -236,7 +276,27 @@ impl<'a> Runtime<'a> {
 
                 Ok(value)
             }
-            DefaultFunction::Sha2_256 => todo!(),
+            DefaultFunction::Sha2_256 => {
+                use cryptoxide::{digest::Digest, sha2::Sha256};
+
+                let arg1 = self.args[0].unwrap_byte_string()?;
+
+                let mut hasher = Sha256::new();
+
+                hasher.input(arg1);
+
+                let mut bytes = BumpVec::with_capacity_in(hasher.output_bytes(), arena);
+
+                unsafe {
+                    bytes.set_len(hasher.output_bytes());
+                }
+
+                hasher.result(&mut bytes);
+
+                let value = Value::byte_string(arena, bytes);
+
+                Ok(value)
+            }
             DefaultFunction::Sha3_256 => todo!(),
             DefaultFunction::Blake2b_256 => todo!(),
             DefaultFunction::Keccak_256 => todo!(),
@@ -301,7 +361,26 @@ impl<'a> Runtime<'a> {
                     Ok(self.args[2])
                 }
             }
-            DefaultFunction::MkCons => todo!(),
+            DefaultFunction::MkCons => {
+                let item = self.args[0].unwrap_constant()?;
+                let (typ, list) = self.args[1].unwrap_list()?;
+
+                if item.type_of(arena) != typ {
+                    return Err(MachineError::mk_cons_type_mismatch(item));
+                }
+
+                let mut new_list = BumpVec::with_capacity_in(list.len() + 1, arena);
+
+                new_list.push(item);
+
+                new_list.extend_from_slice(list);
+
+                let constant = Constant::proto_list(arena, typ, new_list);
+
+                let value = constant.value(arena);
+
+                Ok(value)
+            }
             DefaultFunction::HeadList => {
                 let (_, list) = self.args[0].unwrap_list()?;
 
@@ -342,11 +421,74 @@ impl<'a> Runtime<'a> {
                     PlutusData::ByteString(_) => Ok(self.args[5]),
                 }
             }
-            DefaultFunction::ConstrData => todo!(),
+            DefaultFunction::ConstrData => {
+                let tag = self.args[0].unwrap_integer()?;
+                let (typ, fields) = self.args[1].unwrap_list()?;
+
+                if *typ != Type::Data {
+                    return Err(MachineError::type_mismatch(
+                        Type::Data,
+                        self.args[1].unwrap_constant()?,
+                    ));
+                }
+
+                let tag = tag.try_into().expect("should cast to u64 just fine");
+                let fields = fields
+                    .iter()
+                    .map(|d| match d {
+                        Constant::Data(d) => *d,
+                        _ => unreachable!(),
+                    })
+                    .collect_in(arena);
+
+                let data = PlutusData::constr(arena, tag, fields);
+
+                let constant = Constant::data(arena, data);
+
+                let value = Value::con(arena, constant);
+
+                Ok(value)
+            }
             DefaultFunction::MapData => todo!(),
-            DefaultFunction::ListData => todo!(),
-            DefaultFunction::IData => todo!(),
-            DefaultFunction::BData => todo!(),
+            DefaultFunction::ListData => {
+                let (typ, fields) = self.args[0].unwrap_list()?;
+
+                if *typ != Type::Data {
+                    return Err(MachineError::type_mismatch(
+                        Type::Data,
+                        self.args[0].unwrap_constant()?,
+                    ));
+                }
+
+                let fields = fields
+                    .iter()
+                    .map(|d| match d {
+                        Constant::Data(d) => *d,
+                        _ => unreachable!(),
+                    })
+                    .collect_in(arena);
+
+                let value = PlutusData::list(arena, fields).constant(arena).value(arena);
+
+                Ok(value)
+            }
+            DefaultFunction::IData => {
+                let i = self.args[0].unwrap_integer()?;
+                let i = PlutusData::integer(arena, i);
+
+                let value = i.constant(arena).value(arena);
+
+                Ok(value)
+            }
+            DefaultFunction::BData => {
+                let b = self.args[0].unwrap_byte_string()?;
+
+                let b = PlutusData::byte_string(arena, b.clone());
+
+                let value = b.constant(arena).value(arena);
+
+                Ok(value)
+            }
             DefaultFunction::UnConstrData => {
                 let (tag, fields) = self.args[0]
                     .unwrap_constant()?
@@ -411,10 +553,26 @@ impl<'a> Runtime<'a> {
 
                 Ok(value)
             }
-            DefaultFunction::EqualsData => todo!(),
+            DefaultFunction::EqualsData => {
+                let d1 = self.args[0].unwrap_constant()?.unwrap_data()?;
+                let d2 = self.args[1].unwrap_constant()?.unwrap_data()?;
+
+                let value = Value::bool(arena, d1.eq(d2));
+
+                Ok(value)
+            }
             DefaultFunction::SerialiseData => todo!(),
             DefaultFunction::MkPairData => todo!(),
-            DefaultFunction::MkNilData => todo!(),
+            DefaultFunction::MkNilData => {
+                self.args[0].unwrap_unit()?;
+
+                let constant =
+                    Constant::proto_list(arena, Type::data(arena), BumpVec::new_in(arena));
+
+                let value = Value::con(arena, constant);
+
+                Ok(value)
+            }
             DefaultFunction::MkNilPairData => todo!(),
             DefaultFunction::Bls12_381_G1_Add => todo!(),
             DefaultFunction::Bls12_381_G1_Neg => todo!(),

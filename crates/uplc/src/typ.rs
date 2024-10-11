@@ -55,4 +55,8 @@ impl<'a> Type<'a> {
     pub fn g2(arena: &'a Bump) -> &'a Type<'a> {
         arena.alloc(Type::Bls12_381G2Element)
     }
+
+    pub fn ml_result(arena: &'a Bump) -> &'a Type<'a> {
+        arena.alloc(Type::Bls12_381MlResult)
+    }
 }

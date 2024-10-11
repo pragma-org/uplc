@@ -101,4 +101,20 @@ impl<'a> Constant<'a> {
             _ => Err(MachineError::not_data(self)),
         }
     }
+
+    pub fn type_of(&self, arena: &'a Bump) -> &'a Type<'a> {
+        match self {
+            Constant::Integer(_) => Type::integer(arena),
+            Constant::ByteString(_) => Type::byte_string(arena),
+            Constant::String(_) => Type::string(arena),
+            Constant::Boolean(_) => Type::bool(arena),
+            Constant::Data(_) => Type::data(arena),
+            Constant::ProtoList(t, _) => Type::list(arena, t),
+            Constant::ProtoPair(t1, t2, _, _) => Type::pair(arena, t1, t2),
+            Constant::Unit => Type::unit(arena),
+            Constant::Bls12_381G1Element(_) => Type::g1(arena),
+            Constant::Bls12_381G2Element(_) => Type::g2(arena),
+            Constant::Bls12_381MlResult(_) => Type::ml_result(arena),
+        }
+    }
 }
