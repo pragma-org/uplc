@@ -1,7 +1,7 @@
 use bumpalo::Bump;
 
 use crate::{
-    machine::{CostModel, EvalResult, ExBudget, Machine},
+    machine::{BuiltinSemantics, CostModel, EvalResult, ExBudget, Machine},
     term::Term,
 };
 
@@ -19,7 +19,19 @@ impl<'a> Program<'a> {
     }
 
     pub fn eval(&'a self, arena: &'a Bump) -> EvalResult<'a> {
-        let mut machine = Machine::new(arena, ExBudget::default(), CostModel::default());
+        let mut machine = Machine::new(
+            arena,
+            ExBudget::default(),
+            CostModel::default(),
+            // TODO: I think we may actually need
+            // to derive this from the plutus version?
+            // maybe not though
+            if self.version.is_v1_1_0() {
+                BuiltinSemantics::V2
+            } else {
+                BuiltinSemantics::V1
+            },
+        );
 
         let term = machine.run(self.term);
         let mut info = machine.info();

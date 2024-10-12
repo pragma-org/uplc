@@ -6,8 +6,12 @@ use crate::{
 };
 
 use super::{
-    cost_model::StepKind, discharge, info::MachineInfo, runtime::Runtime, value::Value, CostModel,
-    ExBudget, MachineError,
+    cost_model::StepKind,
+    discharge,
+    info::MachineInfo,
+    runtime::{BuiltinSemantics, Runtime},
+    value::Value,
+    CostModel, ExBudget, MachineError,
 };
 
 pub struct Machine<'a> {
@@ -17,10 +21,16 @@ pub struct Machine<'a> {
     costs: CostModel,
     slippage: u8,
     logs: Vec<String>,
+    semantics: BuiltinSemantics,
 }
 
 impl<'a> Machine<'a> {
-    pub fn new(arena: &'a Bump, initial_budget: ExBudget, costs: CostModel) -> Self {
+    pub fn new(
+        arena: &'a Bump,
+        initial_budget: ExBudget,
+        costs: CostModel,
+        semantics: BuiltinSemantics,
+    ) -> Self {
         Machine {
             arena,
             ex_budget: initial_budget,
@@ -28,6 +38,7 @@ impl<'a> Machine<'a> {
             costs,
             slippage: 200,
             logs: Vec::new(),
+            semantics,
         }
     }
 
@@ -306,7 +317,7 @@ impl<'a> Machine<'a> {
 
         // self.spend_budget(cost)?;
 
-        runtime.call(self.arena)
+        runtime.call(self.arena, &self.semantics)
     }
 
     fn transfer_arg_stack(

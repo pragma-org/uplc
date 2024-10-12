@@ -39,6 +39,7 @@ pub enum RuntimeError<'a> {
     UnexpectedEd25519SignatureLength(TryFromSliceError),
     DivisionByZero(&'a Integer, &'a Integer),
     MkConsTypeMismatch(&'a Constant<'a>),
+    ByteStringConsNotAByte(&'a Integer),
 }
 
 impl<'a> MachineError<'a> {
@@ -88,5 +89,9 @@ impl<'a> MachineError<'a> {
 
     pub fn division_by_zero(numerator: &'a Integer, denominator: &'a Integer) -> Self {
         MachineError::runtime(RuntimeError::DivisionByZero(numerator, denominator))
+    }
+
+    pub fn byte_string_cons_not_a_byte(byte: &'a Integer) -> Self {
+        MachineError::runtime(RuntimeError::ByteStringConsNotAByte(byte))
     }
 }

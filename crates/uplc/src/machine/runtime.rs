@@ -4,7 +4,7 @@ use bumpalo::{
     collections::{CollectIn, Vec as BumpVec},
     Bump,
 };
-use rug::Assign;
+use rug::{Assign, Integer};
 
 use crate::{
     builtin::DefaultFunction,
@@ -14,6 +14,11 @@ use crate::{
 };
 
 use super::{cost_model::builtin_costs::BuiltinCosts, value::Value, ExBudget, MachineError};
+
+pub enum BuiltinSemantics {
+    V1,
+    V2,
+}
 
 #[derive(Debug)]
 pub struct Runtime<'a> {
@@ -69,7 +74,11 @@ impl<'a> Runtime<'a> {
         todo!()
     }
 
-    pub fn call(&self, arena: &'a Bump) -> Result<&'a Value<'a>, MachineError<'a>> {
+    pub fn call(
+        &self,
+        arena: &'a Bump,
+        semantics: &BuiltinSemantics,
+    ) -> Result<&'a Value<'a>, MachineError<'a>> {
         match self.fun {
             DefaultFunction::AddInteger => {
                 let arg1 = self.args[0].unwrap_integer()?;
@@ -221,8 +230,62 @@ impl<'a> Runtime<'a> {
 
                 Ok(value)
             }
-            DefaultFunction::ConsByteString => todo!(),
-            DefaultFunction::SliceByteString => todo!(),
+            DefaultFunction::ConsByteString => {
+                let arg1 = self.args[0].unwrap_integer()?;
+                let arg2 = self.args[1].unwrap_byte_string()?;
+
+                let byte: u8 = match semantics {
+                    BuiltinSemantics::V1 => {
+                        let wrap = constant::integer(arena);
+
+                        let max = constant::integer_from(arena, 256);
+
+                        wrap.assign(arg1.modulo_ref(max));
+
+                        (&*wrap).try_into().expect("should cast to u64 just fine")
+                    }
+                    BuiltinSemantics::V2 => {
+                        if *arg1 > 255 || *arg1 < 0 {
+                            return Err(MachineError::byte_string_cons_not_a_byte(arg1));
+                        }
+
+                        arg1.try_into().expect("should cast to u8 just fine")
+                    }
+                };
+
+                let mut ret = BumpVec::with_capacity_in(arg2.len() + 1, arena);
+
+                ret.push(byte);
+
+                ret.extend_from_slice(arg2);
+
+                let value = Value::byte_string(arena, ret);
+
+                Ok(value)
+            }
+            DefaultFunction::SliceByteString => {
+                let arg1 = self.args[0].unwrap_integer()?;
+                let arg2 = self.args[1].unwrap_integer()?;
+                let arg3 = self.args[2].unwrap_byte_string()?;
+
+                let skip: usize = if *arg1 < 0 {
+                    0
+                } else {
+                    arg1.try_into().expect("should cast to usize just fine")
+                };
+
+                let take: usize = if *arg2 < 0 {
+                    0
+                } else {
+                    arg2.try_into().expect("should cast to usize just fine")
+                };
+
+                let ret = arg3.iter().skip(skip).take(take).cloned().collect_in(arena);
+
+                let value = Value::byte_string(arena, ret);
+
+                Ok(value)
+            }
             DefaultFunction::LengthOfByteString => {
                 let arg1 = self.args[0].unwrap_byte_string()?;
 
