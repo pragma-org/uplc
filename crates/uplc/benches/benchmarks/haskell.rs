@@ -23,7 +23,7 @@ pub fn run(c: &mut Criterion) {
 
             let script = std::fs::read(&path).unwrap();
 
-            let mut arena = Bump::with_capacity(2_048_000);
+            let mut arena = Bump::with_capacity(1_024_000);
 
             c.bench_function(&file_name, |b| {
                 b.iter(|| {
