@@ -551,10 +551,21 @@ impl<'a> Runtime<'a> {
                 Ok(value)
             }
             DefaultFunction::AppendString => todo!(),
-            DefaultFunction::EqualsString => todo!(),
+            DefaultFunction::EqualsString => {
+                let arg1 = self.args[0].unwrap_string()?;
+                let arg2 = self.args[1].unwrap_string()?;
+
+                let value = Value::bool(arena, arg1 == arg2);
+
+                Ok(value)
+            }
             DefaultFunction::EncodeUtf8 => todo!(),
             DefaultFunction::DecodeUtf8 => todo!(),
-            DefaultFunction::ChooseUnit => todo!(),
+            DefaultFunction::ChooseUnit => {
+                self.args[0].unwrap_unit()?;
+
+                Ok(self.args[1])
+            }
             DefaultFunction::Trace => todo!(),
             DefaultFunction::FstPair => {
                 let (_, _, first, _) = self.args[0].unwrap_pair()?;

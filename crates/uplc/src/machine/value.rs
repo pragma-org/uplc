@@ -1,11 +1,13 @@
-use bumpalo::Bump;
+use bumpalo::{
+    collections::{String as BumpString, Vec as BumpVec},
+    Bump,
+};
 
 use crate::{
     constant::{Constant, Integer},
     term::Term,
     typ::Type,
 };
-use bumpalo::collections::Vec as BumpVec;
 
 use super::{env::Env, runtime::Runtime, MachineError};
 
@@ -96,6 +98,16 @@ impl<'a> Value<'a> {
         };
 
         Ok(byte_string)
+    }
+
+    pub fn unwrap_string(&'a self) -> Result<&BumpString<'a>, MachineError<'a>> {
+        let inner = self.unwrap_constant()?;
+
+        let Constant::String(string) = inner else {
+            return Err(MachineError::type_mismatch(Type::String, inner));
+        };
+
+        Ok(string)
     }
 
     pub fn unwrap_bool(&'a self) -> Result<bool, MachineError<'a>> {
