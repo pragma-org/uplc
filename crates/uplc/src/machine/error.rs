@@ -65,6 +65,8 @@ pub enum RuntimeError<'a> {
     ByteStringConsNotAByte(&'a Integer),
     #[error(transparent)]
     Secp256k1(#[from] secp256k1::Error),
+    #[error(transparent)]
+    DecodeUtf8(#[from] std::str::Utf8Error),
 }
 
 impl<'a> MachineError<'a> {
@@ -122,5 +124,9 @@ impl<'a> MachineError<'a> {
 
     pub fn secp256k1(error: secp256k1::Error) -> Self {
         MachineError::runtime(RuntimeError::Secp256k1(error))
+    }
+
+    pub fn decode_utf8(error: std::str::Utf8Error) -> Self {
+        MachineError::runtime(RuntimeError::DecodeUtf8(error))
     }
 }
