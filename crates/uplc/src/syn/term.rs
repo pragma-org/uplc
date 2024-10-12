@@ -134,6 +134,7 @@ pub fn builtin_from_str<'a>(arena: &'a Bump, name: &str) -> Option<&'a Term<'a>>
         "indexByteString" => Some(Term::index_byte_string(arena)),
         "lessThanByteString" => Some(Term::less_than_byte_string(arena)),
         "lessThanEqualsByteString" => Some(Term::less_than_equals_byte_string(arena)),
+        "blake2b_256" => Some(Term::blake2b_256(arena)),
         _ => None,
     }
 }

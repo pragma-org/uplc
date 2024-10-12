@@ -394,10 +394,68 @@ impl<'a> Runtime<'a> {
 
                 Ok(value)
             }
-            DefaultFunction::Sha3_256 => todo!(),
-            DefaultFunction::Blake2b_256 => todo!(),
+            DefaultFunction::Sha3_256 => {
+                use cryptoxide::{digest::Digest, sha3::Sha3_256};
+
+                let arg1 = self.args[0].unwrap_byte_string()?;
+
+                let mut hasher = Sha3_256::new();
+
+                hasher.input(arg1);
+
+                let mut bytes = BumpVec::with_capacity_in(hasher.output_bytes(), arena);
+
+                unsafe {
+                    bytes.set_len(hasher.output_bytes());
+                }
+
+                hasher.result(&mut bytes);
+
+                let value = Value::byte_string(arena, bytes);
+
+                Ok(value)
+            }
+            DefaultFunction::Blake2b_256 => {
+                use cryptoxide::{blake2b::Blake2b, digest::Digest};
+
+                let arg1 = self.args[0].unwrap_byte_string()?;
+
+                let mut digest = BumpVec::with_capacity_in(32, arena);
+
+                unsafe {
+                    digest.set_len(32);
+                }
+
+                let mut context = Blake2b::new(32);
+
+                context.input(arg1);
+                context.result(&mut digest);
+
+                let value = Value::byte_string(arena, digest);
+
+                Ok(value)
+            }
             DefaultFunction::Keccak_256 => todo!(),
-            DefaultFunction::Blake2b_224 => todo!(),
+            DefaultFunction::Blake2b_224 => {
+                use cryptoxide::{blake2b::Blake2b, digest::Digest};
+
+                let arg1 = self.args[0].unwrap_byte_string()?;
+
+                let mut digest = BumpVec::with_capacity_in(28, arena);
+
+                unsafe {
+                    digest.set_len(28);
+                }
+
+                let mut context = Blake2b::new(28);
+
+                context.input(arg1);
+                context.result(&mut digest);
+
+                let value = Value::byte_string(arena, digest);
+
+                Ok(value)
+            }
             DefaultFunction::VerifyEd25519Signature => {
                 use cryptoxide::ed25519;
 
