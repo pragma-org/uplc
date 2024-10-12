@@ -40,4 +40,9 @@ pub fn run(c: &mut Criterion) {
     }
 }
 
-criterion_group!(haskell, run);
+criterion_group! {
+    name = haskell;
+    config = Criterion::default()
+        .measurement_time(Duration::from_secs(10));
+    targets = run
+}
