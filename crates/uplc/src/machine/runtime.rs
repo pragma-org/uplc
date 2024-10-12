@@ -435,7 +435,27 @@ impl<'a> Runtime<'a> {
 
                 Ok(value)
             }
-            DefaultFunction::Keccak_256 => todo!(),
+            DefaultFunction::Keccak_256 => {
+                use cryptoxide::{digest::Digest, sha3::Keccak256};
+
+                let arg1 = self.args[0].unwrap_byte_string()?;
+
+                let mut hasher = Keccak256::new();
+
+                hasher.input(arg1);
+
+                let mut bytes = BumpVec::with_capacity_in(hasher.output_bytes(), arena);
+
+                unsafe {
+                    bytes.set_len(hasher.output_bytes());
+                }
+
+                hasher.result(&mut bytes);
+
+                let value = Value::byte_string(arena, bytes);
+
+                Ok(value)
+            }
             DefaultFunction::Blake2b_224 => {
                 use cryptoxide::{blake2b::Blake2b, digest::Digest};
 
@@ -485,8 +505,51 @@ impl<'a> Runtime<'a> {
 
                 Ok(value)
             }
-            DefaultFunction::VerifyEcdsaSecp256k1Signature => todo!(),
-            DefaultFunction::VerifySchnorrSecp256k1Signature => todo!(),
+            DefaultFunction::VerifyEcdsaSecp256k1Signature => {
+                use secp256k1::{ecdsa::Signature, Message, PublicKey, Secp256k1};
+
+                let public_key = self.args[0].unwrap_byte_string()?;
+                let message = self.args[1].unwrap_byte_string()?;
+                let signature = self.args[2].unwrap_byte_string()?;
+
+                let secp = Secp256k1::verification_only();
+
+                let public_key =
+                    PublicKey::from_slice(public_key).map_err(MachineError::secp256k1)?;
+
+                let signature =
+                    Signature::from_compact(signature).map_err(MachineError::secp256k1)?;
+
+                let message =
+                    Message::from_digest_slice(message).map_err(MachineError::secp256k1)?;
+
+                let valid = secp.verify_ecdsa(&message, &signature, &public_key);
+
+                let value = Value::bool(arena, valid.is_ok());
+
+                Ok(value)
+            }
+            DefaultFunction::VerifySchnorrSecp256k1Signature => {
+                use secp256k1::{schnorr::Signature, Secp256k1, XOnlyPublicKey};
+
+                let public_key = self.args[0].unwrap_byte_string()?;
+                let message = self.args[1].unwrap_byte_string()?;
+                let signature = self.args[2].unwrap_byte_string()?;
+
+                let secp = Secp256k1::verification_only();
+
+                let public_key =
+                    XOnlyPublicKey::from_slice(public_key).map_err(MachineError::secp256k1)?;
+
+                let signature =
+                    Signature::from_slice(signature).map_err(MachineError::secp256k1)?;
+
+                let valid = secp.verify_schnorr(&signature, message, &public_key);
+
+                let value = Value::bool(arena, valid.is_ok());
+
+                Ok(value)
+            }
             DefaultFunction::AppendString => todo!(),
             DefaultFunction::EqualsString => todo!(),
             DefaultFunction::EncodeUtf8 => todo!(),
