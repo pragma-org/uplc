@@ -176,7 +176,24 @@ impl<'a> Runtime<'a> {
 
                 Ok(value)
             }
-            DefaultFunction::DivideInteger => todo!(),
+            DefaultFunction::DivideInteger => {
+                let arg1 = self.args[0].unwrap_integer()?;
+                let arg2 = self.args[1].unwrap_integer()?;
+
+                if !arg2.is_zero() {
+                    let result = arg1 / arg2;
+
+                    let new = constant::integer(arena);
+
+                    new.assign(result);
+
+                    let value = Value::integer(arena, new);
+
+                    Ok(value)
+                } else {
+                    Err(MachineError::division_by_zero(arg1, arg2))
+                }
+            }
             DefaultFunction::QuotientInteger => {
                 let arg1 = self.args[0].unwrap_integer()?;
                 let arg2 = self.args[1].unwrap_integer()?;
@@ -219,7 +236,24 @@ impl<'a> Runtime<'a> {
                     Err(MachineError::division_by_zero(arg1, arg2))
                 }
             }
-            DefaultFunction::ModInteger => todo!(),
+            DefaultFunction::ModInteger => {
+                let arg1 = self.args[0].unwrap_integer()?;
+                let arg2 = self.args[1].unwrap_integer()?;
+
+                if !arg2.is_zero() {
+                    let result = constant::integer(arena);
+
+                    let computation = arg1.modulo_ref(arg2);
+
+                    result.assign(computation);
+
+                    let value = Value::integer(arena, result);
+
+                    Ok(value)
+                } else {
+                    Err(MachineError::division_by_zero(arg1, arg2))
+                }
+            }
             DefaultFunction::LessThanInteger => {
                 let arg1 = self.args[0].unwrap_integer()?;
                 let arg2 = self.args[1].unwrap_integer()?;
