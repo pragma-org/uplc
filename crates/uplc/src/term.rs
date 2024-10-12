@@ -231,4 +231,10 @@ impl<'a> Term<'a> {
 
         Term::builtin(arena, fun)
     }
+
+    pub fn blake2b_256(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::Blake2b_256);
+
+        Term::builtin(arena, fun)
+    }
 }
