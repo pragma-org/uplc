@@ -74,6 +74,12 @@ impl<'a> Value<'a> {
         Value::con(arena, con)
     }
 
+    pub fn string(arena: &'a Bump, s: BumpString<'a>) -> &'a Value<'a> {
+        let con = arena.alloc(Constant::String(s));
+
+        Value::con(arena, con)
+    }
+
     pub fn bool(arena: &'a Bump, b: bool) -> &'a Value<'a> {
         let con = arena.alloc(Constant::Boolean(b));
 

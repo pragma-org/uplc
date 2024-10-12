@@ -1,7 +1,7 @@
 use std::array::TryFromSliceError;
 
 use bumpalo::{
-    collections::{CollectIn, Vec as BumpVec},
+    collections::{CollectIn, String as BumpString, Vec as BumpVec},
     Bump,
 };
 use rug::{Assign, Integer};
@@ -559,8 +559,29 @@ impl<'a> Runtime<'a> {
 
                 Ok(value)
             }
-            DefaultFunction::EncodeUtf8 => todo!(),
-            DefaultFunction::DecodeUtf8 => todo!(),
+            DefaultFunction::EncodeUtf8 => {
+                let arg1 = self.args[0].unwrap_string()?;
+
+                let s_bytes = arg1.as_bytes();
+
+                let mut bytes = BumpVec::with_capacity_in(s_bytes.len(), arena);
+
+                bytes.extend_from_slice(s_bytes);
+
+                let value = Value::byte_string(arena, bytes);
+
+                Ok(value)
+            }
+            DefaultFunction::DecodeUtf8 => {
+                let arg1 = self.args[0].unwrap_byte_string()?;
+
+                let string = BumpString::from_utf8(arg1.clone())
+                    .map_err(|e| MachineError::decode_utf8(e.utf8_error()))?;
+
+                let value = Value::string(arena, string);
+
+                Ok(value)
+            }
             DefaultFunction::ChooseUnit => {
                 self.args[0].unwrap_unit()?;
 
@@ -638,7 +659,13 @@ impl<'a> Runtime<'a> {
                     Ok(value)
                 }
             }
-            DefaultFunction::NullList => todo!(),
+            DefaultFunction::NullList => {
+                let (_, list) = self.args[0].unwrap_list()?;
+
+                let value = Value::bool(arena, list.is_empty());
+
+                Ok(value)
+            }
             DefaultFunction::ChooseData => {
                 let con = self.args[0].unwrap_constant()?.unwrap_data()?;
 
@@ -791,7 +818,22 @@ impl<'a> Runtime<'a> {
                 Ok(value)
             }
             DefaultFunction::SerialiseData => todo!(),
-            DefaultFunction::MkPairData => todo!(),
+            DefaultFunction::MkPairData => {
+                let d1 = self.args[0].unwrap_constant()?.unwrap_data()?;
+                let d2 = self.args[1].unwrap_constant()?.unwrap_data()?;
+
+                let constant = Constant::proto_pair(
+                    arena,
+                    Type::data(arena),
+                    Type::data(arena),
+                    Constant::data(arena, d1),
+                    Constant::data(arena, d2),
+                );
+
+                let value = Value::con(arena, constant);
+
+                Ok(value)
+            }
             DefaultFunction::MkNilData => {
                 self.args[0].unwrap_unit()?;
 
@@ -802,7 +844,19 @@ impl<'a> Runtime<'a> {
 
                 Ok(value)
             }
-            DefaultFunction::MkNilPairData => todo!(),
+            DefaultFunction::MkNilPairData => {
+                self.args[0].unwrap_unit()?;
+
+                let constant = Constant::proto_list(
+                    arena,
+                    Type::pair(arena, Type::data(arena), Type::data(arena)),
+                    BumpVec::new_in(arena),
+                );
+
+                let value = Value::con(arena, constant);
+
+                Ok(value)
+            }
             DefaultFunction::Bls12_381_G1_Add => todo!(),
             DefaultFunction::Bls12_381_G1_Neg => todo!(),
             DefaultFunction::Bls12_381_G1_ScalarMul => todo!(),
