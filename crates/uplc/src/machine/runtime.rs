@@ -4,7 +4,7 @@ use bumpalo::{
     collections::{CollectIn, String as BumpString, Vec as BumpVec},
     Bump,
 };
-use rug::{Assign, Integer};
+use rug::Assign;
 
 use crate::{
     builtin::DefaultFunction,
@@ -13,7 +13,7 @@ use crate::{
     typ::Type,
 };
 
-use super::{cost_model::builtin_costs::BuiltinCosts, value::Value, ExBudget, MachineError};
+use super::{value::Value, Machine, MachineError};
 
 pub enum BuiltinSemantics {
     V1,
@@ -69,92 +69,93 @@ impl<'a> Runtime<'a> {
     pub fn is_ready(&self) -> bool {
         self.args.len() == self.fun.arity()
     }
+}
 
-    pub fn to_ex_budget(&self, builtin_costs: &BuiltinCosts) -> ExBudget {
-        todo!()
-    }
+impl<'a> Machine<'a> {
+    pub fn call(&self, runtime: &'a Runtime<'a>) -> Result<&'a Value<'a>, MachineError<'a>> {
+        // let cost = self
+        //     .costs
+        //     .builtin_costs
+        //     .to_ex_budget(runtime.fun, &runtime.args)?;
 
-    pub fn call(
-        &self,
-        arena: &'a Bump,
-        semantics: &BuiltinSemantics,
-    ) -> Result<&'a Value<'a>, MachineError<'a>> {
-        match self.fun {
+        // self.spend_budget(cost)?;
+
+        match runtime.fun {
             DefaultFunction::AddInteger => {
-                let arg1 = self.args[0].unwrap_integer()?;
-                let arg2 = self.args[1].unwrap_integer()?;
+                let arg1 = runtime.args[0].unwrap_integer()?;
+                let arg2 = runtime.args[1].unwrap_integer()?;
 
                 let result = arg1 + arg2;
 
-                let new = constant::integer(arena);
+                let new = constant::integer(self.arena);
 
                 new.assign(result);
 
-                let value = Value::integer(arena, new);
+                let value = Value::integer(self.arena, new);
 
                 Ok(value)
             }
             DefaultFunction::SubtractInteger => {
-                let arg1 = self.args[0].unwrap_integer()?;
-                let arg2 = self.args[1].unwrap_integer()?;
+                let arg1 = runtime.args[0].unwrap_integer()?;
+                let arg2 = runtime.args[1].unwrap_integer()?;
 
                 let result = arg1 - arg2;
 
-                let new = constant::integer(arena);
+                let new = constant::integer(self.arena);
 
                 new.assign(result);
 
-                let value = Value::integer(arena, new);
+                let value = Value::integer(self.arena, new);
 
                 Ok(value)
             }
             DefaultFunction::EqualsInteger => {
-                let arg1 = self.args[0].unwrap_integer()?;
-                let arg2 = self.args[1].unwrap_integer()?;
+                let arg1 = runtime.args[0].unwrap_integer()?;
+                let arg2 = runtime.args[1].unwrap_integer()?;
 
                 let result = arg1 == arg2;
 
-                let value = Value::bool(arena, result);
+                let value = Value::bool(self.arena, result);
 
                 Ok(value)
             }
             DefaultFunction::LessThanEqualsInteger => {
-                let arg1 = self.args[0].unwrap_integer()?;
-                let arg2 = self.args[1].unwrap_integer()?;
+                let arg1 = runtime.args[0].unwrap_integer()?;
+                let arg2 = runtime.args[1].unwrap_integer()?;
 
                 let result = arg1 <= arg2;
 
-                let value = Value::bool(arena, result);
+                let value = Value::bool(self.arena, result);
 
                 Ok(value)
             }
             DefaultFunction::AppendByteString => {
-                let arg1 = self.args[0].unwrap_byte_string()?;
-                let arg2 = self.args[1].unwrap_byte_string()?;
+                let arg1 = runtime.args[0].unwrap_byte_string()?;
+                let arg2 = runtime.args[1].unwrap_byte_string()?;
 
-                let mut result = BumpVec::with_capacity_in(arg1.len() + arg2.len(), arena);
+                let mut result = BumpVec::with_capacity_in(arg1.len() + arg2.len(), self.arena);
 
                 result.extend_from_slice(arg1);
                 result.extend_from_slice(arg2);
 
-                let value = Value::byte_string(arena, result);
+                let value = Value::byte_string(self.arena, result);
 
                 Ok(value)
             }
             DefaultFunction::EqualsByteString => {
-                let arg1 = self.args[0].unwrap_byte_string()?;
-                let arg2 = self.args[1].unwrap_byte_string()?;
+                let arg1 = runtime.args[0].unwrap_byte_string()?;
+                let arg2 = runtime.args[1].unwrap_byte_string()?;
 
                 let result = arg1 == arg2;
 
-                let value = Value::bool(arena, result);
+                let value = Value::bool(self.arena, result);
 
                 Ok(value)
             }
             DefaultFunction::IfThenElse => {
-                let arg1 = self.args[0].unwrap_bool()?;
-                let arg2 = self.args[1];
-                let arg3 = self.args[2];
+                let arg1 = runtime.args[0].unwrap_bool()?;
+                let arg2 = runtime.args[1];
+                let arg3 = runtime.args[2];
 
                 if arg1 {
                     Ok(arg2)
@@ -163,31 +164,31 @@ impl<'a> Runtime<'a> {
                 }
             }
             DefaultFunction::MultiplyInteger => {
-                let arg1 = self.args[0].unwrap_integer()?;
-                let arg2 = self.args[1].unwrap_integer()?;
+                let arg1 = runtime.args[0].unwrap_integer()?;
+                let arg2 = runtime.args[1].unwrap_integer()?;
 
                 let result = arg1 * arg2;
 
-                let new = constant::integer(arena);
+                let new = constant::integer(self.arena);
 
                 new.assign(result);
 
-                let value = Value::integer(arena, new);
+                let value = Value::integer(self.arena, new);
 
                 Ok(value)
             }
             DefaultFunction::DivideInteger => {
-                let arg1 = self.args[0].unwrap_integer()?;
-                let arg2 = self.args[1].unwrap_integer()?;
+                let arg1 = runtime.args[0].unwrap_integer()?;
+                let arg2 = runtime.args[1].unwrap_integer()?;
 
                 if !arg2.is_zero() {
                     let result = arg1 / arg2;
 
-                    let new = constant::integer(arena);
+                    let new = constant::integer(self.arena);
 
                     new.assign(result);
 
-                    let value = Value::integer(arena, new);
+                    let value = Value::integer(self.arena, new);
 
                     Ok(value)
                 } else {
@@ -195,20 +196,20 @@ impl<'a> Runtime<'a> {
                 }
             }
             DefaultFunction::QuotientInteger => {
-                let arg1 = self.args[0].unwrap_integer()?;
-                let arg2 = self.args[1].unwrap_integer()?;
+                let arg1 = runtime.args[0].unwrap_integer()?;
+                let arg2 = runtime.args[1].unwrap_integer()?;
 
                 if !arg2.is_zero() {
                     let computation = arg1.div_rem_ref(arg2);
 
-                    let q = constant::integer(arena);
-                    let r = constant::integer(arena);
+                    let q = constant::integer(self.arena);
+                    let r = constant::integer(self.arena);
 
                     let mut result = (q, r);
 
                     result.assign(computation);
 
-                    let value = Value::integer(arena, result.0);
+                    let value = Value::integer(self.arena, result.0);
 
                     Ok(value)
                 } else {
@@ -216,20 +217,20 @@ impl<'a> Runtime<'a> {
                 }
             }
             DefaultFunction::RemainderInteger => {
-                let arg1 = self.args[0].unwrap_integer()?;
-                let arg2 = self.args[1].unwrap_integer()?;
+                let arg1 = runtime.args[0].unwrap_integer()?;
+                let arg2 = runtime.args[1].unwrap_integer()?;
 
                 if !arg2.is_zero() {
                     let computation = arg1.div_rem_ref(arg2);
 
-                    let q = constant::integer(arena);
-                    let r = constant::integer(arena);
+                    let q = constant::integer(self.arena);
+                    let r = constant::integer(self.arena);
 
                     let mut result = (q, r);
 
                     result.assign(computation);
 
-                    let value = Value::integer(arena, result.1);
+                    let value = Value::integer(self.arena, result.1);
 
                     Ok(value)
                 } else {
@@ -237,17 +238,17 @@ impl<'a> Runtime<'a> {
                 }
             }
             DefaultFunction::ModInteger => {
-                let arg1 = self.args[0].unwrap_integer()?;
-                let arg2 = self.args[1].unwrap_integer()?;
+                let arg1 = runtime.args[0].unwrap_integer()?;
+                let arg2 = runtime.args[1].unwrap_integer()?;
 
                 if !arg2.is_zero() {
-                    let result = constant::integer(arena);
+                    let result = constant::integer(self.arena);
 
                     let computation = arg1.modulo_ref(arg2);
 
                     result.assign(computation);
 
-                    let value = Value::integer(arena, result);
+                    let value = Value::integer(self.arena, result);
 
                     Ok(value)
                 } else {
@@ -255,24 +256,24 @@ impl<'a> Runtime<'a> {
                 }
             }
             DefaultFunction::LessThanInteger => {
-                let arg1 = self.args[0].unwrap_integer()?;
-                let arg2 = self.args[1].unwrap_integer()?;
+                let arg1 = runtime.args[0].unwrap_integer()?;
+                let arg2 = runtime.args[1].unwrap_integer()?;
 
                 let result = arg1 < arg2;
 
-                let value = Value::bool(arena, result);
+                let value = Value::bool(self.arena, result);
 
                 Ok(value)
             }
             DefaultFunction::ConsByteString => {
-                let arg1 = self.args[0].unwrap_integer()?;
-                let arg2 = self.args[1].unwrap_byte_string()?;
+                let arg1 = runtime.args[0].unwrap_integer()?;
+                let arg2 = runtime.args[1].unwrap_byte_string()?;
 
-                let byte: u8 = match semantics {
+                let byte: u8 = match &self.semantics {
                     BuiltinSemantics::V1 => {
-                        let wrap = constant::integer(arena);
+                        let wrap = constant::integer(self.arena);
 
-                        let max = constant::integer_from(arena, 256);
+                        let max = constant::integer_from(self.arena, 256);
 
                         wrap.assign(arg1.modulo_ref(max));
 
@@ -287,20 +288,20 @@ impl<'a> Runtime<'a> {
                     }
                 };
 
-                let mut ret = BumpVec::with_capacity_in(arg2.len() + 1, arena);
+                let mut ret = BumpVec::with_capacity_in(arg2.len() + 1, self.arena);
 
                 ret.push(byte);
 
                 ret.extend_from_slice(arg2);
 
-                let value = Value::byte_string(arena, ret);
+                let value = Value::byte_string(self.arena, ret);
 
                 Ok(value)
             }
             DefaultFunction::SliceByteString => {
-                let arg1 = self.args[0].unwrap_integer()?;
-                let arg2 = self.args[1].unwrap_integer()?;
-                let arg3 = self.args[2].unwrap_byte_string()?;
+                let arg1 = runtime.args[0].unwrap_integer()?;
+                let arg2 = runtime.args[1].unwrap_integer()?;
+                let arg3 = runtime.args[2].unwrap_byte_string()?;
 
                 let skip: usize = if *arg1 < 0 {
                     0
@@ -314,39 +315,44 @@ impl<'a> Runtime<'a> {
                     arg2.try_into().expect("should cast to usize just fine")
                 };
 
-                let ret = arg3.iter().skip(skip).take(take).cloned().collect_in(arena);
+                let ret = arg3
+                    .iter()
+                    .skip(skip)
+                    .take(take)
+                    .cloned()
+                    .collect_in(self.arena);
 
-                let value = Value::byte_string(arena, ret);
+                let value = Value::byte_string(self.arena, ret);
 
                 Ok(value)
             }
             DefaultFunction::LengthOfByteString => {
-                let arg1 = self.args[0].unwrap_byte_string()?;
+                let arg1 = runtime.args[0].unwrap_byte_string()?;
 
                 let result = arg1.len();
 
-                let new = constant::integer(arena);
+                let new = constant::integer(self.arena);
 
                 new.assign(result as i64);
 
-                let value = Value::integer(arena, new);
+                let value = Value::integer(self.arena, new);
 
                 Ok(value)
             }
             DefaultFunction::IndexByteString => {
-                let arg1 = self.args[0].unwrap_byte_string()?;
-                let arg2 = self.args[1].unwrap_integer()?;
+                let arg1 = runtime.args[0].unwrap_byte_string()?;
+                let arg2 = runtime.args[1].unwrap_integer()?;
 
                 let index: i128 = arg2.try_into().unwrap();
 
                 if 0 <= index && (index as usize) < arg1.len() {
                     let result = arg1[index as usize];
 
-                    let new = constant::integer(arena);
+                    let new = constant::integer(self.arena);
 
                     new.assign(result as i64);
 
-                    let value = Value::integer(arena, new);
+                    let value = Value::integer(self.arena, new);
 
                     Ok(value)
                 } else {
@@ -354,35 +360,35 @@ impl<'a> Runtime<'a> {
                 }
             }
             DefaultFunction::LessThanByteString => {
-                let arg1 = self.args[0].unwrap_byte_string()?;
-                let arg2 = self.args[1].unwrap_byte_string()?;
+                let arg1 = runtime.args[0].unwrap_byte_string()?;
+                let arg2 = runtime.args[1].unwrap_byte_string()?;
 
                 let result = arg1 < arg2;
 
-                let value = Value::bool(arena, result);
+                let value = Value::bool(self.arena, result);
 
                 Ok(value)
             }
             DefaultFunction::LessThanEqualsByteString => {
-                let arg1 = self.args[0].unwrap_byte_string()?;
-                let arg2 = self.args[1].unwrap_byte_string()?;
+                let arg1 = runtime.args[0].unwrap_byte_string()?;
+                let arg2 = runtime.args[1].unwrap_byte_string()?;
 
                 let result = arg1 <= arg2;
 
-                let value = Value::bool(arena, result);
+                let value = Value::bool(self.arena, result);
 
                 Ok(value)
             }
             DefaultFunction::Sha2_256 => {
                 use cryptoxide::{digest::Digest, sha2::Sha256};
 
-                let arg1 = self.args[0].unwrap_byte_string()?;
+                let arg1 = runtime.args[0].unwrap_byte_string()?;
 
                 let mut hasher = Sha256::new();
 
                 hasher.input(arg1);
 
-                let mut bytes = BumpVec::with_capacity_in(hasher.output_bytes(), arena);
+                let mut bytes = BumpVec::with_capacity_in(hasher.output_bytes(), self.arena);
 
                 unsafe {
                     bytes.set_len(hasher.output_bytes());
@@ -390,20 +396,20 @@ impl<'a> Runtime<'a> {
 
                 hasher.result(&mut bytes);
 
-                let value = Value::byte_string(arena, bytes);
+                let value = Value::byte_string(self.arena, bytes);
 
                 Ok(value)
             }
             DefaultFunction::Sha3_256 => {
                 use cryptoxide::{digest::Digest, sha3::Sha3_256};
 
-                let arg1 = self.args[0].unwrap_byte_string()?;
+                let arg1 = runtime.args[0].unwrap_byte_string()?;
 
                 let mut hasher = Sha3_256::new();
 
                 hasher.input(arg1);
 
-                let mut bytes = BumpVec::with_capacity_in(hasher.output_bytes(), arena);
+                let mut bytes = BumpVec::with_capacity_in(hasher.output_bytes(), self.arena);
 
                 unsafe {
                     bytes.set_len(hasher.output_bytes());
@@ -411,16 +417,16 @@ impl<'a> Runtime<'a> {
 
                 hasher.result(&mut bytes);
 
-                let value = Value::byte_string(arena, bytes);
+                let value = Value::byte_string(self.arena, bytes);
 
                 Ok(value)
             }
             DefaultFunction::Blake2b_256 => {
                 use cryptoxide::{blake2b::Blake2b, digest::Digest};
 
-                let arg1 = self.args[0].unwrap_byte_string()?;
+                let arg1 = runtime.args[0].unwrap_byte_string()?;
 
-                let mut digest = BumpVec::with_capacity_in(32, arena);
+                let mut digest = BumpVec::with_capacity_in(32, self.arena);
 
                 unsafe {
                     digest.set_len(32);
@@ -431,20 +437,20 @@ impl<'a> Runtime<'a> {
                 context.input(arg1);
                 context.result(&mut digest);
 
-                let value = Value::byte_string(arena, digest);
+                let value = Value::byte_string(self.arena, digest);
 
                 Ok(value)
             }
             DefaultFunction::Keccak_256 => {
                 use cryptoxide::{digest::Digest, sha3::Keccak256};
 
-                let arg1 = self.args[0].unwrap_byte_string()?;
+                let arg1 = runtime.args[0].unwrap_byte_string()?;
 
                 let mut hasher = Keccak256::new();
 
                 hasher.input(arg1);
 
-                let mut bytes = BumpVec::with_capacity_in(hasher.output_bytes(), arena);
+                let mut bytes = BumpVec::with_capacity_in(hasher.output_bytes(), self.arena);
 
                 unsafe {
                     bytes.set_len(hasher.output_bytes());
@@ -452,16 +458,16 @@ impl<'a> Runtime<'a> {
 
                 hasher.result(&mut bytes);
 
-                let value = Value::byte_string(arena, bytes);
+                let value = Value::byte_string(self.arena, bytes);
 
                 Ok(value)
             }
             DefaultFunction::Blake2b_224 => {
                 use cryptoxide::{blake2b::Blake2b, digest::Digest};
 
-                let arg1 = self.args[0].unwrap_byte_string()?;
+                let arg1 = runtime.args[0].unwrap_byte_string()?;
 
-                let mut digest = BumpVec::with_capacity_in(28, arena);
+                let mut digest = BumpVec::with_capacity_in(28, self.arena);
 
                 unsafe {
                     digest.set_len(28);
@@ -472,16 +478,16 @@ impl<'a> Runtime<'a> {
                 context.input(arg1);
                 context.result(&mut digest);
 
-                let value = Value::byte_string(arena, digest);
+                let value = Value::byte_string(self.arena, digest);
 
                 Ok(value)
             }
             DefaultFunction::VerifyEd25519Signature => {
                 use cryptoxide::ed25519;
 
-                let public_key = self.args[0].unwrap_byte_string()?;
-                let message = self.args[1].unwrap_byte_string()?;
-                let signature = self.args[2].unwrap_byte_string()?;
+                let public_key = runtime.args[0].unwrap_byte_string()?;
+                let message = runtime.args[1].unwrap_byte_string()?;
+                let signature = runtime.args[2].unwrap_byte_string()?;
 
                 let public_key: [u8; 32] =
                     public_key
@@ -501,16 +507,16 @@ impl<'a> Runtime<'a> {
 
                 let valid = ed25519::verify(message, &public_key, &signature);
 
-                let value = Value::bool(arena, valid);
+                let value = Value::bool(self.arena, valid);
 
                 Ok(value)
             }
             DefaultFunction::VerifyEcdsaSecp256k1Signature => {
                 use secp256k1::{ecdsa::Signature, Message, PublicKey, Secp256k1};
 
-                let public_key = self.args[0].unwrap_byte_string()?;
-                let message = self.args[1].unwrap_byte_string()?;
-                let signature = self.args[2].unwrap_byte_string()?;
+                let public_key = runtime.args[0].unwrap_byte_string()?;
+                let message = runtime.args[1].unwrap_byte_string()?;
+                let signature = runtime.args[2].unwrap_byte_string()?;
 
                 let secp = Secp256k1::verification_only();
 
@@ -525,16 +531,16 @@ impl<'a> Runtime<'a> {
 
                 let valid = secp.verify_ecdsa(&message, &signature, &public_key);
 
-                let value = Value::bool(arena, valid.is_ok());
+                let value = Value::bool(self.arena, valid.is_ok());
 
                 Ok(value)
             }
             DefaultFunction::VerifySchnorrSecp256k1Signature => {
                 use secp256k1::{schnorr::Signature, Secp256k1, XOnlyPublicKey};
 
-                let public_key = self.args[0].unwrap_byte_string()?;
-                let message = self.args[1].unwrap_byte_string()?;
-                let signature = self.args[2].unwrap_byte_string()?;
+                let public_key = runtime.args[0].unwrap_byte_string()?;
+                let message = runtime.args[1].unwrap_byte_string()?;
+                let signature = runtime.args[2].unwrap_byte_string()?;
 
                 let secp = Secp256k1::verification_only();
 
@@ -546,145 +552,145 @@ impl<'a> Runtime<'a> {
 
                 let valid = secp.verify_schnorr(&signature, message, &public_key);
 
-                let value = Value::bool(arena, valid.is_ok());
+                let value = Value::bool(self.arena, valid.is_ok());
 
                 Ok(value)
             }
             DefaultFunction::AppendString => todo!(),
             DefaultFunction::EqualsString => {
-                let arg1 = self.args[0].unwrap_string()?;
-                let arg2 = self.args[1].unwrap_string()?;
+                let arg1 = runtime.args[0].unwrap_string()?;
+                let arg2 = runtime.args[1].unwrap_string()?;
 
-                let value = Value::bool(arena, arg1 == arg2);
+                let value = Value::bool(self.arena, arg1 == arg2);
 
                 Ok(value)
             }
             DefaultFunction::EncodeUtf8 => {
-                let arg1 = self.args[0].unwrap_string()?;
+                let arg1 = runtime.args[0].unwrap_string()?;
 
                 let s_bytes = arg1.as_bytes();
 
-                let mut bytes = BumpVec::with_capacity_in(s_bytes.len(), arena);
+                let mut bytes = BumpVec::with_capacity_in(s_bytes.len(), self.arena);
 
                 bytes.extend_from_slice(s_bytes);
 
-                let value = Value::byte_string(arena, bytes);
+                let value = Value::byte_string(self.arena, bytes);
 
                 Ok(value)
             }
             DefaultFunction::DecodeUtf8 => {
-                let arg1 = self.args[0].unwrap_byte_string()?;
+                let arg1 = runtime.args[0].unwrap_byte_string()?;
 
                 let string = BumpString::from_utf8(arg1.clone())
                     .map_err(|e| MachineError::decode_utf8(e.utf8_error()))?;
 
-                let value = Value::string(arena, string);
+                let value = Value::string(self.arena, string);
 
                 Ok(value)
             }
             DefaultFunction::ChooseUnit => {
-                self.args[0].unwrap_unit()?;
+                runtime.args[0].unwrap_unit()?;
 
-                Ok(self.args[1])
+                Ok(runtime.args[1])
             }
             DefaultFunction::Trace => todo!(),
             DefaultFunction::FstPair => {
-                let (_, _, first, _) = self.args[0].unwrap_pair()?;
+                let (_, _, first, _) = runtime.args[0].unwrap_pair()?;
 
-                let value = Value::con(arena, first);
+                let value = Value::con(self.arena, first);
 
                 Ok(value)
             }
             DefaultFunction::SndPair => {
-                let (_, _, _, second) = self.args[0].unwrap_pair()?;
+                let (_, _, _, second) = runtime.args[0].unwrap_pair()?;
 
-                let value = Value::con(arena, second);
+                let value = Value::con(self.arena, second);
 
                 Ok(value)
             }
             DefaultFunction::ChooseList => {
-                let (_, list) = self.args[0].unwrap_list()?;
+                let (_, list) = runtime.args[0].unwrap_list()?;
 
                 if list.is_empty() {
-                    Ok(self.args[1])
+                    Ok(runtime.args[1])
                 } else {
-                    Ok(self.args[2])
+                    Ok(runtime.args[2])
                 }
             }
             DefaultFunction::MkCons => {
-                let item = self.args[0].unwrap_constant()?;
-                let (typ, list) = self.args[1].unwrap_list()?;
+                let item = runtime.args[0].unwrap_constant()?;
+                let (typ, list) = runtime.args[1].unwrap_list()?;
 
-                if item.type_of(arena) != typ {
+                if item.type_of(self.arena) != typ {
                     return Err(MachineError::mk_cons_type_mismatch(item));
                 }
 
-                let mut new_list = BumpVec::with_capacity_in(list.len() + 1, arena);
+                let mut new_list = BumpVec::with_capacity_in(list.len() + 1, self.arena);
 
                 new_list.push(item);
 
                 new_list.extend_from_slice(list);
 
-                let constant = Constant::proto_list(arena, typ, new_list);
+                let constant = Constant::proto_list(self.arena, typ, new_list);
 
-                let value = constant.value(arena);
+                let value = constant.value(self.arena);
 
                 Ok(value)
             }
             DefaultFunction::HeadList => {
-                let (_, list) = self.args[0].unwrap_list()?;
+                let (_, list) = runtime.args[0].unwrap_list()?;
 
                 if list.is_empty() {
                     Err(MachineError::empty_list(list))
                 } else {
-                    let value = Value::con(arena, list[0]);
+                    let value = Value::con(self.arena, list[0]);
 
                     Ok(value)
                 }
             }
             DefaultFunction::TailList => {
-                let (t1, list) = self.args[0].unwrap_list()?;
+                let (t1, list) = runtime.args[0].unwrap_list()?;
 
                 if list.is_empty() {
                     Err(MachineError::empty_list(list))
                 } else {
-                    let mut tail = BumpVec::with_capacity_in(list.len(), arena);
+                    let mut tail = BumpVec::with_capacity_in(list.len(), self.arena);
 
                     tail.extend_from_slice(&list[1..]);
 
-                    let constant = Constant::proto_list(arena, t1, tail);
+                    let constant = Constant::proto_list(self.arena, t1, tail);
 
-                    let value = Value::con(arena, constant);
+                    let value = Value::con(self.arena, constant);
 
                     Ok(value)
                 }
             }
             DefaultFunction::NullList => {
-                let (_, list) = self.args[0].unwrap_list()?;
+                let (_, list) = runtime.args[0].unwrap_list()?;
 
-                let value = Value::bool(arena, list.is_empty());
+                let value = Value::bool(self.arena, list.is_empty());
 
                 Ok(value)
             }
             DefaultFunction::ChooseData => {
-                let con = self.args[0].unwrap_constant()?.unwrap_data()?;
+                let con = runtime.args[0].unwrap_constant()?.unwrap_data()?;
 
                 match con {
-                    PlutusData::Constr { .. } => Ok(self.args[1]),
-                    PlutusData::Map(_) => Ok(self.args[2]),
-                    PlutusData::List(_) => Ok(self.args[3]),
-                    PlutusData::Integer(_) => Ok(self.args[4]),
-                    PlutusData::ByteString(_) => Ok(self.args[5]),
+                    PlutusData::Constr { .. } => Ok(runtime.args[1]),
+                    PlutusData::Map(_) => Ok(runtime.args[2]),
+                    PlutusData::List(_) => Ok(runtime.args[3]),
+                    PlutusData::Integer(_) => Ok(runtime.args[4]),
+                    PlutusData::ByteString(_) => Ok(runtime.args[5]),
                 }
             }
             DefaultFunction::ConstrData => {
-                let tag = self.args[0].unwrap_integer()?;
-                let (typ, fields) = self.args[1].unwrap_list()?;
+                let tag = runtime.args[0].unwrap_integer()?;
+                let (typ, fields) = runtime.args[1].unwrap_list()?;
 
                 if *typ != Type::Data {
                     return Err(MachineError::type_mismatch(
                         Type::Data,
-                        self.args[1].unwrap_constant()?,
+                        runtime.args[1].unwrap_constant()?,
                     ));
                 }
 
@@ -695,24 +701,24 @@ impl<'a> Runtime<'a> {
                         Constant::Data(d) => *d,
                         _ => unreachable!(),
                     })
-                    .collect_in(arena);
+                    .collect_in(self.arena);
 
-                let data = PlutusData::constr(arena, tag, fields);
+                let data = PlutusData::constr(self.arena, tag, fields);
 
-                let constant = Constant::data(arena, data);
+                let constant = Constant::data(self.arena, data);
 
-                let value = Value::con(arena, constant);
+                let value = Value::con(self.arena, constant);
 
                 Ok(value)
             }
             DefaultFunction::MapData => todo!(),
             DefaultFunction::ListData => {
-                let (typ, fields) = self.args[0].unwrap_list()?;
+                let (typ, fields) = runtime.args[0].unwrap_list()?;
 
                 if *typ != Type::Data {
                     return Err(MachineError::type_mismatch(
                         Type::Data,
-                        self.args[0].unwrap_constant()?,
+                        runtime.args[0].unwrap_constant()?,
                     ));
                 }
 
@@ -722,138 +728,143 @@ impl<'a> Runtime<'a> {
                         Constant::Data(d) => *d,
                         _ => unreachable!(),
                     })
-                    .collect_in(arena);
+                    .collect_in(self.arena);
 
-                let value = PlutusData::list(arena, fields).constant(arena).value(arena);
+                let value = PlutusData::list(self.arena, fields)
+                    .constant(self.arena)
+                    .value(self.arena);
 
                 Ok(value)
             }
             DefaultFunction::IData => {
-                let i = self.args[0].unwrap_integer()?;
-                let i = PlutusData::integer(arena, i);
+                let i = runtime.args[0].unwrap_integer()?;
+                let i = PlutusData::integer(self.arena, i);
 
-                let value = i.constant(arena).value(arena);
+                let value = i.constant(self.arena).value(self.arena);
 
                 Ok(value)
             }
             DefaultFunction::BData => {
-                let b = self.args[0].unwrap_byte_string()?;
+                let b = runtime.args[0].unwrap_byte_string()?;
 
-                let b = PlutusData::byte_string(arena, b.clone());
+                let b = PlutusData::byte_string(self.arena, b.clone());
 
-                let value = b.constant(arena).value(arena);
+                let value = b.constant(self.arena).value(self.arena);
 
                 Ok(value)
             }
             DefaultFunction::UnConstrData => {
-                let (tag, fields) = self.args[0]
+                let (tag, fields) = runtime.args[0]
                     .unwrap_constant()?
                     .unwrap_data()?
                     .unwrap_constr()?;
 
                 let constant = Constant::proto_pair(
-                    arena,
-                    Type::integer(arena),
-                    Type::list(arena, Type::data(arena)),
-                    Constant::integer_from(arena, *tag as i128),
+                    self.arena,
+                    Type::integer(self.arena),
+                    Type::list(self.arena, Type::data(self.arena)),
+                    Constant::integer_from(self.arena, *tag as i128),
                     Constant::proto_list(
-                        arena,
-                        Type::data(arena),
+                        self.arena,
+                        Type::data(self.arena),
                         fields
                             .iter()
-                            .map(|d| Constant::data(arena, d))
-                            .collect_in(arena),
+                            .map(|d| Constant::data(self.arena, d))
+                            .collect_in(self.arena),
                     ),
                 );
 
-                let value = Value::con(arena, constant);
+                let value = Value::con(self.arena, constant);
 
                 Ok(value)
             }
             DefaultFunction::UnMapData => todo!(),
             DefaultFunction::UnListData => {
-                let list = self.args[0]
+                let list = runtime.args[0]
                     .unwrap_constant()?
                     .unwrap_data()?
                     .unwrap_list()?;
 
                 let constant = Constant::proto_list(
-                    arena,
-                    Type::data(arena),
+                    self.arena,
+                    Type::data(self.arena),
                     list.iter()
-                        .map(|d| Constant::data(arena, d))
-                        .collect_in(arena),
+                        .map(|d| Constant::data(self.arena, d))
+                        .collect_in(self.arena),
                 );
 
-                let value = Value::con(arena, constant);
+                let value = Value::con(self.arena, constant);
 
                 Ok(value)
             }
             DefaultFunction::UnIData => {
-                let i = self.args[0]
+                let i = runtime.args[0]
                     .unwrap_constant()?
                     .unwrap_data()?
                     .unwrap_integer()?;
 
-                let value = Value::integer(arena, i);
+                let value = Value::integer(self.arena, i);
 
                 Ok(value)
             }
             DefaultFunction::UnBData => {
-                let bs = self.args[0]
+                let bs = runtime.args[0]
                     .unwrap_constant()?
                     .unwrap_data()?
                     .unwrap_byte_string()?;
 
-                let value = Value::byte_string(arena, bs.clone());
+                let value = Value::byte_string(self.arena, bs.clone());
 
                 Ok(value)
             }
             DefaultFunction::EqualsData => {
-                let d1 = self.args[0].unwrap_constant()?.unwrap_data()?;
-                let d2 = self.args[1].unwrap_constant()?.unwrap_data()?;
+                let d1 = runtime.args[0].unwrap_constant()?.unwrap_data()?;
+                let d2 = runtime.args[1].unwrap_constant()?.unwrap_data()?;
 
-                let value = Value::bool(arena, d1.eq(d2));
+                let value = Value::bool(self.arena, d1.eq(d2));
 
                 Ok(value)
             }
             DefaultFunction::SerialiseData => todo!(),
             DefaultFunction::MkPairData => {
-                let d1 = self.args[0].unwrap_constant()?.unwrap_data()?;
-                let d2 = self.args[1].unwrap_constant()?.unwrap_data()?;
+                let d1 = runtime.args[0].unwrap_constant()?.unwrap_data()?;
+                let d2 = runtime.args[1].unwrap_constant()?.unwrap_data()?;
 
                 let constant = Constant::proto_pair(
-                    arena,
-                    Type::data(arena),
-                    Type::data(arena),
-                    Constant::data(arena, d1),
-                    Constant::data(arena, d2),
+                    self.arena,
+                    Type::data(self.arena),
+                    Type::data(self.arena),
+                    Constant::data(self.arena, d1),
+                    Constant::data(self.arena, d2),
                 );
 
-                let value = Value::con(arena, constant);
+                let value = Value::con(self.arena, constant);
 
                 Ok(value)
             }
             DefaultFunction::MkNilData => {
-                self.args[0].unwrap_unit()?;
+                runtime.args[0].unwrap_unit()?;
 
-                let constant =
-                    Constant::proto_list(arena, Type::data(arena), BumpVec::new_in(arena));
+                let constant = Constant::proto_list(
+                    self.arena,
+                    Type::data(self.arena),
+                    BumpVec::new_in(self.arena),
+                );
 
-                let value = Value::con(arena, constant);
+                let value = Value::con(self.arena, constant);
 
                 Ok(value)
             }
             DefaultFunction::MkNilPairData => {
-                self.args[0].unwrap_unit()?;
+                runtime.args[0].unwrap_unit()?;
 
                 let constant = Constant::proto_list(
-                    arena,
-                    Type::pair(arena, Type::data(arena), Type::data(arena)),
-                    BumpVec::new_in(arena),
+                    self.arena,
+                    Type::pair(self.arena, Type::data(self.arena), Type::data(self.arena)),
+                    BumpVec::new_in(self.arena),
                 );
 
-                let value = Value::con(arena, constant);
+                let value = Value::con(self.arena, constant);
 
                 Ok(value)
             }

@@ -15,13 +15,13 @@ use super::{
 };
 
 pub struct Machine<'a> {
-    arena: &'a Bump,
+    pub(super) arena: &'a Bump,
     ex_budget: ExBudget,
     unbudgeted_steps: [u8; 10],
     costs: CostModel,
     slippage: u8,
     logs: Vec<String>,
-    semantics: BuiltinSemantics,
+    pub(super) semantics: BuiltinSemantics,
 }
 
 impl<'a> Machine<'a> {
@@ -254,7 +254,7 @@ impl<'a> Machine<'a> {
             Value::Builtin(runtime) => {
                 if runtime.needs_force() {
                     let value = if runtime.is_ready() {
-                        self.eval_builtin_app(runtime)?
+                        self.call(runtime)?
                     } else {
                         Value::builtin(self.arena, runtime.force(self.arena))
                     };
@@ -313,11 +313,7 @@ impl<'a> Machine<'a> {
         &mut self,
         runtime: &'a Runtime<'a>,
     ) -> Result<&'a Value<'a>, MachineError<'a>> {
-        // let cost = runtime.to_ex_budget(&self.costs.builtin_costs);
-
-        // self.spend_budget(cost)?;
-
-        runtime.call(self.arena, &self.semantics)
+        self.call(runtime)
     }
 
     fn transfer_arg_stack(
