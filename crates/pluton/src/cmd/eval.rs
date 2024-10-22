@@ -6,36 +6,50 @@ use miette::IntoDiagnostic;
 pub struct Args {
     #[clap(short, long)]
     file: Option<String>,
+    #[clap(long)]
+    flat: bool,
     #[clap(short = 'A', long)]
     args: Vec<String>,
 }
 
 impl Args {
     pub fn exec(self) -> miette::Result<()> {
-        let program = if let Some(file_path) = self.file {
-            std::fs::read_to_string(file_path).into_diagnostic()?
-        } else {
-            let mut buffer = String::new();
+        let arena = uplc::bumpalo::Bump::with_capacity(1_024_000);
 
-            io::stdin().read_to_string(&mut buffer).into_diagnostic()?;
+        let program = if let Some(file_path) = self.file {
+            std::fs::read(file_path).into_diagnostic()?
+        } else {
+            let mut buffer = Vec::new();
+
+            io::stdin().read(&mut buffer).into_diagnostic()?;
 
             buffer
         };
 
-        let arena = uplc::bumpalo::Bump::new();
+        let mut program_string = String::new();
 
-        let parse_result = uplc::syn::parse_program(&arena, &program).into_result();
+        let program = if self.flat {
+            uplc::flat::decode(&arena, &program).into_diagnostic()?
+        } else {
+            {
+                let temp = String::from_utf8(program).into_diagnostic()?;
 
-        let program = match parse_result {
-            Ok(program) => program,
-            Err(errs) => {
-                let errs = errs
-                    .into_iter()
-                    .map(|e| format!("{}", e))
-                    .collect::<Vec<_>>()
-                    .join("\n");
+                program_string.push_str(&temp);
+            }
 
-                miette::bail!("failed to parse program\n{}", errs);
+            let parse_result = uplc::syn::parse_program(&arena, &program_string).into_result();
+
+            match parse_result {
+                Ok(program) => program,
+                Err(errs) => {
+                    let errs = errs
+                        .into_iter()
+                        .map(|e| format!("{}", e))
+                        .collect::<Vec<_>>()
+                        .join("\n");
+
+                    miette::bail!("failed to parse program\n{}", errs);
+                }
             }
         };
 
