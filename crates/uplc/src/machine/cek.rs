@@ -18,7 +18,7 @@ pub struct Machine<'a> {
     pub(super) arena: &'a Bump,
     ex_budget: ExBudget,
     unbudgeted_steps: [u8; 10],
-    costs: CostModel,
+    pub(super) costs: CostModel,
     slippage: u8,
     logs: Vec<String>,
     pub(super) semantics: BuiltinSemantics,
@@ -359,7 +359,7 @@ impl<'a> Machine<'a> {
         Ok(())
     }
 
-    fn spend_budget(&mut self, spend_budget: ExBudget) -> Result<(), MachineError<'a>> {
+    pub(super) fn spend_budget(&mut self, spend_budget: ExBudget) -> Result<(), MachineError<'a>> {
         self.ex_budget.mem -= spend_budget.mem;
         self.ex_budget.cpu -= spend_budget.cpu;
 

@@ -13,7 +13,7 @@ use crate::{
     typ::Type,
 };
 
-use super::{value::Value, Machine, MachineError};
+use super::{value::Value, ExBudget, Machine, MachineError};
 
 pub enum BuiltinSemantics {
     V1,
@@ -72,18 +72,15 @@ impl<'a> Runtime<'a> {
 }
 
 impl<'a> Machine<'a> {
-    pub fn call(&self, runtime: &'a Runtime<'a>) -> Result<&'a Value<'a>, MachineError<'a>> {
-        // let cost = self
-        //     .costs
-        //     .builtin_costs
-        //     .to_ex_budget(runtime.fun, &runtime.args)?;
-
-        // self.spend_budget(cost)?;
-
+    pub fn call(&mut self, runtime: &'a Runtime<'a>) -> Result<&'a Value<'a>, MachineError<'a>> {
         match runtime.fun {
             DefaultFunction::AddInteger => {
                 let arg1 = runtime.args[0].unwrap_integer()?;
                 let arg2 = runtime.args[1].unwrap_integer()?;
+
+                let budget = self.costs.builtin_costs.add_integer([0, 0]);
+
+                self.spend_budget(budget)?;
 
                 let result = arg1 + arg2;
 
@@ -98,6 +95,10 @@ impl<'a> Machine<'a> {
             DefaultFunction::SubtractInteger => {
                 let arg1 = runtime.args[0].unwrap_integer()?;
                 let arg2 = runtime.args[1].unwrap_integer()?;
+
+                let budget = self.costs.builtin_costs.subtract_integer([0, 0]);
+
+                self.spend_budget(budget)?;
 
                 let result = arg1 - arg2;
 
