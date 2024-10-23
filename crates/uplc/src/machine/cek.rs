@@ -66,10 +66,7 @@ impl<'a> Machine<'a> {
                 }
             };
 
-            state = match step {
-                Ok(new_state) => new_state,
-                Err(error) => return Err(error),
-            };
+            state = step?;
         }
     }
 
