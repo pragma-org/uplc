@@ -345,4 +345,16 @@ impl<'a> Term<'a> {
 
         Term::builtin(arena, fun)
     }
+
+    pub fn fst_pair(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::FstPair);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn snd_pair(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::SndPair);
+
+        Term::builtin(arena, fun)
+    }
 }

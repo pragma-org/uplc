@@ -306,6 +306,14 @@ impl BuiltinCosts {
         )
     }
 
+    pub fn fst_pair(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(self.fst_pair.mem.cost(args), self.fst_pair.cpu.cost(args))
+    }
+
+    pub fn snd_pair(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(self.snd_pair.mem.cost(args), self.snd_pair.cpu.cost(args))
+    }
+
     pub fn v3() -> Self {
         Self {
             add_integer: TwoArgumentsCosting::new(
