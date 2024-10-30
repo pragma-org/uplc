@@ -153,6 +153,8 @@ pub fn builtin_from_str<'a>(arena: &'a Bump, name: &str) -> Option<&'a Term<'a>>
         "encodeUtf8" => Some(Term::encode_utf8(arena)),
         "decodeUtf8" => Some(Term::decode_utf8(arena)),
         "chooseUnit" => Some(Term::choose_unit(arena)),
+        "fstPair" => Some(Term::fst_pair(arena)),
+        "sndPair" => Some(Term::snd_pair(arena)),
         _ => None,
     }
 }

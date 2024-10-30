@@ -806,14 +806,28 @@ impl<'a> Machine<'a> {
             }
             DefaultFunction::Trace => todo!(),
             DefaultFunction::FstPair => {
-                let (_, _, first, _) = runtime.args[0].unwrap_pair()?;
+                let (_, _, first, second) = runtime.args[0].unwrap_pair()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .fst_pair([cost_model::pair_ex_mem(first, second)]);
+
+                self.spend_budget(budget)?;
 
                 let value = Value::con(self.arena, first);
 
                 Ok(value)
             }
             DefaultFunction::SndPair => {
-                let (_, _, _, second) = runtime.args[0].unwrap_pair()?;
+                let (_, _, first, second) = runtime.args[0].unwrap_pair()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .snd_pair([cost_model::pair_ex_mem(first, second)]);
+
+                self.spend_budget(budget)?;
 
                 let value = Value::con(self.arena, second);
 
