@@ -172,6 +172,133 @@ impl BuiltinCosts {
         )
     }
 
+    pub fn append_byte_string(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.append_byte_string.mem.cost(args),
+            self.append_byte_string.cpu.cost(args),
+        )
+    }
+
+    pub fn equals_byte_string(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.equals_byte_string.mem.cost(args),
+            self.equals_byte_string.cpu.cost(args),
+        )
+    }
+
+    pub fn cons_byte_string(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.cons_byte_string.mem.cost(args),
+            self.cons_byte_string.cpu.cost(args),
+        )
+    }
+
+    pub fn slice_byte_string(&self, args: [i64; 3]) -> ExBudget {
+        ExBudget::new(
+            self.slice_byte_string.mem.cost(args),
+            self.slice_byte_string.cpu.cost(args),
+        )
+    }
+
+    pub fn length_of_byte_string(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(
+            self.length_of_byte_string.mem.cost(args),
+            self.length_of_byte_string.cpu.cost(args),
+        )
+    }
+
+    pub fn index_byte_string(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.index_byte_string.mem.cost(args),
+            self.index_byte_string.cpu.cost(args),
+        )
+    }
+
+    pub fn less_than_byte_string(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.less_than_byte_string.mem.cost(args),
+            self.less_than_byte_string.cpu.cost(args),
+        )
+    }
+
+    pub fn less_than_equals_byte_string(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.less_than_equals_byte_string.mem.cost(args),
+            self.less_than_equals_byte_string.cpu.cost(args),
+        )
+    }
+
+    pub fn sha2_256(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(self.sha2_256.mem.cost(args), self.sha2_256.cpu.cost(args))
+    }
+
+    pub fn sha3_256(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(self.sha3_256.mem.cost(args), self.sha3_256.cpu.cost(args))
+    }
+
+    pub fn blake2b_256(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(
+            self.blake2b_256.mem.cost(args),
+            self.blake2b_256.cpu.cost(args),
+        )
+    }
+
+    pub fn keccak_256(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(
+            self.keccak_256.mem.cost(args),
+            self.keccak_256.cpu.cost(args),
+        )
+    }
+
+    pub fn blake2b_224(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(
+            self.blake2b_224.mem.cost(args),
+            self.blake2b_224.cpu.cost(args),
+        )
+    }
+
+    pub fn verify_ed25519_signature(&self, args: [i64; 3]) -> ExBudget {
+        ExBudget::new(
+            self.verify_ed25519_signature.mem.cost(args),
+            self.verify_ed25519_signature.cpu.cost(args),
+        )
+    }
+
+    pub fn verify_ecdsa_secp256k1_signature(&self, args: [i64; 3]) -> ExBudget {
+        ExBudget::new(
+            self.verify_ecdsa_secp256k1_signature.mem.cost(args),
+            self.verify_ecdsa_secp256k1_signature.cpu.cost(args),
+        )
+    }
+
+    pub fn verify_schnorr_secp256k1_signature(&self, args: [i64; 3]) -> ExBudget {
+        ExBudget::new(
+            self.verify_schnorr_secp256k1_signature.mem.cost(args),
+            self.verify_schnorr_secp256k1_signature.cpu.cost(args),
+        )
+    }
+
+    pub fn equals_string(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.equals_string.mem.cost(args),
+            self.equals_string.cpu.cost(args),
+        )
+    }
+
+    pub fn encode_utf8(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(
+            self.encode_utf8.mem.cost(args),
+            self.encode_utf8.cpu.cost(args),
+        )
+    }
+
+    pub fn decode_utf8(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(
+            self.decode_utf8.mem.cost(args),
+            self.decode_utf8.cpu.cost(args),
+        )
+    }
+
     pub fn v3() -> Self {
         Self {
             add_integer: TwoArgumentsCosting::new(
@@ -401,12 +528,12 @@ impl BuiltinCosts {
                 OneArgumentCosting::linear_cost(955506, 213312),
             ),
             blake2b_224: OneArgumentCosting::new(
-                OneArgumentCosting::linear_cost(207616, 8310),
                 OneArgumentCosting::constant_cost(4),
+                OneArgumentCosting::linear_cost(207616, 8310),
             ),
             keccak_256: OneArgumentCosting::new(
-                OneArgumentCosting::linear_cost(2261318, 64571),
                 OneArgumentCosting::constant_cost(4),
+                OneArgumentCosting::linear_cost(2261318, 64571),
             ),
             bls12_381_g1_add: TwoArgumentsCosting::new(
                 TwoArgumentsCosting::constant_cost(18),

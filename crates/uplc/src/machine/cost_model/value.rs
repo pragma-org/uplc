@@ -10,12 +10,24 @@ pub fn integer_ex_mem(i: &Integer) -> i64 {
     }
 }
 
-pub fn integer_log2(i: BorrowInteger<'_>) -> i64 {
+fn integer_log2(i: BorrowInteger<'_>) -> i64 {
     if i.is_zero() {
         return 0;
     }
 
     (i.significant_bits() - 1) as i64
+}
+
+pub fn byte_string_ex_mem(b: &[u8]) -> i64 {
+    if b.is_empty() {
+        1
+    } else {
+        ((b.len() as i64 - 1) / 8) + 1
+    }
+}
+
+pub fn string_ex_mem(s: &str) -> i64 {
+    s.chars().count() as i64
 }
 
 #[cfg(test)]

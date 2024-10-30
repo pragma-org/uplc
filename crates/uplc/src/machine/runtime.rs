@@ -154,6 +154,13 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_byte_string()?;
                 let arg2 = runtime.args[1].unwrap_byte_string()?;
 
+                let budget = self.costs.builtin_costs.append_byte_string([
+                    cost_model::byte_string_ex_mem(arg1),
+                    cost_model::byte_string_ex_mem(arg2),
+                ]);
+
+                self.spend_budget(budget)?;
+
                 let mut result = BumpVec::with_capacity_in(arg1.len() + arg2.len(), self.arena);
 
                 result.extend_from_slice(arg1);
@@ -166,6 +173,13 @@ impl<'a> Machine<'a> {
             DefaultFunction::EqualsByteString => {
                 let arg1 = runtime.args[0].unwrap_byte_string()?;
                 let arg2 = runtime.args[1].unwrap_byte_string()?;
+
+                let budget = self.costs.builtin_costs.equals_byte_string([
+                    cost_model::byte_string_ex_mem(arg1),
+                    cost_model::byte_string_ex_mem(arg2),
+                ]);
+
+                self.spend_budget(budget)?;
 
                 let result = arg1 == arg2;
 
@@ -332,6 +346,13 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_integer()?;
                 let arg2 = runtime.args[1].unwrap_byte_string()?;
 
+                let budget = self.costs.builtin_costs.cons_byte_string([
+                    cost_model::integer_ex_mem(arg1),
+                    cost_model::byte_string_ex_mem(arg2),
+                ]);
+
+                self.spend_budget(budget)?;
+
                 let byte: u8 = match &self.semantics {
                     BuiltinSemantics::V1 => {
                         let wrap = constant::integer(self.arena);
@@ -366,6 +387,14 @@ impl<'a> Machine<'a> {
                 let arg2 = runtime.args[1].unwrap_integer()?;
                 let arg3 = runtime.args[2].unwrap_byte_string()?;
 
+                let budget = self.costs.builtin_costs.slice_byte_string([
+                    cost_model::integer_ex_mem(arg1),
+                    cost_model::integer_ex_mem(arg2),
+                    cost_model::byte_string_ex_mem(arg3),
+                ]);
+
+                self.spend_budget(budget)?;
+
                 let skip: usize = if *arg1 < 0 {
                     0
                 } else {
@@ -392,6 +421,13 @@ impl<'a> Machine<'a> {
             DefaultFunction::LengthOfByteString => {
                 let arg1 = runtime.args[0].unwrap_byte_string()?;
 
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .length_of_byte_string([cost_model::byte_string_ex_mem(arg1)]);
+
+                self.spend_budget(budget)?;
+
                 let result = arg1.len();
 
                 let new = constant::integer(self.arena);
@@ -405,6 +441,13 @@ impl<'a> Machine<'a> {
             DefaultFunction::IndexByteString => {
                 let arg1 = runtime.args[0].unwrap_byte_string()?;
                 let arg2 = runtime.args[1].unwrap_integer()?;
+
+                let budget = self.costs.builtin_costs.index_byte_string([
+                    cost_model::byte_string_ex_mem(arg1),
+                    cost_model::integer_ex_mem(arg2),
+                ]);
+
+                self.spend_budget(budget)?;
 
                 let index: i128 = arg2.try_into().unwrap();
 
@@ -426,6 +469,13 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_byte_string()?;
                 let arg2 = runtime.args[1].unwrap_byte_string()?;
 
+                let budget = self.costs.builtin_costs.less_than_byte_string([
+                    cost_model::byte_string_ex_mem(arg1),
+                    cost_model::byte_string_ex_mem(arg2),
+                ]);
+
+                self.spend_budget(budget)?;
+
                 let result = arg1 < arg2;
 
                 let value = Value::bool(self.arena, result);
@@ -435,6 +485,13 @@ impl<'a> Machine<'a> {
             DefaultFunction::LessThanEqualsByteString => {
                 let arg1 = runtime.args[0].unwrap_byte_string()?;
                 let arg2 = runtime.args[1].unwrap_byte_string()?;
+
+                let budget = self.costs.builtin_costs.less_than_equals_byte_string([
+                    cost_model::byte_string_ex_mem(arg1),
+                    cost_model::byte_string_ex_mem(arg2),
+                ]);
+
+                self.spend_budget(budget)?;
 
                 let result = arg1 <= arg2;
 
@@ -446,6 +503,13 @@ impl<'a> Machine<'a> {
                 use cryptoxide::{digest::Digest, sha2::Sha256};
 
                 let arg1 = runtime.args[0].unwrap_byte_string()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .sha2_256([cost_model::byte_string_ex_mem(arg1)]);
+
+                self.spend_budget(budget)?;
 
                 let mut hasher = Sha256::new();
 
@@ -468,6 +532,13 @@ impl<'a> Machine<'a> {
 
                 let arg1 = runtime.args[0].unwrap_byte_string()?;
 
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .sha3_256([cost_model::byte_string_ex_mem(arg1)]);
+
+                self.spend_budget(budget)?;
+
                 let mut hasher = Sha3_256::new();
 
                 hasher.input(arg1);
@@ -489,6 +560,13 @@ impl<'a> Machine<'a> {
 
                 let arg1 = runtime.args[0].unwrap_byte_string()?;
 
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .blake2b_256([cost_model::byte_string_ex_mem(arg1)]);
+
+                self.spend_budget(budget)?;
+
                 let mut digest = BumpVec::with_capacity_in(32, self.arena);
 
                 unsafe {
@@ -508,6 +586,13 @@ impl<'a> Machine<'a> {
                 use cryptoxide::{digest::Digest, sha3::Keccak256};
 
                 let arg1 = runtime.args[0].unwrap_byte_string()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .keccak_256([cost_model::byte_string_ex_mem(arg1)]);
+
+                self.spend_budget(budget)?;
 
                 let mut hasher = Keccak256::new();
 
@@ -530,6 +615,13 @@ impl<'a> Machine<'a> {
 
                 let arg1 = runtime.args[0].unwrap_byte_string()?;
 
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .blake2b_224([cost_model::byte_string_ex_mem(arg1)]);
+
+                self.spend_budget(budget)?;
+
                 let mut digest = BumpVec::with_capacity_in(28, self.arena);
 
                 unsafe {
@@ -551,6 +643,14 @@ impl<'a> Machine<'a> {
                 let public_key = runtime.args[0].unwrap_byte_string()?;
                 let message = runtime.args[1].unwrap_byte_string()?;
                 let signature = runtime.args[2].unwrap_byte_string()?;
+
+                let budget = self.costs.builtin_costs.verify_ed25519_signature([
+                    cost_model::byte_string_ex_mem(public_key),
+                    cost_model::byte_string_ex_mem(message),
+                    cost_model::byte_string_ex_mem(signature),
+                ]);
+
+                self.spend_budget(budget)?;
 
                 let public_key: [u8; 32] =
                     public_key
@@ -581,6 +681,14 @@ impl<'a> Machine<'a> {
                 let message = runtime.args[1].unwrap_byte_string()?;
                 let signature = runtime.args[2].unwrap_byte_string()?;
 
+                let budget = self.costs.builtin_costs.verify_ecdsa_secp256k1_signature([
+                    cost_model::byte_string_ex_mem(public_key),
+                    cost_model::byte_string_ex_mem(message),
+                    cost_model::byte_string_ex_mem(signature),
+                ]);
+
+                self.spend_budget(budget)?;
+
                 let secp = Secp256k1::verification_only();
 
                 let public_key =
@@ -605,6 +713,17 @@ impl<'a> Machine<'a> {
                 let message = runtime.args[1].unwrap_byte_string()?;
                 let signature = runtime.args[2].unwrap_byte_string()?;
 
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .verify_schnorr_secp256k1_signature([
+                        cost_model::byte_string_ex_mem(public_key),
+                        cost_model::byte_string_ex_mem(message),
+                        cost_model::byte_string_ex_mem(signature),
+                    ]);
+
+                self.spend_budget(budget)?;
+
                 let secp = Secp256k1::verification_only();
 
                 let public_key =
@@ -624,12 +743,26 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_string()?;
                 let arg2 = runtime.args[1].unwrap_string()?;
 
+                let budget = self.costs.builtin_costs.equals_string([
+                    cost_model::string_ex_mem(arg1),
+                    cost_model::string_ex_mem(arg2),
+                ]);
+
+                self.spend_budget(budget)?;
+
                 let value = Value::bool(self.arena, arg1 == arg2);
 
                 Ok(value)
             }
             DefaultFunction::EncodeUtf8 => {
                 let arg1 = runtime.args[0].unwrap_string()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .encode_utf8([cost_model::string_ex_mem(arg1)]);
+
+                self.spend_budget(budget)?;
 
                 let s_bytes = arg1.as_bytes();
 
@@ -643,6 +776,13 @@ impl<'a> Machine<'a> {
             }
             DefaultFunction::DecodeUtf8 => {
                 let arg1 = runtime.args[0].unwrap_byte_string()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .decode_utf8([cost_model::byte_string_ex_mem(arg1)]);
+
+                self.spend_budget(budget)?;
 
                 let string = BumpString::from_utf8(arg1.clone())
                     .map_err(|e| MachineError::decode_utf8(e.utf8_error()))?;
