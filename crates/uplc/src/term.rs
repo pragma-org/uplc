@@ -339,4 +339,10 @@ impl<'a> Term<'a> {
 
         Term::builtin(arena, fun)
     }
+
+    pub fn choose_unit(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::ChooseUnit);
+
+        Term::builtin(arena, fun)
+    }
 }

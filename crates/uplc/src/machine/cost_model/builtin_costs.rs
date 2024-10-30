@@ -299,6 +299,13 @@ impl BuiltinCosts {
         )
     }
 
+    pub fn choose_unit(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.choose_unit.mem.cost(args),
+            self.choose_unit.cpu.cost(args),
+        )
+    }
+
     pub fn v3() -> Self {
         Self {
             add_integer: TwoArgumentsCosting::new(
