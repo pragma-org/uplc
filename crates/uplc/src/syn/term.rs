@@ -122,11 +122,12 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
 pub fn builtin_from_str<'a>(arena: &'a Bump, name: &str) -> Option<&'a Term<'a>> {
     match name {
         "addInteger" => Some(Term::add_integer(arena)),
-        "multiplyInteger" => Some(Term::multiply_integer(arena)),
+        "subtractInteger" => Some(Term::subtract_integer(arena)),
         "equalsInteger" => Some(Term::equals_integer(arena)),
         "lessThanEqualsInteger" => Some(Term::less_than_equals_integer(arena)),
+        "multiplyInteger" => Some(Term::multiply_integer(arena)),
+        "divideInteger" => Some(Term::divide_integer(arena)),
         "lessThanInteger" => Some(Term::less_than_integer(arena)),
-        "subtractInteger" => Some(Term::subtract_integer(arena)),
         "ifThenElse" => Some(Term::if_then_else(arena)),
         "appendByteString" => Some(Term::append_byte_string(arena)),
         "equalsByteString" => Some(Term::equals_byte_string(arena)),
