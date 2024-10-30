@@ -172,6 +172,24 @@ impl<'a> Term<'a> {
         Term::builtin(arena, fun)
     }
 
+    pub fn quotient_integer(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::QuotientInteger);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn remainder_integer(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::RemainderInteger);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn mod_integer(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::ModInteger);
+
+        Term::builtin(arena, fun)
+    }
+
     pub fn subtract_integer(arena: &'a Bump) -> &'a Term<'a> {
         let fun = arena.alloc(DefaultFunction::SubtractInteger);
 
