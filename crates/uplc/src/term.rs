@@ -232,6 +232,18 @@ impl<'a> Term<'a> {
         Term::builtin(arena, fun)
     }
 
+    pub fn cons_byte_string(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::ConsByteString);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn slice_byte_string(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::SliceByteString);
+
+        Term::builtin(arena, fun)
+    }
+
     pub fn length_of_byte_string(arena: &'a Bump) -> &'a Term<'a> {
         let fun = arena.alloc(DefaultFunction::LengthOfByteString);
 
@@ -256,8 +268,74 @@ impl<'a> Term<'a> {
         Term::builtin(arena, fun)
     }
 
+    pub fn sha2_256(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::Sha2_256);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn sha3_256(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::Sha3_256);
+
+        Term::builtin(arena, fun)
+    }
+
     pub fn blake2b_256(arena: &'a Bump) -> &'a Term<'a> {
         let fun = arena.alloc(DefaultFunction::Blake2b_256);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn keccak_256(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::Keccak_256);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn blake2b_224(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::Blake2b_224);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn verify_ed25519_signature(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::VerifyEd25519Signature);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn verify_ecdsa_secp256k1_signature(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::VerifyEcdsaSecp256k1Signature);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn verify_schnorr_secp256k1_signature(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::VerifySchnorrSecp256k1Signature);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn append_string(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::AppendString);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn equals_string(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::EqualsString);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn encode_utf8(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::EncodeUtf8);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn decode_utf8(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::DecodeUtf8);
 
         Term::builtin(arena, fun)
     }
