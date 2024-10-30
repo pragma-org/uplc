@@ -13,7 +13,7 @@ use crate::{
     typ::Type,
 };
 
-use super::{value::Value, ExBudget, Machine, MachineError};
+use super::{cost_model, value::Value, ExBudget, Machine, MachineError};
 
 pub enum BuiltinSemantics {
     V1,
@@ -78,7 +78,10 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_integer()?;
                 let arg2 = runtime.args[1].unwrap_integer()?;
 
-                let budget = self.costs.builtin_costs.add_integer([0, 0]);
+                let budget = self.costs.builtin_costs.add_integer([
+                    cost_model::integer_ex_mem(arg1),
+                    cost_model::integer_ex_mem(arg2),
+                ]);
 
                 self.spend_budget(budget)?;
 
@@ -96,7 +99,10 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_integer()?;
                 let arg2 = runtime.args[1].unwrap_integer()?;
 
-                let budget = self.costs.builtin_costs.subtract_integer([0, 0]);
+                let budget = self.costs.builtin_costs.subtract_integer([
+                    cost_model::integer_ex_mem(arg1),
+                    cost_model::integer_ex_mem(arg2),
+                ]);
 
                 self.spend_budget(budget)?;
 
@@ -114,6 +120,13 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_integer()?;
                 let arg2 = runtime.args[1].unwrap_integer()?;
 
+                let budget = self.costs.builtin_costs.equals_integer([
+                    cost_model::integer_ex_mem(arg1),
+                    cost_model::integer_ex_mem(arg2),
+                ]);
+
+                self.spend_budget(budget)?;
+
                 let result = arg1 == arg2;
 
                 let value = Value::bool(self.arena, result);
@@ -123,6 +136,13 @@ impl<'a> Machine<'a> {
             DefaultFunction::LessThanEqualsInteger => {
                 let arg1 = runtime.args[0].unwrap_integer()?;
                 let arg2 = runtime.args[1].unwrap_integer()?;
+
+                let budget = self.costs.builtin_costs.less_than_equals_integer([
+                    cost_model::integer_ex_mem(arg1),
+                    cost_model::integer_ex_mem(arg2),
+                ]);
+
+                self.spend_budget(budget)?;
 
                 let result = arg1 <= arg2;
 
@@ -168,6 +188,13 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_integer()?;
                 let arg2 = runtime.args[1].unwrap_integer()?;
 
+                let budget = self.costs.builtin_costs.multiply_integer([
+                    cost_model::integer_ex_mem(arg1),
+                    cost_model::integer_ex_mem(arg2),
+                ]);
+
+                self.spend_budget(budget)?;
+
                 let result = arg1 * arg2;
 
                 let new = constant::integer(self.arena);
@@ -181,6 +208,13 @@ impl<'a> Machine<'a> {
             DefaultFunction::DivideInteger => {
                 let arg1 = runtime.args[0].unwrap_integer()?;
                 let arg2 = runtime.args[1].unwrap_integer()?;
+
+                let budget = self.costs.builtin_costs.divide_integer([
+                    cost_model::integer_ex_mem(arg1),
+                    cost_model::integer_ex_mem(arg2),
+                ]);
+
+                self.spend_budget(budget)?;
 
                 if !arg2.is_zero() {
                     let result = arg1 / arg2;
@@ -199,6 +233,13 @@ impl<'a> Machine<'a> {
             DefaultFunction::QuotientInteger => {
                 let arg1 = runtime.args[0].unwrap_integer()?;
                 let arg2 = runtime.args[1].unwrap_integer()?;
+
+                let budget = self.costs.builtin_costs.quotient_integer([
+                    cost_model::integer_ex_mem(arg1),
+                    cost_model::integer_ex_mem(arg2),
+                ]);
+
+                self.spend_budget(budget)?;
 
                 if !arg2.is_zero() {
                     let computation = arg1.div_rem_ref(arg2);
@@ -221,6 +262,13 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_integer()?;
                 let arg2 = runtime.args[1].unwrap_integer()?;
 
+                let budget = self.costs.builtin_costs.remainder_integer([
+                    cost_model::integer_ex_mem(arg1),
+                    cost_model::integer_ex_mem(arg2),
+                ]);
+
+                self.spend_budget(budget)?;
+
                 if !arg2.is_zero() {
                     let computation = arg1.div_rem_ref(arg2);
 
@@ -242,6 +290,13 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_integer()?;
                 let arg2 = runtime.args[1].unwrap_integer()?;
 
+                let budget = self.costs.builtin_costs.mod_integer([
+                    cost_model::integer_ex_mem(arg1),
+                    cost_model::integer_ex_mem(arg2),
+                ]);
+
+                self.spend_budget(budget)?;
+
                 if !arg2.is_zero() {
                     let result = constant::integer(self.arena);
 
@@ -259,6 +314,13 @@ impl<'a> Machine<'a> {
             DefaultFunction::LessThanInteger => {
                 let arg1 = runtime.args[0].unwrap_integer()?;
                 let arg2 = runtime.args[1].unwrap_integer()?;
+
+                let budget = self.costs.builtin_costs.less_than_integer([
+                    cost_model::integer_ex_mem(arg1),
+                    cost_model::integer_ex_mem(arg2),
+                ]);
+
+                self.spend_budget(budget)?;
 
                 let result = arg1 < arg2;
 

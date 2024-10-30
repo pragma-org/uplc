@@ -2,6 +2,9 @@ pub mod builtin_costs;
 mod costing;
 pub mod ex_budget;
 mod machine_costs;
+mod value;
+
+pub use value::*;
 
 #[derive(Default, Debug, PartialEq)]
 pub struct CostModel {

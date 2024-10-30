@@ -116,10 +116,59 @@ impl BuiltinCosts {
         )
     }
 
+    pub fn equals_integer(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.equals_integer.mem.cost(args),
+            self.equals_integer.cpu.cost(args),
+        )
+    }
+
+    pub fn less_than_equals_integer(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.less_than_equals_integer.mem.cost(args),
+            self.less_than_equals_integer.cpu.cost(args),
+        )
+    }
+
     pub fn multiply_integer(&self, args: [i64; 2]) -> ExBudget {
         ExBudget::new(
             self.multiply_integer.mem.cost(args),
             self.multiply_integer.cpu.cost(args),
+        )
+    }
+
+    pub fn divide_integer(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.divide_integer.mem.cost(args),
+            self.divide_integer.cpu.cost(args),
+        )
+    }
+
+    pub fn quotient_integer(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.quotient_integer.mem.cost(args),
+            self.quotient_integer.cpu.cost(args),
+        )
+    }
+
+    pub fn remainder_integer(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.remainder_integer.mem.cost(args),
+            self.remainder_integer.cpu.cost(args),
+        )
+    }
+
+    pub fn mod_integer(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.mod_integer.mem.cost(args),
+            self.mod_integer.cpu.cost(args),
+        )
+    }
+
+    pub fn less_than_integer(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.less_than_integer.mem.cost(args),
+            self.less_than_integer.cpu.cost(args),
         )
     }
 
