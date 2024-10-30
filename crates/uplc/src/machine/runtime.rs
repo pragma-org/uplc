@@ -793,8 +793,16 @@ impl<'a> Machine<'a> {
             }
             DefaultFunction::ChooseUnit => {
                 runtime.args[0].unwrap_unit()?;
+                let arg2 = runtime.args[1];
 
-                Ok(runtime.args[1])
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .choose_unit([cost_model::UNIT_EX_MEM, cost_model::value_ex_mem(arg2)]);
+
+                self.spend_budget(budget)?;
+
+                Ok(arg2)
             }
             DefaultFunction::Trace => todo!(),
             DefaultFunction::FstPair => {

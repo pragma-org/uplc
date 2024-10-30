@@ -152,6 +152,7 @@ pub fn builtin_from_str<'a>(arena: &'a Bump, name: &str) -> Option<&'a Term<'a>>
         "equalsString" => Some(Term::equals_string(arena)),
         "encodeUtf8" => Some(Term::encode_utf8(arena)),
         "decodeUtf8" => Some(Term::decode_utf8(arena)),
+        "chooseUnit" => Some(Term::choose_unit(arena)),
         _ => None,
     }
 }
