@@ -165,6 +165,14 @@ pub fn builtin_from_str<'a>(arena: &'a Bump, name: &str) -> Option<&'a Term<'a>>
         "listData" => Some(Term::list_data(arena)),
         "iData" => Some(Term::i_data(arena)),
         "bData" => Some(Term::b_data(arena)),
+        "unConstrData" => Some(Term::un_constr_data(arena)),
+        "unListData" => Some(Term::un_list_data(arena)),
+        "unIData" => Some(Term::un_i_data(arena)),
+        "unBData" => Some(Term::un_b_data(arena)),
+        "equalsData" => Some(Term::equals_data(arena)),
+        "mkPairData" => Some(Term::mk_pair_data(arena)),
+        "mkNilData" => Some(Term::mk_nil_data(arena)),
+        "mkNilPairData" => Some(Term::mk_nil_pair_data(arena)),
         _ => None,
     }
 }

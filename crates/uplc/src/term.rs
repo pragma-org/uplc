@@ -417,4 +417,52 @@ impl<'a> Term<'a> {
 
         Term::builtin(arena, fun)
     }
+
+    pub fn un_constr_data(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::UnConstrData);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn un_list_data(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::UnListData);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn un_i_data(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::UnIData);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn un_b_data(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::UnBData);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn equals_data(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::EqualsData);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn mk_pair_data(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::MkPairData);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn mk_nil_data(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::MkNilData);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn mk_nil_pair_data(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::MkNilPairData);
+
+        Term::builtin(arena, fun)
+    }
 }
