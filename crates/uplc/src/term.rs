@@ -357,4 +357,64 @@ impl<'a> Term<'a> {
 
         Term::builtin(arena, fun)
     }
+
+    pub fn choose_list(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::ChooseList);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn mk_cons(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::MkCons);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn head_list(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::HeadList);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn tail_list(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::TailList);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn null_list(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::NullList);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn choose_data(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::ChooseData);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn constr_data(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::ConstrData);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn list_data(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::ListData);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn i_data(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::IData);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn b_data(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::BData);
+
+        Term::builtin(arena, fun)
+    }
 }

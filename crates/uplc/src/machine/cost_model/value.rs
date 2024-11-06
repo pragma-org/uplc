@@ -41,6 +41,12 @@ pub fn pair_ex_mem(l: &Constant, r: &Constant) -> i64 {
     constant_ex_mem(l) + constant_ex_mem(r)
 }
 
+pub fn proto_list_ex_mem(items: &[&Constant]) -> i64 {
+    items
+        .iter()
+        .fold(0, |acc, constant| acc + constant_ex_mem(constant))
+}
+
 pub fn value_ex_mem(v: &Value) -> i64 {
     match v {
         Value::Con(c) => constant_ex_mem(c),
@@ -58,9 +64,7 @@ pub fn constant_ex_mem(c: &Constant) -> i64 {
         Constant::String(s) => string_ex_mem(s),
         Constant::Unit => UNIT_EX_MEM,
         Constant::Boolean(_) => BOOL_EX_MEM,
-        Constant::ProtoList(_, items) => items
-            .iter()
-            .fold(0, |acc, constant| acc + constant_ex_mem(constant)),
+        Constant::ProtoList(_, items) => proto_list_ex_mem(items),
         Constant::ProtoPair(_, _, l, r) => pair_ex_mem(l, r),
         Constant::Data(d) => data_ex_mem(d),
         Constant::Bls12_381G1Element(_) => size_of::<blst::blst_p1>() as i64 / 8,
