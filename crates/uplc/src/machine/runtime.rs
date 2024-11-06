@@ -13,7 +13,7 @@ use crate::{
     typ::Type,
 };
 
-use super::{cost_model, value::Value, ExBudget, Machine, MachineError};
+use super::{cost_model, value::Value, Machine, MachineError};
 
 pub enum BuiltinSemantics {
     V1,
@@ -835,16 +835,33 @@ impl<'a> Machine<'a> {
             }
             DefaultFunction::ChooseList => {
                 let (_, list) = runtime.args[0].unwrap_list()?;
+                let arg2 = runtime.args[1];
+                let arg3 = runtime.args[2];
+
+                let budget = self.costs.builtin_costs.choose_list([
+                    cost_model::proto_list_ex_mem(list),
+                    cost_model::value_ex_mem(arg2),
+                    cost_model::value_ex_mem(arg3),
+                ]);
+
+                self.spend_budget(budget)?;
 
                 if list.is_empty() {
-                    Ok(runtime.args[1])
+                    Ok(arg2)
                 } else {
-                    Ok(runtime.args[2])
+                    Ok(arg3)
                 }
             }
             DefaultFunction::MkCons => {
                 let item = runtime.args[0].unwrap_constant()?;
                 let (typ, list) = runtime.args[1].unwrap_list()?;
+
+                let budget = self.costs.builtin_costs.mk_cons([
+                    cost_model::constant_ex_mem(item),
+                    cost_model::proto_list_ex_mem(list),
+                ]);
+
+                self.spend_budget(budget)?;
 
                 if item.type_of(self.arena) != typ {
                     return Err(MachineError::mk_cons_type_mismatch(item));
@@ -865,6 +882,13 @@ impl<'a> Machine<'a> {
             DefaultFunction::HeadList => {
                 let (_, list) = runtime.args[0].unwrap_list()?;
 
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .head_list([cost_model::proto_list_ex_mem(list)]);
+
+                self.spend_budget(budget)?;
+
                 if list.is_empty() {
                     Err(MachineError::empty_list(list))
                 } else {
@@ -875,6 +899,13 @@ impl<'a> Machine<'a> {
             }
             DefaultFunction::TailList => {
                 let (t1, list) = runtime.args[0].unwrap_list()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .tail_list([cost_model::proto_list_ex_mem(list)]);
+
+                self.spend_budget(budget)?;
 
                 if list.is_empty() {
                     Err(MachineError::empty_list(list))
@@ -893,24 +924,54 @@ impl<'a> Machine<'a> {
             DefaultFunction::NullList => {
                 let (_, list) = runtime.args[0].unwrap_list()?;
 
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .null_list([cost_model::proto_list_ex_mem(list)]);
+
+                self.spend_budget(budget)?;
+
                 let value = Value::bool(self.arena, list.is_empty());
 
                 Ok(value)
             }
             DefaultFunction::ChooseData => {
-                let con = runtime.args[0].unwrap_constant()?.unwrap_data()?;
+                let arg1 = runtime.args[0].unwrap_constant()?.unwrap_data()?;
+                let arg2 = runtime.args[1];
+                let arg3 = runtime.args[2];
+                let arg4 = runtime.args[3];
+                let arg5 = runtime.args[4];
+                let arg6 = runtime.args[5];
 
-                match con {
-                    PlutusData::Constr { .. } => Ok(runtime.args[1]),
-                    PlutusData::Map(_) => Ok(runtime.args[2]),
-                    PlutusData::List(_) => Ok(runtime.args[3]),
-                    PlutusData::Integer(_) => Ok(runtime.args[4]),
-                    PlutusData::ByteString(_) => Ok(runtime.args[5]),
+                let budget = self.costs.builtin_costs.choose_data([
+                    cost_model::data_ex_mem(arg1),
+                    cost_model::value_ex_mem(arg2),
+                    cost_model::value_ex_mem(arg3),
+                    cost_model::value_ex_mem(arg4),
+                    cost_model::value_ex_mem(arg5),
+                    cost_model::value_ex_mem(arg6),
+                ]);
+
+                self.spend_budget(budget)?;
+
+                match arg1 {
+                    PlutusData::Constr { .. } => Ok(arg2),
+                    PlutusData::Map(_) => Ok(arg3),
+                    PlutusData::List(_) => Ok(arg4),
+                    PlutusData::Integer(_) => Ok(arg5),
+                    PlutusData::ByteString(_) => Ok(arg6),
                 }
             }
             DefaultFunction::ConstrData => {
                 let tag = runtime.args[0].unwrap_integer()?;
                 let (typ, fields) = runtime.args[1].unwrap_list()?;
+
+                let budget = self.costs.builtin_costs.constr_data([
+                    cost_model::integer_ex_mem(tag),
+                    cost_model::proto_list_ex_mem(fields),
+                ]);
+
+                self.spend_budget(budget)?;
 
                 if *typ != Type::Data {
                     return Err(MachineError::type_mismatch(
@@ -940,6 +1001,13 @@ impl<'a> Machine<'a> {
             DefaultFunction::ListData => {
                 let (typ, fields) = runtime.args[0].unwrap_list()?;
 
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .list_data([cost_model::proto_list_ex_mem(fields)]);
+
+                self.spend_budget(budget)?;
+
                 if *typ != Type::Data {
                     return Err(MachineError::type_mismatch(
                         Type::Data,
@@ -963,6 +1031,14 @@ impl<'a> Machine<'a> {
             }
             DefaultFunction::IData => {
                 let i = runtime.args[0].unwrap_integer()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .i_data([cost_model::integer_ex_mem(i)]);
+
+                self.spend_budget(budget)?;
+
                 let i = PlutusData::integer(self.arena, i);
 
                 let value = i.constant(self.arena).value(self.arena);
@@ -971,6 +1047,13 @@ impl<'a> Machine<'a> {
             }
             DefaultFunction::BData => {
                 let b = runtime.args[0].unwrap_byte_string()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .b_data([cost_model::byte_string_ex_mem(b)]);
+
+                self.spend_budget(budget)?;
 
                 let b = PlutusData::byte_string(self.arena, b.clone());
 

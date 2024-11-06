@@ -155,6 +155,16 @@ pub fn builtin_from_str<'a>(arena: &'a Bump, name: &str) -> Option<&'a Term<'a>>
         "chooseUnit" => Some(Term::choose_unit(arena)),
         "fstPair" => Some(Term::fst_pair(arena)),
         "sndPair" => Some(Term::snd_pair(arena)),
+        "chooseList" => Some(Term::choose_list(arena)),
+        "mkCons" => Some(Term::mk_cons(arena)),
+        "headList" => Some(Term::head_list(arena)),
+        "tailList" => Some(Term::tail_list(arena)),
+        "nullList" => Some(Term::null_list(arena)),
+        "chooseData" => Some(Term::choose_data(arena)),
+        "constrData" => Some(Term::constr_data(arena)),
+        "listData" => Some(Term::list_data(arena)),
+        "iData" => Some(Term::i_data(arena)),
+        "bData" => Some(Term::b_data(arena)),
         _ => None,
     }
 }

@@ -314,6 +314,55 @@ impl BuiltinCosts {
         ExBudget::new(self.snd_pair.mem.cost(args), self.snd_pair.cpu.cost(args))
     }
 
+    pub fn choose_list(&self, args: [i64; 3]) -> ExBudget {
+        ExBudget::new(
+            self.choose_list.mem.cost(args),
+            self.choose_list.cpu.cost(args),
+        )
+    }
+
+    pub fn mk_cons(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(self.mk_cons.mem.cost(args), self.mk_cons.cpu.cost(args))
+    }
+
+    pub fn head_list(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(self.head_list.mem.cost(args), self.head_list.cpu.cost(args))
+    }
+
+    pub fn tail_list(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(self.tail_list.mem.cost(args), self.tail_list.cpu.cost(args))
+    }
+
+    pub fn null_list(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(self.null_list.mem.cost(args), self.null_list.cpu.cost(args))
+    }
+
+    pub fn choose_data(&self, args: [i64; 6]) -> ExBudget {
+        ExBudget::new(
+            self.choose_data.mem.cost(args),
+            self.choose_data.cpu.cost(args),
+        )
+    }
+
+    pub fn constr_data(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.constr_data.mem.cost(args),
+            self.constr_data.cpu.cost(args),
+        )
+    }
+
+    pub fn list_data(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(self.list_data.mem.cost(args), self.list_data.cpu.cost(args))
+    }
+
+    pub fn i_data(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(self.i_data.mem.cost(args), self.i_data.cpu.cost(args))
+    }
+
+    pub fn b_data(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(self.b_data.mem.cost(args), self.b_data.cpu.cost(args))
+    }
+
     pub fn v3() -> Self {
         Self {
             add_integer: TwoArgumentsCosting::new(
