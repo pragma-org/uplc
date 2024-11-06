@@ -1067,6 +1067,13 @@ impl<'a> Machine<'a> {
                     .unwrap_data()?
                     .unwrap_constr()?;
 
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .un_constr_data([cost_model::data_list_ex_mem(fields)]);
+
+                self.spend_budget(budget)?;
+
                 let constant = Constant::proto_pair(
                     self.arena,
                     Type::integer(self.arena),
@@ -1093,6 +1100,13 @@ impl<'a> Machine<'a> {
                     .unwrap_data()?
                     .unwrap_list()?;
 
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .un_list_data([cost_model::data_list_ex_mem(list)]);
+
+                self.spend_budget(budget)?;
+
                 let constant = Constant::proto_list(
                     self.arena,
                     Type::data(self.arena),
@@ -1111,6 +1125,13 @@ impl<'a> Machine<'a> {
                     .unwrap_data()?
                     .unwrap_integer()?;
 
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .un_i_data([cost_model::data_integer_ex_mem(i)]);
+
+                self.spend_budget(budget)?;
+
                 let value = Value::integer(self.arena, i);
 
                 Ok(value)
@@ -1121,6 +1142,13 @@ impl<'a> Machine<'a> {
                     .unwrap_data()?
                     .unwrap_byte_string()?;
 
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .un_b_data([cost_model::data_byte_string_ex_mem(bs)]);
+
+                self.spend_budget(budget)?;
+
                 let value = Value::byte_string(self.arena, bs.clone());
 
                 Ok(value)
@@ -1128,6 +1156,13 @@ impl<'a> Machine<'a> {
             DefaultFunction::EqualsData => {
                 let d1 = runtime.args[0].unwrap_constant()?.unwrap_data()?;
                 let d2 = runtime.args[1].unwrap_constant()?.unwrap_data()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .equals_data([cost_model::data_ex_mem(d1), cost_model::data_ex_mem(d2)]);
+
+                self.spend_budget(budget)?;
 
                 let value = Value::bool(self.arena, d1.eq(d2));
 
@@ -1137,6 +1172,13 @@ impl<'a> Machine<'a> {
             DefaultFunction::MkPairData => {
                 let d1 = runtime.args[0].unwrap_constant()?.unwrap_data()?;
                 let d2 = runtime.args[1].unwrap_constant()?.unwrap_data()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .mk_pair_data([cost_model::data_ex_mem(d1), cost_model::data_ex_mem(d2)]);
+
+                self.spend_budget(budget)?;
 
                 let constant = Constant::proto_pair(
                     self.arena,
@@ -1153,6 +1195,13 @@ impl<'a> Machine<'a> {
             DefaultFunction::MkNilData => {
                 runtime.args[0].unwrap_unit()?;
 
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .mk_nil_data([cost_model::UNIT_EX_MEM]);
+
+                self.spend_budget(budget)?;
+
                 let constant = Constant::proto_list(
                     self.arena,
                     Type::data(self.arena),
@@ -1165,6 +1214,13 @@ impl<'a> Machine<'a> {
             }
             DefaultFunction::MkNilPairData => {
                 runtime.args[0].unwrap_unit()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .mk_nil_pair_data([cost_model::UNIT_EX_MEM]);
+
+                self.spend_budget(budget)?;
 
                 let constant = Constant::proto_list(
                     self.arena,

@@ -102,6 +102,7 @@ impl Default for BuiltinCosts {
 }
 
 impl BuiltinCosts {
+    #[inline(always)]
     pub fn add_integer(&self, args: [i64; 2]) -> ExBudget {
         ExBudget::new(
             self.add_integer.mem.cost(args),
@@ -109,6 +110,7 @@ impl BuiltinCosts {
         )
     }
 
+    #[inline(always)]
     pub fn subtract_integer(&self, args: [i64; 2]) -> ExBudget {
         ExBudget::new(
             self.subtract_integer.mem.cost(args),
@@ -116,6 +118,7 @@ impl BuiltinCosts {
         )
     }
 
+    #[inline(always)]
     pub fn equals_integer(&self, args: [i64; 2]) -> ExBudget {
         ExBudget::new(
             self.equals_integer.mem.cost(args),
@@ -123,6 +126,7 @@ impl BuiltinCosts {
         )
     }
 
+    #[inline(always)]
     pub fn less_than_equals_integer(&self, args: [i64; 2]) -> ExBudget {
         ExBudget::new(
             self.less_than_equals_integer.mem.cost(args),
@@ -130,6 +134,7 @@ impl BuiltinCosts {
         )
     }
 
+    #[inline(always)]
     pub fn multiply_integer(&self, args: [i64; 2]) -> ExBudget {
         ExBudget::new(
             self.multiply_integer.mem.cost(args),
@@ -137,6 +142,7 @@ impl BuiltinCosts {
         )
     }
 
+    #[inline(always)]
     pub fn divide_integer(&self, args: [i64; 2]) -> ExBudget {
         ExBudget::new(
             self.divide_integer.mem.cost(args),
@@ -144,6 +150,7 @@ impl BuiltinCosts {
         )
     }
 
+    #[inline(always)]
     pub fn quotient_integer(&self, args: [i64; 2]) -> ExBudget {
         ExBudget::new(
             self.quotient_integer.mem.cost(args),
@@ -151,6 +158,7 @@ impl BuiltinCosts {
         )
     }
 
+    #[inline(always)]
     pub fn remainder_integer(&self, args: [i64; 2]) -> ExBudget {
         ExBudget::new(
             self.remainder_integer.mem.cost(args),
@@ -158,6 +166,7 @@ impl BuiltinCosts {
         )
     }
 
+    #[inline(always)]
     pub fn mod_integer(&self, args: [i64; 2]) -> ExBudget {
         ExBudget::new(
             self.mod_integer.mem.cost(args),
@@ -165,6 +174,7 @@ impl BuiltinCosts {
         )
     }
 
+    #[inline(always)]
     pub fn less_than_integer(&self, args: [i64; 2]) -> ExBudget {
         ExBudget::new(
             self.less_than_integer.mem.cost(args),
@@ -172,6 +182,7 @@ impl BuiltinCosts {
         )
     }
 
+    #[inline(always)]
     pub fn append_byte_string(&self, args: [i64; 2]) -> ExBudget {
         ExBudget::new(
             self.append_byte_string.mem.cost(args),
@@ -179,6 +190,7 @@ impl BuiltinCosts {
         )
     }
 
+    #[inline(always)]
     pub fn equals_byte_string(&self, args: [i64; 2]) -> ExBudget {
         ExBudget::new(
             self.equals_byte_string.mem.cost(args),
@@ -186,6 +198,7 @@ impl BuiltinCosts {
         )
     }
 
+    #[inline(always)]
     pub fn cons_byte_string(&self, args: [i64; 2]) -> ExBudget {
         ExBudget::new(
             self.cons_byte_string.mem.cost(args),
@@ -193,6 +206,7 @@ impl BuiltinCosts {
         )
     }
 
+    #[inline(always)]
     pub fn slice_byte_string(&self, args: [i64; 3]) -> ExBudget {
         ExBudget::new(
             self.slice_byte_string.mem.cost(args),
@@ -200,6 +214,7 @@ impl BuiltinCosts {
         )
     }
 
+    #[inline(always)]
     pub fn length_of_byte_string(&self, args: [i64; 1]) -> ExBudget {
         ExBudget::new(
             self.length_of_byte_string.mem.cost(args),
@@ -207,6 +222,7 @@ impl BuiltinCosts {
         )
     }
 
+    #[inline(always)]
     pub fn index_byte_string(&self, args: [i64; 2]) -> ExBudget {
         ExBudget::new(
             self.index_byte_string.mem.cost(args),
@@ -214,6 +230,7 @@ impl BuiltinCosts {
         )
     }
 
+    #[inline(always)]
     pub fn less_than_byte_string(&self, args: [i64; 2]) -> ExBudget {
         ExBudget::new(
             self.less_than_byte_string.mem.cost(args),
@@ -221,6 +238,7 @@ impl BuiltinCosts {
         )
     }
 
+    #[inline(always)]
     pub fn less_than_equals_byte_string(&self, args: [i64; 2]) -> ExBudget {
         ExBudget::new(
             self.less_than_equals_byte_string.mem.cost(args),
@@ -228,14 +246,17 @@ impl BuiltinCosts {
         )
     }
 
+    #[inline(always)]
     pub fn sha2_256(&self, args: [i64; 1]) -> ExBudget {
         ExBudget::new(self.sha2_256.mem.cost(args), self.sha2_256.cpu.cost(args))
     }
 
+    #[inline(always)]
     pub fn sha3_256(&self, args: [i64; 1]) -> ExBudget {
         ExBudget::new(self.sha3_256.mem.cost(args), self.sha3_256.cpu.cost(args))
     }
 
+    #[inline(always)]
     pub fn blake2b_256(&self, args: [i64; 1]) -> ExBudget {
         ExBudget::new(
             self.blake2b_256.mem.cost(args),
@@ -243,6 +264,7 @@ impl BuiltinCosts {
         )
     }
 
+    #[inline(always)]
     pub fn keccak_256(&self, args: [i64; 1]) -> ExBudget {
         ExBudget::new(
             self.keccak_256.mem.cost(args),
@@ -250,6 +272,7 @@ impl BuiltinCosts {
         )
     }
 
+    #[inline(always)]
     pub fn blake2b_224(&self, args: [i64; 1]) -> ExBudget {
         ExBudget::new(
             self.blake2b_224.mem.cost(args),
@@ -257,6 +280,7 @@ impl BuiltinCosts {
         )
     }
 
+    #[inline(always)]
     pub fn verify_ed25519_signature(&self, args: [i64; 3]) -> ExBudget {
         ExBudget::new(
             self.verify_ed25519_signature.mem.cost(args),
@@ -264,6 +288,7 @@ impl BuiltinCosts {
         )
     }
 
+    #[inline(always)]
     pub fn verify_ecdsa_secp256k1_signature(&self, args: [i64; 3]) -> ExBudget {
         ExBudget::new(
             self.verify_ecdsa_secp256k1_signature.mem.cost(args),
@@ -271,6 +296,7 @@ impl BuiltinCosts {
         )
     }
 
+    #[inline(always)]
     pub fn verify_schnorr_secp256k1_signature(&self, args: [i64; 3]) -> ExBudget {
         ExBudget::new(
             self.verify_schnorr_secp256k1_signature.mem.cost(args),
@@ -278,6 +304,7 @@ impl BuiltinCosts {
         )
     }
 
+    #[inline(always)]
     pub fn equals_string(&self, args: [i64; 2]) -> ExBudget {
         ExBudget::new(
             self.equals_string.mem.cost(args),
@@ -285,6 +312,7 @@ impl BuiltinCosts {
         )
     }
 
+    #[inline(always)]
     pub fn encode_utf8(&self, args: [i64; 1]) -> ExBudget {
         ExBudget::new(
             self.encode_utf8.mem.cost(args),
@@ -292,6 +320,7 @@ impl BuiltinCosts {
         )
     }
 
+    #[inline(always)]
     pub fn decode_utf8(&self, args: [i64; 1]) -> ExBudget {
         ExBudget::new(
             self.decode_utf8.mem.cost(args),
@@ -299,6 +328,7 @@ impl BuiltinCosts {
         )
     }
 
+    #[inline(always)]
     pub fn choose_unit(&self, args: [i64; 2]) -> ExBudget {
         ExBudget::new(
             self.choose_unit.mem.cost(args),
@@ -306,14 +336,17 @@ impl BuiltinCosts {
         )
     }
 
+    #[inline(always)]
     pub fn fst_pair(&self, args: [i64; 1]) -> ExBudget {
         ExBudget::new(self.fst_pair.mem.cost(args), self.fst_pair.cpu.cost(args))
     }
 
+    #[inline(always)]
     pub fn snd_pair(&self, args: [i64; 1]) -> ExBudget {
         ExBudget::new(self.snd_pair.mem.cost(args), self.snd_pair.cpu.cost(args))
     }
 
+    #[inline(always)]
     pub fn choose_list(&self, args: [i64; 3]) -> ExBudget {
         ExBudget::new(
             self.choose_list.mem.cost(args),
@@ -321,22 +354,27 @@ impl BuiltinCosts {
         )
     }
 
+    #[inline(always)]
     pub fn mk_cons(&self, args: [i64; 2]) -> ExBudget {
         ExBudget::new(self.mk_cons.mem.cost(args), self.mk_cons.cpu.cost(args))
     }
 
+    #[inline(always)]
     pub fn head_list(&self, args: [i64; 1]) -> ExBudget {
         ExBudget::new(self.head_list.mem.cost(args), self.head_list.cpu.cost(args))
     }
 
+    #[inline(always)]
     pub fn tail_list(&self, args: [i64; 1]) -> ExBudget {
         ExBudget::new(self.tail_list.mem.cost(args), self.tail_list.cpu.cost(args))
     }
 
+    #[inline(always)]
     pub fn null_list(&self, args: [i64; 1]) -> ExBudget {
         ExBudget::new(self.null_list.mem.cost(args), self.null_list.cpu.cost(args))
     }
 
+    #[inline(always)]
     pub fn choose_data(&self, args: [i64; 6]) -> ExBudget {
         ExBudget::new(
             self.choose_data.mem.cost(args),
@@ -344,6 +382,7 @@ impl BuiltinCosts {
         )
     }
 
+    #[inline(always)]
     pub fn constr_data(&self, args: [i64; 2]) -> ExBudget {
         ExBudget::new(
             self.constr_data.mem.cost(args),
@@ -351,16 +390,77 @@ impl BuiltinCosts {
         )
     }
 
+    #[inline(always)]
     pub fn list_data(&self, args: [i64; 1]) -> ExBudget {
         ExBudget::new(self.list_data.mem.cost(args), self.list_data.cpu.cost(args))
     }
 
+    #[inline(always)]
     pub fn i_data(&self, args: [i64; 1]) -> ExBudget {
         ExBudget::new(self.i_data.mem.cost(args), self.i_data.cpu.cost(args))
     }
 
+    #[inline(always)]
     pub fn b_data(&self, args: [i64; 1]) -> ExBudget {
         ExBudget::new(self.b_data.mem.cost(args), self.b_data.cpu.cost(args))
+    }
+
+    #[inline(always)]
+    pub fn un_constr_data(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(
+            self.un_constr_data.mem.cost(args),
+            self.un_constr_data.cpu.cost(args),
+        )
+    }
+
+    #[inline(always)]
+    pub fn un_list_data(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(
+            self.un_list_data.mem.cost(args),
+            self.un_list_data.cpu.cost(args),
+        )
+    }
+
+    #[inline(always)]
+    pub fn un_i_data(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(self.un_i_data.mem.cost(args), self.un_i_data.cpu.cost(args))
+    }
+
+    #[inline(always)]
+    pub fn un_b_data(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(self.un_b_data.mem.cost(args), self.un_b_data.cpu.cost(args))
+    }
+
+    #[inline(always)]
+    pub fn equals_data(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.equals_data.mem.cost(args),
+            self.equals_data.cpu.cost(args),
+        )
+    }
+
+    #[inline(always)]
+    pub fn mk_pair_data(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.mk_pair_data.mem.cost(args),
+            self.mk_pair_data.cpu.cost(args),
+        )
+    }
+
+    #[inline(always)]
+    pub fn mk_nil_data(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(
+            self.mk_nil_data.mem.cost(args),
+            self.mk_nil_data.cpu.cost(args),
+        )
+    }
+
+    #[inline(always)]
+    pub fn mk_nil_pair_data(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(
+            self.mk_nil_pair_data.mem.cost(args),
+            self.mk_nil_pair_data.cpu.cost(args),
+        )
     }
 
     pub fn v3() -> Self {
