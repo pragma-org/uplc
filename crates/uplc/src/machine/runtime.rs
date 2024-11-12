@@ -1788,7 +1788,29 @@ impl<'a> Machine<'a> {
                 Ok(value)
             }
             DefaultFunction::IntegerToByteString => todo!(),
-            DefaultFunction::ByteStringToInteger => todo!(),
+            DefaultFunction::ByteStringToInteger => {
+                let endianness = runtime.args[0].unwrap_bool()?;
+                let bytes = runtime.args[1].unwrap_byte_string()?;
+
+                let budget = self.costs.builtin_costs.byte_string_to_integer([
+                    cost_model::BOOL_EX_MEM,
+                    cost_model::byte_string_ex_mem(bytes),
+                ]);
+
+                self.spend_budget(budget)?;
+
+                let number = if endianness {
+                    self.arena
+                        .alloc(Integer::from_digits(bytes, rug::integer::Order::MsfBe))
+                } else {
+                    self.arena
+                        .alloc(Integer::from_digits(bytes, rug::integer::Order::LsfLe))
+                };
+
+                let value = Value::integer(self.arena, number);
+
+                Ok(value)
+            }
         }
     }
 }
