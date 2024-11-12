@@ -17,7 +17,15 @@ pub fn integer_ex_mem(i: &Integer) -> i64 {
     }
 }
 
-fn integer_log2(i: BorrowInteger<'_>) -> i64 {
+pub fn integer_log2(i: BorrowInteger<'_>) -> i64 {
+    if i.is_zero() {
+        return 0;
+    }
+
+    (i.significant_bits() - 1) as i64
+}
+
+pub fn integer_log2_x(i: &Integer) -> i64 {
     if i.is_zero() {
         return 0;
     }

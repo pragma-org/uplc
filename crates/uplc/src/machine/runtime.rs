@@ -16,6 +16,8 @@ use crate::{
 
 use super::{cost_model, value::Value, Machine, MachineError};
 
+pub const INTEGER_TO_BYTE_STRING_MAXIMUM_OUTPUT_LENGTH: i64 = 8192;
+
 pub enum BuiltinSemantics {
     V1,
     V2,
@@ -1407,7 +1409,7 @@ impl<'a> Machine<'a> {
 
                 new.assign(computation);
 
-                let mut arg1 = integer_to_be_bytes(self.arena, new);
+                let mut arg1 = integer_to_be_bytes(self.arena, new, rug::integer::Order::MsfBe);
 
                 if size_scalar > arg1.len() {
                     let diff = size_scalar - arg1.len();
@@ -1595,7 +1597,7 @@ impl<'a> Machine<'a> {
 
                 new.assign(computation);
 
-                let mut arg1 = integer_to_be_bytes(self.arena, new);
+                let mut arg1 = integer_to_be_bytes(self.arena, new, rug::integer::Order::MsfBe);
 
                 if size_scalar > arg1.len() {
                     let diff = size_scalar - arg1.len();
@@ -1787,7 +1789,110 @@ impl<'a> Machine<'a> {
 
                 Ok(value)
             }
-            DefaultFunction::IntegerToByteString => todo!(),
+            DefaultFunction::IntegerToByteString => {
+                let endianness = runtime.args[0].unwrap_bool()?;
+                let size = runtime.args[1].unwrap_integer()?;
+                let input = runtime.args[2].unwrap_integer()?;
+
+                if size.is_negative() {
+                    return Err(MachineError::integer_to_byte_string_negative_size(size));
+                }
+
+                if *size > INTEGER_TO_BYTE_STRING_MAXIMUM_OUTPUT_LENGTH {
+                    return Err(MachineError::integer_to_byte_string_size_too_big(
+                        size,
+                        INTEGER_TO_BYTE_STRING_MAXIMUM_OUTPUT_LENGTH,
+                    ));
+                }
+
+                let arg1: i64 = i64::try_from(size).unwrap();
+
+                let arg1_exmem = if arg1 == 0 { 0 } else { ((arg1 - 1) / 8) + 1 };
+
+                let budget = self.costs.builtin_costs.integer_to_byte_string([
+                    cost_model::BOOL_EX_MEM,
+                    arg1_exmem,
+                    cost_model::integer_ex_mem(input),
+                ]);
+
+                self.spend_budget(budget)?;
+
+                // NOTE:
+                // We ought to also check for negative size and too large sizes. These checks
+                // however happens prior to calling the builtin as part of the costing step. So by
+                // the time we reach this builtin call, the size can be assumed to be
+                //
+                // >= 0 && < INTEGER_TO_BYTE_STRING_MAXIMUM_OUTPUT_LENGTH
+
+                if size.is_zero()
+                    && cost_model::integer_log2_x(input)
+                        >= 8 * INTEGER_TO_BYTE_STRING_MAXIMUM_OUTPUT_LENGTH
+                {
+                    let required = cost_model::integer_log2_x(input) / 8 + 1;
+
+                    return Err(MachineError::integer_to_byte_string_size_too_big(
+                        constant::integer_from(self.arena, required as i128),
+                        INTEGER_TO_BYTE_STRING_MAXIMUM_OUTPUT_LENGTH,
+                    ));
+                }
+
+                if input.is_negative() {
+                    return Err(MachineError::integer_to_byte_string_negative_input(input));
+                }
+
+                let size_unwrapped: usize = size.try_into().unwrap();
+
+                if input.is_zero() {
+                    let mut new_bytes = BumpVec::with_capacity_in(size_unwrapped, self.arena);
+
+                    unsafe {
+                        new_bytes.set_len(size_unwrapped);
+                    }
+
+                    new_bytes.fill(0);
+
+                    let value = Value::byte_string(self.arena, new_bytes);
+
+                    return Ok(value);
+                }
+
+                let mut bytes = if endianness {
+                    integer_to_be_bytes(self.arena, input, rug::integer::Order::MsfBe)
+                } else {
+                    integer_to_be_bytes(self.arena, input, rug::integer::Order::LsfLe)
+                };
+
+                if !size.is_zero() && bytes.len() > size_unwrapped {
+                    return Err(MachineError::integer_to_byte_string_size_too_small(
+                        size,
+                        bytes.len(),
+                    ));
+                }
+
+                if size_unwrapped > 0 {
+                    let padding_size = size_unwrapped - bytes.len();
+
+                    let mut padding = BumpVec::with_capacity_in(padding_size, self.arena);
+
+                    unsafe {
+                        padding.set_len(padding_size);
+                    }
+
+                    padding.fill(0);
+
+                    if endianness {
+                        padding.append(&mut bytes);
+
+                        bytes = padding;
+                    } else {
+                        bytes.append(&mut padding);
+                    }
+                };
+
+                let value = Value::byte_string(self.arena, bytes);
+
+                Ok(value)
+            }
             DefaultFunction::ByteStringToInteger => {
                 let endianness = runtime.args[0].unwrap_bool()?;
                 let bytes = runtime.args[1].unwrap_byte_string()?;
@@ -1815,7 +1920,11 @@ impl<'a> Machine<'a> {
     }
 }
 
-fn integer_to_be_bytes<'a>(arena: &'a Bump, num: &'a Integer) -> BumpVec<'a, u8> {
+fn integer_to_be_bytes<'a>(
+    arena: &'a Bump,
+    num: &'a Integer,
+    order: rug::integer::Order,
+) -> BumpVec<'a, u8> {
     // Get the minimum number of bytes needed
     let bits = num.significant_bits() as usize;
 
@@ -1829,7 +1938,7 @@ fn integer_to_be_bytes<'a>(arena: &'a Bump, num: &'a Integer) -> BumpVec<'a, u8>
     }
 
     // Write the number to bytes in big-endian format
-    num.write_digits(&mut bytes, rug::integer::Order::MsfBe);
+    num.write_digits(&mut bytes, order);
 
     bytes
 }
