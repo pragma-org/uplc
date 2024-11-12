@@ -148,7 +148,7 @@ pub fn builtin_from_str<'a>(arena: &'a Bump, name: &str) -> Option<&'a Term<'a>>
         "verifyEd25519Signature" => Some(Term::verify_ed25519_signature(arena)),
         "verifyEcdsaSecp256k1Signature" => Some(Term::verify_ecdsa_secp256k1_signature(arena)),
         "verifySchnorrSecp256k1Signature" => Some(Term::verify_schnorr_secp256k1_signature(arena)),
-        "appendString" => Some(Term::equals_string(arena)),
+        "appendString" => Some(Term::append_string(arena)),
         "equalsString" => Some(Term::equals_string(arena)),
         "encodeUtf8" => Some(Term::encode_utf8(arena)),
         "decodeUtf8" => Some(Term::decode_utf8(arena)),

@@ -278,6 +278,13 @@ impl BuiltinCosts {
         )
     }
 
+    pub fn append_string(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.append_string.mem.cost(args),
+            self.append_string.cpu.cost(args),
+        )
+    }
+
     pub fn equals_string(&self, args: [i64; 2]) -> ExBudget {
         ExBudget::new(
             self.equals_string.mem.cost(args),

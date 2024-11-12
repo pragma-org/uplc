@@ -738,7 +738,26 @@ impl<'a> Machine<'a> {
 
                 Ok(value)
             }
-            DefaultFunction::AppendString => todo!(),
+            DefaultFunction::AppendString => {
+                let arg1 = runtime.args[0].unwrap_string()?;
+                let arg2 = runtime.args[1].unwrap_string()?;
+
+                let budget = self.costs.builtin_costs.append_string([
+                    cost_model::string_ex_mem(arg1),
+                    cost_model::string_ex_mem(arg2),
+                ]);
+
+                self.spend_budget(budget)?;
+
+                let mut new = BumpString::new_in(self.arena);
+
+                new.push_str(arg1);
+                new.push_str(arg2);
+
+                let value = Value::string(self.arena, new);
+
+                Ok(value)
+            }
             DefaultFunction::EqualsString => {
                 let arg1 = runtime.args[0].unwrap_string()?;
                 let arg2 = runtime.args[1].unwrap_string()?;
