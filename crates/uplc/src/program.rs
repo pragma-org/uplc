@@ -48,7 +48,7 @@ impl<'a> Program<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct Version<'a>(&'a (usize, usize, usize));
 
 impl<'a> Version<'a> {
@@ -80,5 +80,9 @@ impl<'a> Version<'a> {
 
     pub fn is_valid_version(&'a self) -> bool {
         self.is_v1_0_0() || self.is_v1_1_0()
+    }
+
+    pub fn is_less_than_1_1_0(&'a self) -> bool {
+        self.0 .0 == 0 || self.0 .1 == 0
     }
 }

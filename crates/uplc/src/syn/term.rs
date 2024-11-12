@@ -1,7 +1,7 @@
-use bumpalo::Bump;
+use bumpalo::{collections::Vec as BumpVec, Bump};
 use chumsky::{prelude::*, Parser};
 
-use crate::term::Term;
+use crate::{data::PlutusData, term::Term};
 
 use super::{
     constant,
@@ -75,7 +75,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
             // Apply
             term.clone()
                 .padded()
-                .foldl_with(term.padded().repeated().at_least(1), |a, b, e| {
+                .foldl_with(term.clone().padded().repeated().at_least(1), |a, b, e| {
                     let state = e.state();
 
                     a.apply(state.arena, b)
@@ -114,6 +114,45 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
                     let state = e.state();
 
                     Term::error(state.arena)
+                }),
+            text::keyword("constr")
+                .padded()
+                .ignore_then(text::int(10).padded())
+                .then(term.clone().padded().repeated().collect::<Vec<&Term>>())
+                .delimited_by(just('('), just(')'))
+                .validate(|(tag, fields), e: &mut MapExtra<'a, '_>, emitter| {
+                    let state = e.state();
+
+                    let fields = BumpVec::from_iter_in(fields, state.arena);
+
+                    let ret = Term::constr(state.arena, tag.parse().unwrap(), fields);
+
+                    if state.is_less_than_1_1_0() {
+                        emitter.emit(Rich::custom(
+                            e.span(),
+                            "constr is not supported before 1.1.0",
+                        ));
+                    }
+
+                    ret
+                }),
+            text::keyword("case")
+                .padded()
+                .ignore_then(term.clone().padded())
+                .then(term.padded().repeated().collect::<Vec<&Term>>())
+                .delimited_by(just('('), just(')'))
+                .validate(|(tag, branches), e: &mut MapExtra<'a, '_>, emitter| {
+                    let state = e.state();
+
+                    let branches = BumpVec::from_iter_in(branches, state.arena);
+
+                    let ret = Term::case(state.arena, tag, branches);
+
+                    if state.is_less_than_1_1_0() {
+                        emitter.emit(Rich::custom(e.span(), "case is not supported before 1.1.0"));
+                    }
+
+                    ret
                 }),
         ))
         .boxed()
