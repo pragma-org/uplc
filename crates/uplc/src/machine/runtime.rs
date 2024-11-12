@@ -4,7 +4,6 @@ use bumpalo::{
     collections::{CollectIn, String as BumpString, Vec as BumpVec},
     Bump,
 };
-use once_cell::sync::Lazy;
 use rug::Assign;
 
 use crate::{
@@ -1402,18 +1401,13 @@ impl<'a> Machine<'a> {
 
                 let size_scalar = size_of::<blst::blst_scalar>();
 
-                let q = constant::integer(self.arena);
-                let r = constant::integer(self.arena);
+                let new = constant::integer(self.arena);
 
-                let mut new = (q, r);
-
-                let computation = arg1.div_rem_floor_ref(&SCALAR_PERIOD);
+                let computation = arg1.modulo_ref(&SCALAR_PERIOD);
 
                 new.assign(computation);
 
-                let (_, r) = new;
-
-                let mut arg1 = integer_to_be_bytes(self.arena, r);
+                let mut arg1 = integer_to_be_bytes(self.arena, new);
 
                 if size_scalar > arg1.len() {
                     let diff = size_scalar - arg1.len();
@@ -1582,7 +1576,61 @@ impl<'a> Machine<'a> {
 
                 Ok(value)
             }
-            DefaultFunction::Bls12_381_G2_ScalarMul => todo!(),
+            DefaultFunction::Bls12_381_G2_ScalarMul => {
+                let arg1 = runtime.args[0].unwrap_integer()?;
+                let arg2 = runtime.args[1].unwrap_bls12_381_g2_element()?;
+
+                let budget = self.costs.builtin_costs.bls12_381_g2_scalar_mul([
+                    cost_model::integer_ex_mem(arg1),
+                    cost_model::g2_element_ex_mem(),
+                ]);
+
+                self.spend_budget(budget)?;
+
+                let size_scalar = size_of::<blst::blst_scalar>();
+
+                let new = constant::integer(self.arena);
+
+                let computation = arg1.modulo_ref(&SCALAR_PERIOD);
+
+                new.assign(computation);
+
+                let mut arg1 = integer_to_be_bytes(self.arena, new);
+
+                if size_scalar > arg1.len() {
+                    let diff = size_scalar - arg1.len();
+
+                    let mut new_vec = BumpVec::with_capacity_in(diff, self.arena);
+
+                    unsafe {
+                        new_vec.set_len(diff);
+                    }
+
+                    new_vec.append(&mut arg1);
+
+                    arg1 = new_vec;
+                }
+
+                let out = self.arena.alloc(blst::blst_p2::default());
+                let scalar = self.arena.alloc(blst::blst_scalar::default());
+
+                unsafe {
+                    blst::blst_scalar_from_bendian(scalar as *mut _, arg1.as_ptr() as *const _);
+
+                    blst::blst_p2_mult(
+                        out as *mut _,
+                        arg2 as *const _,
+                        scalar.b.as_ptr() as *const _,
+                        size_scalar * 8,
+                    );
+                }
+
+                let constant = Constant::g2(self.arena, out);
+
+                let value = Value::con(self.arena, constant);
+
+                Ok(value)
+            }
             DefaultFunction::Bls12_381_G2_Equal => {
                 let arg1 = runtime.args[0].unwrap_bls12_381_g2_element()?;
                 let arg2 = runtime.args[1].unwrap_bls12_381_g2_element()?;
