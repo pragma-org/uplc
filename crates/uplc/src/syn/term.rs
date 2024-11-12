@@ -14,7 +14,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
             // Var
             text::ident()
                 .padded()
-                .validate(|v, e: &mut MapExtra<'a, '_>, emitter| {
+                .map_with(|v, e: &mut MapExtra<'a, '_>| {
                     let state = e.state();
 
                     let position = state.env.iter().rev().position(|&x| x == v);
@@ -22,8 +22,9 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
                     if position.is_none() {
                         let placeholder = Term::var(state.arena, 0);
 
-                        emitter.emit(Rich::custom(e.span(), "open term"));
-
+                        // this will fail at eval time
+                        // the conformance tests don't expect this
+                        // to fail at parse time
                         placeholder
                     } else {
                         let debruijn_index = state.env.len() - position.unwrap_or_default();
