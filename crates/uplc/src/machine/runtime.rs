@@ -1409,7 +1409,7 @@ impl<'a> Machine<'a> {
 
                 new.assign(computation);
 
-                let mut arg1 = integer_to_be_bytes(self.arena, new, rug::integer::Order::MsfBe);
+                let mut arg1 = integer_to_bytes(self.arena, new, rug::integer::Order::MsfBe);
 
                 if size_scalar > arg1.len() {
                     let diff = size_scalar - arg1.len();
@@ -1597,7 +1597,7 @@ impl<'a> Machine<'a> {
 
                 new.assign(computation);
 
-                let mut arg1 = integer_to_be_bytes(self.arena, new, rug::integer::Order::MsfBe);
+                let mut arg1 = integer_to_bytes(self.arena, new, rug::integer::Order::MsfBe);
 
                 if size_scalar > arg1.len() {
                     let diff = size_scalar - arg1.len();
@@ -1857,9 +1857,9 @@ impl<'a> Machine<'a> {
                 }
 
                 let mut bytes = if endianness {
-                    integer_to_be_bytes(self.arena, input, rug::integer::Order::MsfBe)
+                    integer_to_bytes(self.arena, input, rug::integer::Order::MsfBe)
                 } else {
-                    integer_to_be_bytes(self.arena, input, rug::integer::Order::LsfLe)
+                    integer_to_bytes(self.arena, input, rug::integer::Order::LsfLe)
                 };
 
                 if !size.is_zero() && bytes.len() > size_unwrapped {
@@ -1920,7 +1920,7 @@ impl<'a> Machine<'a> {
     }
 }
 
-fn integer_to_be_bytes<'a>(
+fn integer_to_bytes<'a>(
     arena: &'a Bump,
     num: &'a Integer,
     order: rug::integer::Order,
