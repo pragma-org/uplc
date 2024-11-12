@@ -436,6 +436,12 @@ impl<'a> Term<'a> {
         Term::builtin(arena, fun)
     }
 
+    pub fn un_map_data(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::UnMapData);
+
+        Term::builtin(arena, fun)
+    }
+
     pub fn un_list_data(arena: &'a Bump) -> &'a Term<'a> {
         let fun = arena.alloc(DefaultFunction::UnListData);
 
@@ -474,6 +480,102 @@ impl<'a> Term<'a> {
 
     pub fn mk_nil_pair_data(arena: &'a Bump) -> &'a Term<'a> {
         let fun = arena.alloc(DefaultFunction::MkNilPairData);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn bls12_381_g1_add(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::Bls12_381_G1_Add);
+
+        Term::builtin(arena, fun)
+    }
+    pub fn bls12_381_g1_neg(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::Bls12_381_G1_Neg);
+
+        Term::builtin(arena, fun)
+    }
+    pub fn bls12_381_g1_scalar_mul(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::Bls12_381_G1_ScalarMul);
+
+        Term::builtin(arena, fun)
+    }
+    pub fn bls12_381_g1_equal(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::Bls12_381_G1_Equal);
+
+        Term::builtin(arena, fun)
+    }
+    pub fn bls12_381_g1_compress(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::Bls12_381_G1_Compress);
+
+        Term::builtin(arena, fun)
+    }
+    pub fn bls12_381_g1_uncompress(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::Bls12_381_G1_Uncompress);
+
+        Term::builtin(arena, fun)
+    }
+    pub fn bls12_381_g1_hash_to_group(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::Bls12_381_G1_HashToGroup);
+
+        Term::builtin(arena, fun)
+    }
+    pub fn bls12_381_g2_add(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::Bls12_381_G2_Add);
+
+        Term::builtin(arena, fun)
+    }
+    pub fn bls12_381_g2_neg(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::Bls12_381_G2_Neg);
+
+        Term::builtin(arena, fun)
+    }
+    pub fn bls12_381_g2_scalar_mul(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::Bls12_381_G2_ScalarMul);
+
+        Term::builtin(arena, fun)
+    }
+    pub fn bls12_381_g2_equal(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::Bls12_381_G2_Equal);
+
+        Term::builtin(arena, fun)
+    }
+    pub fn bls12_381_g2_compress(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::Bls12_381_G2_Compress);
+
+        Term::builtin(arena, fun)
+    }
+    pub fn bls12_381_g2_uncompress(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::Bls12_381_G2_Uncompress);
+
+        Term::builtin(arena, fun)
+    }
+    pub fn bls12_381_g2_hash_to_group(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::Bls12_381_G2_HashToGroup);
+
+        Term::builtin(arena, fun)
+    }
+    pub fn bls12_381_miller_loop(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::Bls12_381_MillerLoop);
+
+        Term::builtin(arena, fun)
+    }
+    pub fn bls12_381_mul_ml_result(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::Bls12_381_MulMlResult);
+
+        Term::builtin(arena, fun)
+    }
+    pub fn bls12_381_final_verify(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::Bls12_381_FinalVerify);
+
+        Term::builtin(arena, fun)
+    }
+    pub fn integer_to_byte_string(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::IntegerToByteString);
+
+        Term::builtin(arena, fun)
+    }
+    pub fn byte_string_to_integer(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::ByteStringToInteger);
 
         Term::builtin(arena, fun)
     }

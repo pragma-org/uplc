@@ -67,20 +67,16 @@ pub fn constant_ex_mem(c: &Constant) -> i64 {
         Constant::ProtoList(_, items) => proto_list_ex_mem(items),
         Constant::ProtoPair(_, _, l, r) => pair_ex_mem(l, r),
         Constant::Data(d) => data_ex_mem(d),
-        Constant::Bls12_381G1Element(_) => size_of::<blst::blst_p1>() as i64 / 8,
-        Constant::Bls12_381G2Element(_) => size_of::<blst::blst_p2>() as i64 / 8,
-        Constant::Bls12_381MlResult(_) => size_of::<blst::blst_fp12>() as i64 / 8,
+        Constant::Bls12_381G1Element(_) => g1_element_ex_mem(),
+        Constant::Bls12_381G2Element(_) => g2_element_ex_mem(),
+        Constant::Bls12_381MlResult(_) => ml_result_ex_mem(),
     }
 }
 
 pub fn data_ex_mem(d: &PlutusData) -> i64 {
     match d {
         PlutusData::Constr { fields, .. } => data_list_ex_mem(fields),
-        PlutusData::Map(items) => {
-            4 + items
-                .iter()
-                .fold(0, |acc, (k, v)| acc + data_ex_mem(k) + data_ex_mem(v))
-        }
+        PlutusData::Map(items) => data_map_ex_mem(items),
         PlutusData::Integer(i) => data_integer_ex_mem(i),
         PlutusData::ByteString(b) => data_byte_string_ex_mem(b),
         PlutusData::List(items) => data_list_ex_mem(items),
@@ -97,6 +93,24 @@ pub fn data_byte_string_ex_mem(b: &[u8]) -> i64 {
 
 pub fn data_list_ex_mem(items: &[&PlutusData]) -> i64 {
     4 + items.iter().fold(0, |acc, d| acc + data_ex_mem(d))
+}
+
+pub fn data_map_ex_mem(items: &[(&PlutusData, &PlutusData)]) -> i64 {
+    4 + items
+        .iter()
+        .fold(0, |acc, (k, v)| acc + data_ex_mem(k) + data_ex_mem(v))
+}
+
+pub fn g1_element_ex_mem() -> i64 {
+    size_of::<blst::blst_p1>() as i64 / 8
+}
+
+pub fn g2_element_ex_mem() -> i64 {
+    size_of::<blst::blst_p2>() as i64 / 8
+}
+
+pub fn ml_result_ex_mem() -> i64 {
+    size_of::<blst::blst_fp12>() as i64 / 8
 }
 
 #[cfg(test)]

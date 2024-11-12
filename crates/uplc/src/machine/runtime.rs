@@ -4,11 +4,13 @@ use bumpalo::{
     collections::{CollectIn, String as BumpString, Vec as BumpVec},
     Bump,
 };
+use once_cell::sync::Lazy;
 use rug::Assign;
 
 use crate::{
+    bls::{Compressable, SCALAR_PERIOD},
     builtin::DefaultFunction,
-    constant::{self, Constant},
+    constant::{self, Constant, Integer},
     data::PlutusData,
     typ::Type,
 };
@@ -1170,7 +1172,39 @@ impl<'a> Machine<'a> {
 
                 Ok(value)
             }
-            DefaultFunction::UnMapData => todo!(),
+            DefaultFunction::UnMapData => {
+                let map = runtime.args[0]
+                    .unwrap_constant()?
+                    .unwrap_data()?
+                    .unwrap_map()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .un_map_data([cost_model::data_map_ex_mem(map)]);
+
+                self.spend_budget(budget)?;
+
+                let constant = Constant::proto_list(
+                    self.arena,
+                    Type::pair(self.arena, Type::data(self.arena), Type::data(self.arena)),
+                    map.iter()
+                        .map(|(k, v)| {
+                            Constant::proto_pair(
+                                self.arena,
+                                Type::data(self.arena),
+                                Type::data(self.arena),
+                                Constant::data(self.arena, k),
+                                Constant::data(self.arena, v),
+                            )
+                        })
+                        .collect_in(self.arena),
+                );
+
+                let value = Value::con(self.arena, constant);
+
+                Ok(value)
+            }
             DefaultFunction::UnListData => {
                 let list = runtime.args[0]
                     .unwrap_constant()?
@@ -1309,25 +1343,423 @@ impl<'a> Machine<'a> {
 
                 Ok(value)
             }
-            DefaultFunction::Bls12_381_G1_Add => todo!(),
-            DefaultFunction::Bls12_381_G1_Neg => todo!(),
-            DefaultFunction::Bls12_381_G1_ScalarMul => todo!(),
-            DefaultFunction::Bls12_381_G1_Equal => todo!(),
-            DefaultFunction::Bls12_381_G1_Compress => todo!(),
-            DefaultFunction::Bls12_381_G1_Uncompress => todo!(),
-            DefaultFunction::Bls12_381_G1_HashToGroup => todo!(),
-            DefaultFunction::Bls12_381_G2_Add => todo!(),
-            DefaultFunction::Bls12_381_G2_Neg => todo!(),
+            DefaultFunction::Bls12_381_G1_Add => {
+                let arg1 = runtime.args[0].unwrap_bls12_381_g1_element()?;
+                let arg2 = runtime.args[1].unwrap_bls12_381_g1_element()?;
+
+                let budget = self.costs.builtin_costs.bls12_381_g1_add([
+                    cost_model::g1_element_ex_mem(),
+                    cost_model::g1_element_ex_mem(),
+                ]);
+
+                self.spend_budget(budget)?;
+
+                let out = self.arena.alloc(blst::blst_p1::default());
+
+                unsafe {
+                    blst::blst_p1_add_or_double(out as *mut _, arg1 as *const _, arg2 as *const _);
+                }
+
+                let constant = Constant::g1(self.arena, out);
+
+                let value = Value::con(self.arena, constant);
+
+                Ok(value)
+            }
+            DefaultFunction::Bls12_381_G1_Neg => {
+                let arg1 = runtime.args[0].unwrap_bls12_381_g1_element()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .bls12_381_g1_neg([cost_model::g1_element_ex_mem()]);
+
+                self.spend_budget(budget)?;
+
+                let out = self.arena.alloc(*arg1);
+
+                unsafe {
+                    // second arg was true in the Cardano code
+                    blst::blst_p1_cneg(out as *mut _, true);
+                }
+
+                let constant = Constant::g1(self.arena, out);
+
+                let value = Value::con(self.arena, constant);
+
+                Ok(value)
+            }
+            DefaultFunction::Bls12_381_G1_ScalarMul => {
+                let arg1 = runtime.args[0].unwrap_integer()?;
+                let arg2 = runtime.args[1].unwrap_bls12_381_g1_element()?;
+
+                let budget = self.costs.builtin_costs.bls12_381_g1_scalar_mul([
+                    cost_model::integer_ex_mem(arg1),
+                    cost_model::g1_element_ex_mem(),
+                ]);
+
+                self.spend_budget(budget)?;
+
+                let size_scalar = size_of::<blst::blst_scalar>();
+
+                let q = constant::integer(self.arena);
+                let r = constant::integer(self.arena);
+
+                let mut new = (q, r);
+
+                let computation = arg1.div_rem_floor_ref(&SCALAR_PERIOD);
+
+                new.assign(computation);
+
+                let (_, r) = new;
+
+                let mut arg1 = integer_to_be_bytes(self.arena, r);
+
+                if size_scalar > arg1.len() {
+                    let diff = size_scalar - arg1.len();
+
+                    let mut new_vec = BumpVec::with_capacity_in(diff, self.arena);
+
+                    unsafe {
+                        new_vec.set_len(diff);
+                    }
+
+                    new_vec.append(&mut arg1);
+
+                    arg1 = new_vec;
+                }
+
+                let out = self.arena.alloc(blst::blst_p1::default());
+                let scalar = self.arena.alloc(blst::blst_scalar::default());
+
+                unsafe {
+                    blst::blst_scalar_from_bendian(scalar as *mut _, arg1.as_ptr() as *const _);
+
+                    blst::blst_p1_mult(
+                        out as *mut _,
+                        arg2 as *const _,
+                        scalar.b.as_ptr() as *const _,
+                        size_scalar * 8,
+                    );
+                }
+
+                let constant = Constant::g1(self.arena, out);
+
+                let value = Value::con(self.arena, constant);
+
+                Ok(value)
+            }
+            DefaultFunction::Bls12_381_G1_Equal => {
+                let arg1 = runtime.args[0].unwrap_bls12_381_g1_element()?;
+                let arg2 = runtime.args[1].unwrap_bls12_381_g1_element()?;
+
+                let budget = self.costs.builtin_costs.bls12_381_g1_equal([
+                    cost_model::g1_element_ex_mem(),
+                    cost_model::g1_element_ex_mem(),
+                ]);
+
+                self.spend_budget(budget)?;
+
+                let is_equal = unsafe { blst::blst_p1_is_equal(arg1, arg2) };
+
+                let value = Value::bool(self.arena, is_equal);
+
+                Ok(value)
+            }
+            DefaultFunction::Bls12_381_G1_Compress => {
+                let arg1 = runtime.args[0].unwrap_bls12_381_g1_element()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .bls12_381_g1_compress([cost_model::g1_element_ex_mem()]);
+
+                self.spend_budget(budget)?;
+
+                let out = arg1.compress(self.arena);
+
+                let value = Value::byte_string(self.arena, out);
+
+                Ok(value)
+            }
+            DefaultFunction::Bls12_381_G1_Uncompress => {
+                let arg1 = runtime.args[0].unwrap_byte_string()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .bls12_381_g1_uncompress([cost_model::byte_string_ex_mem(arg1)]);
+
+                self.spend_budget(budget)?;
+
+                let out = blst::blst_p1::uncompress(self.arena, arg1).map_err(MachineError::bls)?;
+
+                let constant = Constant::g1(self.arena, out);
+
+                let value = Value::con(self.arena, constant);
+
+                Ok(value)
+            }
+            DefaultFunction::Bls12_381_G1_HashToGroup => {
+                let arg1 = runtime.args[0].unwrap_byte_string()?;
+                let arg2 = runtime.args[1].unwrap_byte_string()?;
+
+                let budget = self.costs.builtin_costs.bls12_381_g1_hash_to_group([
+                    cost_model::byte_string_ex_mem(arg1),
+                    cost_model::byte_string_ex_mem(arg2),
+                ]);
+
+                self.spend_budget(budget)?;
+
+                if arg2.len() > 255 {
+                    return Err(MachineError::hash_to_curve_dst_too_big());
+                }
+
+                let out = self.arena.alloc(blst::blst_p1::default());
+                let aug = [];
+
+                unsafe {
+                    blst::blst_hash_to_g1(
+                        out as *mut _,
+                        arg1.as_ptr(),
+                        arg1.len(),
+                        arg2.as_ptr(),
+                        arg2.len(),
+                        aug.as_ptr(),
+                        0,
+                    );
+                };
+
+                let constant = Constant::g1(self.arena, out);
+
+                let value = Value::con(self.arena, constant);
+
+                Ok(value)
+            }
+            DefaultFunction::Bls12_381_G2_Add => {
+                let arg1 = runtime.args[0].unwrap_bls12_381_g2_element()?;
+                let arg2 = runtime.args[1].unwrap_bls12_381_g2_element()?;
+
+                let budget = self.costs.builtin_costs.bls12_381_g2_add([
+                    cost_model::g2_element_ex_mem(),
+                    cost_model::g2_element_ex_mem(),
+                ]);
+
+                self.spend_budget(budget)?;
+
+                let out = self.arena.alloc(blst::blst_p2::default());
+
+                unsafe {
+                    blst::blst_p2_add_or_double(out as *mut _, arg1 as *const _, arg2 as *const _);
+                }
+
+                let constant = Constant::g2(self.arena, out);
+
+                let value = Value::con(self.arena, constant);
+
+                Ok(value)
+            }
+            DefaultFunction::Bls12_381_G2_Neg => {
+                let arg1 = runtime.args[0].unwrap_bls12_381_g2_element()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .bls12_381_g2_neg([cost_model::g2_element_ex_mem()]);
+
+                self.spend_budget(budget)?;
+
+                let out = self.arena.alloc(*arg1);
+
+                unsafe {
+                    // second arg was true in the Cardano code
+                    blst::blst_p2_cneg(out as *mut _, true);
+                }
+
+                let constant = Constant::g2(self.arena, out);
+
+                let value = Value::con(self.arena, constant);
+
+                Ok(value)
+            }
             DefaultFunction::Bls12_381_G2_ScalarMul => todo!(),
-            DefaultFunction::Bls12_381_G2_Equal => todo!(),
-            DefaultFunction::Bls12_381_G2_Compress => todo!(),
-            DefaultFunction::Bls12_381_G2_Uncompress => todo!(),
-            DefaultFunction::Bls12_381_G2_HashToGroup => todo!(),
-            DefaultFunction::Bls12_381_MillerLoop => todo!(),
-            DefaultFunction::Bls12_381_MulMlResult => todo!(),
-            DefaultFunction::Bls12_381_FinalVerify => todo!(),
+            DefaultFunction::Bls12_381_G2_Equal => {
+                let arg1 = runtime.args[0].unwrap_bls12_381_g2_element()?;
+                let arg2 = runtime.args[1].unwrap_bls12_381_g2_element()?;
+
+                let budget = self.costs.builtin_costs.bls12_381_g2_equal([
+                    cost_model::g2_element_ex_mem(),
+                    cost_model::g2_element_ex_mem(),
+                ]);
+
+                self.spend_budget(budget)?;
+
+                let is_equal = unsafe { blst::blst_p2_is_equal(arg1, arg2) };
+
+                let value = Value::bool(self.arena, is_equal);
+
+                Ok(value)
+            }
+            DefaultFunction::Bls12_381_G2_Compress => {
+                let arg1 = runtime.args[0].unwrap_bls12_381_g2_element()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .bls12_381_g2_compress([cost_model::g2_element_ex_mem()]);
+
+                self.spend_budget(budget)?;
+
+                let out = arg1.compress(self.arena);
+
+                let value = Value::byte_string(self.arena, out);
+
+                Ok(value)
+            }
+            DefaultFunction::Bls12_381_G2_Uncompress => {
+                let arg1 = runtime.args[0].unwrap_byte_string()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .bls12_381_g2_uncompress([cost_model::byte_string_ex_mem(arg1)]);
+
+                self.spend_budget(budget)?;
+
+                let out = blst::blst_p2::uncompress(self.arena, arg1).map_err(MachineError::bls)?;
+
+                let constant = Constant::g2(self.arena, out);
+
+                let value = Value::con(self.arena, constant);
+
+                Ok(value)
+            }
+            DefaultFunction::Bls12_381_G2_HashToGroup => {
+                let arg1 = runtime.args[0].unwrap_byte_string()?;
+                let arg2 = runtime.args[1].unwrap_byte_string()?;
+
+                let budget = self.costs.builtin_costs.bls12_381_g2_hash_to_group([
+                    cost_model::byte_string_ex_mem(arg1),
+                    cost_model::byte_string_ex_mem(arg2),
+                ]);
+
+                self.spend_budget(budget)?;
+
+                if arg2.len() > 255 {
+                    return Err(MachineError::hash_to_curve_dst_too_big());
+                }
+
+                let out = self.arena.alloc(blst::blst_p2::default());
+                let aug = [];
+
+                unsafe {
+                    blst::blst_hash_to_g2(
+                        out as *mut _,
+                        arg1.as_ptr(),
+                        arg1.len(),
+                        arg2.as_ptr(),
+                        arg2.len(),
+                        aug.as_ptr(),
+                        0,
+                    );
+                };
+
+                let constant = Constant::g2(self.arena, out);
+
+                let value = Value::con(self.arena, constant);
+
+                Ok(value)
+            }
+            DefaultFunction::Bls12_381_MillerLoop => {
+                let arg1 = runtime.args[0].unwrap_bls12_381_g1_element()?;
+                let arg2 = runtime.args[1].unwrap_bls12_381_g2_element()?;
+
+                let budget = self.costs.builtin_costs.bls12_381_miller_loop([
+                    cost_model::g1_element_ex_mem(),
+                    cost_model::g2_element_ex_mem(),
+                ]);
+
+                self.spend_budget(budget)?;
+
+                let out = self.arena.alloc(blst::blst_fp12::default());
+
+                let affine1 = self.arena.alloc(blst::blst_p1_affine::default());
+                let affine2 = self.arena.alloc(blst::blst_p2_affine::default());
+
+                unsafe {
+                    blst::blst_p1_to_affine(affine1 as *mut _, arg1);
+                    blst::blst_p2_to_affine(affine2 as *mut _, arg2);
+
+                    blst::blst_miller_loop(out as *mut _, affine2, affine1);
+                }
+
+                let constant = Constant::ml_result(self.arena, out);
+
+                let value = Value::con(self.arena, constant);
+
+                Ok(value)
+            }
+            DefaultFunction::Bls12_381_MulMlResult => {
+                let arg1 = runtime.args[0].unwrap_bls12_381_ml_result()?;
+                let arg2 = runtime.args[1].unwrap_bls12_381_ml_result()?;
+
+                let budget = self.costs.builtin_costs.bls12_381_mul_ml_result([
+                    cost_model::ml_result_ex_mem(),
+                    cost_model::ml_result_ex_mem(),
+                ]);
+
+                self.spend_budget(budget)?;
+
+                let out = self.arena.alloc(blst::blst_fp12::default());
+
+                unsafe {
+                    blst::blst_fp12_mul(out as *mut _, arg1, arg2);
+                }
+
+                let constant = Constant::ml_result(self.arena, out);
+
+                let value = Value::con(self.arena, constant);
+
+                Ok(value)
+            }
+            DefaultFunction::Bls12_381_FinalVerify => {
+                let arg1 = runtime.args[0].unwrap_bls12_381_ml_result()?;
+                let arg2 = runtime.args[1].unwrap_bls12_381_ml_result()?;
+
+                let budget = self.costs.builtin_costs.bls12_381_final_verify([
+                    cost_model::ml_result_ex_mem(),
+                    cost_model::ml_result_ex_mem(),
+                ]);
+
+                self.spend_budget(budget)?;
+
+                let verified = unsafe { blst::blst_fp12_finalverify(arg1, arg2) };
+
+                let value = Value::bool(self.arena, verified);
+
+                Ok(value)
+            }
             DefaultFunction::IntegerToByteString => todo!(),
             DefaultFunction::ByteStringToInteger => todo!(),
         }
     }
+}
+
+fn integer_to_be_bytes<'a>(arena: &'a Bump, num: &'a Integer) -> BumpVec<'a, u8> {
+    // Get the minimum number of bytes needed
+    let bits = num.significant_bits() as usize;
+
+    let byte_len = (bits + 7) / 8;
+
+    // Create a vector with the required capacity
+    let mut bytes = BumpVec::with_capacity_in(byte_len, arena);
+
+    unsafe {
+        bytes.set_len(byte_len);
+    }
+
+    // Write the number to bytes in big-endian format
+    num.write_digits(&mut bytes, rug::integer::Order::MsfBe);
+
+    bytes
 }
