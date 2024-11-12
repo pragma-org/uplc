@@ -72,6 +72,22 @@ pub enum RuntimeError<'a> {
     Bls(#[from] BlsError),
     #[error("Bls Error: Hash to curve dst too big")]
     HashToCurveDstTooBig,
+    #[error(
+        "bytes size beyond limit when converting from integer\n{:>13} {0}\n{:>13} {1}",
+        "Size",
+        "Maximum"
+    )]
+    IntegerToByteStringSizeTooBig(&'a Integer, i64),
+    #[error(
+        "bytes size below limit when converting from integer\n{:>13} {0}\n{:>13} {1}",
+        "Size",
+        "Minimum"
+    )]
+    IntegerToByteStringSizeTooSmall(&'a Integer, usize),
+    #[error("integerToByteString encountered negative input\n{:>13} {0}", "Input")]
+    IntegerToByteStringNegativeInput(&'a Integer),
+    #[error("integerToByteString encountered negative size\n{:>13} {0}", "Size")]
+    IntegerToByteStringNegativeSize(&'a Integer),
 }
 
 impl<'a> MachineError<'a> {
@@ -141,5 +157,25 @@ impl<'a> MachineError<'a> {
 
     pub fn hash_to_curve_dst_too_big() -> Self {
         MachineError::runtime(RuntimeError::HashToCurveDstTooBig)
+    }
+
+    pub fn integer_to_byte_string_size_too_big(integer: &'a Integer, maximum: i64) -> Self {
+        MachineError::runtime(RuntimeError::IntegerToByteStringSizeTooBig(
+            integer, maximum,
+        ))
+    }
+
+    pub fn integer_to_byte_string_size_too_small(integer: &'a Integer, minimum: usize) -> Self {
+        MachineError::runtime(RuntimeError::IntegerToByteStringSizeTooSmall(
+            integer, minimum,
+        ))
+    }
+
+    pub fn integer_to_byte_string_negative_input(integer: &'a Integer) -> Self {
+        MachineError::runtime(RuntimeError::IntegerToByteStringNegativeInput(integer))
+    }
+
+    pub fn integer_to_byte_string_negative_size(integer: &'a Integer) -> Self {
+        MachineError::runtime(RuntimeError::IntegerToByteStringNegativeSize(integer))
     }
 }
