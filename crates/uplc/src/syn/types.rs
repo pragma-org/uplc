@@ -1,10 +1,12 @@
 use bumpalo::Bump;
 use chumsky::{input, prelude::*};
 
+use crate::program::Version;
+
 pub struct State<'a> {
     pub arena: &'a Bump,
     pub env: Vec<&'a str>,
-    pub context: Context,
+    pub version: Option<Version<'a>>,
 }
 
 impl<'a> State<'a> {
@@ -12,21 +14,20 @@ impl<'a> State<'a> {
         Self {
             arena,
             env: Vec::new(),
-            context: Context::default(),
+            version: None,
         }
     }
 
-    pub fn set_context(&mut self, context: Context) {
-        self.context = context;
+    pub fn set_version(&mut self, version: Version<'a>) {
+        self.version = Some(version);
+    }
+
+    pub fn is_less_than_1_1_0(&self) -> bool {
+        self.version
+            .map(|v| v.is_less_than_1_1_0())
+            .unwrap_or(false)
     }
 }
 
-#[derive(Default)]
-pub enum Context {
-    #[default]
-    V1_0_0,
-    V1_1_0,
-}
-
-pub type Extra<'a> = extra::Full<Rich<'a, char>, State<'a>, Context>;
+pub type Extra<'a> = extra::Full<Rich<'a, char>, State<'a>, ()>;
 pub type MapExtra<'a, 'b> = input::MapExtra<'a, 'b, &'a str, Extra<'a>>;
