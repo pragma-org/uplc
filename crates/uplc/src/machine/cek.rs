@@ -20,7 +20,7 @@ pub struct Machine<'a> {
     unbudgeted_steps: [u8; 10],
     pub(super) costs: CostModel,
     slippage: u8,
-    logs: Vec<String>,
+    pub(super) logs: Vec<String>,
     pub(super) semantics: BuiltinSemantics,
 }
 
