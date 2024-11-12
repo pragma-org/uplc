@@ -3,6 +3,7 @@ use std::array::TryFromSliceError;
 use bumpalo::collections::Vec as BumpVec;
 
 use crate::{
+    bls::BlsError,
     constant::{Constant, Integer},
     data::PlutusData,
     term::Term,
@@ -67,6 +68,10 @@ pub enum RuntimeError<'a> {
     Secp256k1(#[from] secp256k1::Error),
     #[error(transparent)]
     DecodeUtf8(#[from] std::str::Utf8Error),
+    #[error(transparent)]
+    Bls(#[from] BlsError),
+    #[error("Bls Error: Hash to curve dst too big")]
+    HashToCurveDstTooBig,
 }
 
 impl<'a> MachineError<'a> {
@@ -128,5 +133,13 @@ impl<'a> MachineError<'a> {
 
     pub fn decode_utf8(error: std::str::Utf8Error) -> Self {
         MachineError::runtime(RuntimeError::DecodeUtf8(error))
+    }
+
+    pub fn bls(error: BlsError) -> Self {
+        MachineError::runtime(RuntimeError::Bls(error))
+    }
+
+    pub fn hash_to_curve_dst_too_big() -> Self {
+        MachineError::runtime(RuntimeError::HashToCurveDstTooBig)
     }
 }

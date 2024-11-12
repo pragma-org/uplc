@@ -99,7 +99,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
                     } else {
                         let builtin = Term::error(state.arena);
 
-                        emitter.emit(Rich::custom(e.span(), "unknown builtin"));
+                        emitter.emit(Rich::custom(e.span(), format!("unknown builtin {v}")));
 
                         builtin
                     }
@@ -168,6 +168,7 @@ pub fn builtin_from_str<'a>(arena: &'a Bump, name: &str) -> Option<&'a Term<'a>>
         "iData" => Some(Term::i_data(arena)),
         "bData" => Some(Term::b_data(arena)),
         "unConstrData" => Some(Term::un_constr_data(arena)),
+        "unMapData" => Some(Term::un_map_data(arena)),
         "unListData" => Some(Term::un_list_data(arena)),
         "unIData" => Some(Term::un_i_data(arena)),
         "unBData" => Some(Term::un_b_data(arena)),
@@ -175,6 +176,25 @@ pub fn builtin_from_str<'a>(arena: &'a Bump, name: &str) -> Option<&'a Term<'a>>
         "mkPairData" => Some(Term::mk_pair_data(arena)),
         "mkNilData" => Some(Term::mk_nil_data(arena)),
         "mkNilPairData" => Some(Term::mk_nil_pair_data(arena)),
+        "bls12_381_G1_add" => Some(Term::bls12_381_g1_add(arena)),
+        "bls12_381_G1_neg" => Some(Term::bls12_381_g1_neg(arena)),
+        "bls12_381_G1_scalarMul" => Some(Term::bls12_381_g1_scalar_mul(arena)),
+        "bls12_381_G1_equal" => Some(Term::bls12_381_g1_equal(arena)),
+        "bls12_381_G1_compress" => Some(Term::bls12_381_g1_compress(arena)),
+        "bls12_381_G1_uncompress" => Some(Term::bls12_381_g1_uncompress(arena)),
+        "bls12_381_G1_hashToGroup" => Some(Term::bls12_381_g1_hash_to_group(arena)),
+        "bls12_381_G2_add" => Some(Term::bls12_381_g2_add(arena)),
+        "bls12_381_G2_neg" => Some(Term::bls12_381_g2_neg(arena)),
+        "bls12_381_G2_scalarMul" => Some(Term::bls12_381_g2_scalar_mul(arena)),
+        "bls12_381_G2_equal" => Some(Term::bls12_381_g2_equal(arena)),
+        "bls12_381_G2_compress" => Some(Term::bls12_381_g2_compress(arena)),
+        "bls12_381_G2_uncompress" => Some(Term::bls12_381_g2_uncompress(arena)),
+        "bls12_381_G2_hashToGroup" => Some(Term::bls12_381_g2_hash_to_group(arena)),
+        "bls12_381_millerLoop" => Some(Term::bls12_381_miller_loop(arena)),
+        "bls12_381_mulMlResult" => Some(Term::bls12_381_mul_ml_result(arena)),
+        "bls12_381_finalVerify" => Some(Term::bls12_381_final_verify(arena)),
+        "integerToByteString" => Some(Term::integer_to_byte_string(arena)),
+        "byteStringToInteger" => Some(Term::byte_string_to_integer(arena)),
         _ => None,
     }
 }

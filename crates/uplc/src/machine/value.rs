@@ -187,6 +187,36 @@ impl<'a> Value<'a> {
 
         Ok(())
     }
+
+    pub fn unwrap_bls12_381_g1_element(&'a self) -> Result<&'a blst::blst_p1, MachineError<'a>> {
+        let inner = self.unwrap_constant()?;
+
+        let Constant::Bls12_381G1Element(g1) = inner else {
+            return Err(MachineError::type_mismatch(Type::Bls12_381G1Element, inner));
+        };
+
+        Ok(g1)
+    }
+
+    pub fn unwrap_bls12_381_g2_element(&'a self) -> Result<&'a blst::blst_p2, MachineError<'a>> {
+        let inner = self.unwrap_constant()?;
+
+        let Constant::Bls12_381G2Element(g2) = inner else {
+            return Err(MachineError::type_mismatch(Type::Bls12_381G2Element, inner));
+        };
+
+        Ok(g2)
+    }
+
+    pub fn unwrap_bls12_381_ml_result(&'a self) -> Result<&'a blst::blst_fp12, MachineError<'a>> {
+        let inner = self.unwrap_constant()?;
+
+        let Constant::Bls12_381MlResult(ml_res) = inner else {
+            return Err(MachineError::type_mismatch(Type::Bls12_381MlResult, inner));
+        };
+
+        Ok(ml_res)
+    }
 }
 
 impl<'a> Constant<'a> {

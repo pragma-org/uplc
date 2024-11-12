@@ -95,6 +95,10 @@ impl<'a> Constant<'a> {
         arena.alloc(Constant::Bls12_381G2Element(g2))
     }
 
+    pub fn ml_result(arena: &'a Bump, ml_res: &'a blst::blst_fp12) -> &'a Constant<'a> {
+        arena.alloc(Constant::Bls12_381MlResult(ml_res))
+    }
+
     pub fn unwrap_data(&'a self) -> Result<&'a PlutusData<'a>, MachineError<'a>> {
         match self {
             Constant::Data(data) => Ok(data),

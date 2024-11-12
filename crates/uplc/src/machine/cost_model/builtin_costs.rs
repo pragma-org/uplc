@@ -385,6 +385,13 @@ impl BuiltinCosts {
         )
     }
 
+    pub fn un_map_data(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(
+            self.un_map_data.mem.cost(args),
+            self.un_map_data.cpu.cost(args),
+        )
+    }
+
     pub fn un_list_data(&self, args: [i64; 1]) -> ExBudget {
         ExBudget::new(
             self.un_list_data.mem.cost(args),
@@ -425,6 +432,139 @@ impl BuiltinCosts {
         ExBudget::new(
             self.mk_nil_pair_data.mem.cost(args),
             self.mk_nil_pair_data.cpu.cost(args),
+        )
+    }
+
+    pub fn bls12_381_g1_add(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.bls12_381_g1_add.mem.cost(args),
+            self.bls12_381_g1_add.cpu.cost(args),
+        )
+    }
+
+    pub fn bls12_381_g1_neg(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(
+            self.bls12_381_g1_neg.mem.cost(args),
+            self.bls12_381_g1_neg.cpu.cost(args),
+        )
+    }
+
+    pub fn bls12_381_g1_scalar_mul(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.bls12_381_g1_scalar_mul.mem.cost(args),
+            self.bls12_381_g1_scalar_mul.cpu.cost(args),
+        )
+    }
+
+    pub fn bls12_381_g1_equal(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.bls12_381_g1_equal.mem.cost(args),
+            self.bls12_381_g1_equal.cpu.cost(args),
+        )
+    }
+
+    pub fn bls12_381_g1_compress(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(
+            self.bls12_381_g1_compress.mem.cost(args),
+            self.bls12_381_g1_compress.cpu.cost(args),
+        )
+    }
+
+    pub fn bls12_381_g1_uncompress(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(
+            self.bls12_381_g1_uncompress.mem.cost(args),
+            self.bls12_381_g1_uncompress.cpu.cost(args),
+        )
+    }
+
+    pub fn bls12_381_g1_hash_to_group(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.bls12_381_g1_hash_to_group.mem.cost(args),
+            self.bls12_381_g1_hash_to_group.cpu.cost(args),
+        )
+    }
+
+    pub fn bls12_381_g2_add(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.bls12_381_g2_add.mem.cost(args),
+            self.bls12_381_g2_add.cpu.cost(args),
+        )
+    }
+
+    pub fn bls12_381_g2_neg(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(
+            self.bls12_381_g2_neg.mem.cost(args),
+            self.bls12_381_g2_neg.cpu.cost(args),
+        )
+    }
+
+    pub fn bls12_381_g2_scalar_mul(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.bls12_381_g2_scalar_mul.mem.cost(args),
+            self.bls12_381_g2_scalar_mul.cpu.cost(args),
+        )
+    }
+
+    pub fn bls12_381_g2_equal(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.bls12_381_g2_equal.mem.cost(args),
+            self.bls12_381_g2_equal.cpu.cost(args),
+        )
+    }
+
+    pub fn bls12_381_g2_compress(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(
+            self.bls12_381_g2_compress.mem.cost(args),
+            self.bls12_381_g2_compress.cpu.cost(args),
+        )
+    }
+
+    pub fn bls12_381_g2_uncompress(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(
+            self.bls12_381_g2_uncompress.mem.cost(args),
+            self.bls12_381_g2_uncompress.cpu.cost(args),
+        )
+    }
+
+    pub fn bls12_381_g2_hash_to_group(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.bls12_381_g2_hash_to_group.mem.cost(args),
+            self.bls12_381_g2_hash_to_group.cpu.cost(args),
+        )
+    }
+
+    pub fn bls12_381_miller_loop(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.bls12_381_miller_loop.mem.cost(args),
+            self.bls12_381_miller_loop.cpu.cost(args),
+        )
+    }
+
+    pub fn bls12_381_mul_ml_result(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.bls12_381_mul_ml_result.mem.cost(args),
+            self.bls12_381_mul_ml_result.cpu.cost(args),
+        )
+    }
+
+    pub fn bls12_381_final_verify(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.bls12_381_final_verify.mem.cost(args),
+            self.bls12_381_final_verify.cpu.cost(args),
+        )
+    }
+
+    pub fn integer_to_byte_string(&self, args: [i64; 3]) -> ExBudget {
+        ExBudget::new(
+            self.integer_to_byte_string.mem.cost(args),
+            self.integer_to_byte_string.cpu.cost(args),
+        )
+    }
+
+    pub fn byte_string_to_integer(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.byte_string_to_integer.mem.cost(args),
+            self.byte_string_to_integer.cpu.cost(args),
         )
     }
 
