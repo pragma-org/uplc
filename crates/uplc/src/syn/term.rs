@@ -1,7 +1,7 @@
 use bumpalo::{collections::Vec as BumpVec, Bump};
 use chumsky::{prelude::*, Parser};
 
-use crate::{data::PlutusData, term::Term};
+use crate::term::Term;
 
 use super::{
     constant,
