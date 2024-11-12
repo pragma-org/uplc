@@ -313,6 +313,10 @@ impl BuiltinCosts {
         )
     }
 
+    pub fn trace(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(self.trace.mem.cost(args), self.trace.cpu.cost(args))
+    }
+
     pub fn fst_pair(&self, args: [i64; 1]) -> ExBudget {
         ExBudget::new(self.fst_pair.mem.cost(args), self.fst_pair.cpu.cost(args))
     }
@@ -356,6 +360,10 @@ impl BuiltinCosts {
             self.constr_data.mem.cost(args),
             self.constr_data.cpu.cost(args),
         )
+    }
+
+    pub fn map_data(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(self.map_data.mem.cost(args), self.map_data.cpu.cost(args))
     }
 
     pub fn list_data(&self, args: [i64; 1]) -> ExBudget {

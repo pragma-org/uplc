@@ -346,6 +346,12 @@ impl<'a> Term<'a> {
         Term::builtin(arena, fun)
     }
 
+    pub fn trace(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::Trace);
+
+        Term::builtin(arena, fun)
+    }
+
     pub fn fst_pair(arena: &'a Bump) -> &'a Term<'a> {
         let fun = arena.alloc(DefaultFunction::FstPair);
 
@@ -396,6 +402,12 @@ impl<'a> Term<'a> {
 
     pub fn constr_data(arena: &'a Bump) -> &'a Term<'a> {
         let fun = arena.alloc(DefaultFunction::ConstrData);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn map_data(arena: &'a Bump) -> &'a Term<'a> {
+        let fun = arena.alloc(DefaultFunction::MapData);
 
         Term::builtin(arena, fun)
     }

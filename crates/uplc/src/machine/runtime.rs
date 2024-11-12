@@ -823,7 +823,21 @@ impl<'a> Machine<'a> {
 
                 Ok(arg2)
             }
-            DefaultFunction::Trace => todo!(),
+            DefaultFunction::Trace => {
+                let arg1 = runtime.args[0].unwrap_string()?;
+                let arg2 = runtime.args[1];
+
+                let budget = self.costs.builtin_costs.trace([
+                    cost_model::string_ex_mem(arg1),
+                    cost_model::value_ex_mem(arg2),
+                ]);
+
+                self.spend_budget(budget)?;
+
+                self.logs.push(arg1.to_string());
+
+                Ok(arg2)
+            }
             DefaultFunction::FstPair => {
                 let (_, _, first, second) = runtime.args[0].unwrap_pair()?;
 
@@ -1016,7 +1030,51 @@ impl<'a> Machine<'a> {
 
                 Ok(value)
             }
-            DefaultFunction::MapData => todo!(),
+            DefaultFunction::MapData => {
+                let (r#type, list) = runtime.args[0].unwrap_list()?;
+
+                if !matches!(r#type, Type::Pair(Type::Data, Type::Data)) {
+                    return Err(MachineError::type_mismatch(
+                        Type::List(Type::pair(
+                            self.arena,
+                            Type::data(self.arena),
+                            Type::data(self.arena),
+                        )),
+                        runtime.args[0].unwrap_constant()?,
+                    ));
+                }
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .map_data([cost_model::proto_list_ex_mem(list)]);
+
+                self.spend_budget(budget)?;
+
+                let mut map = BumpVec::new_in(self.arena);
+
+                for item in list {
+                    let Constant::ProtoPair(Type::Data, Type::Data, left, right) = item else {
+                        unreachable!("is this really unreachable?")
+                    };
+
+                    let Constant::Data(key) = left else {
+                        unreachable!()
+                    };
+
+                    let Constant::Data(value) = right else {
+                        unreachable!()
+                    };
+
+                    map.push((*key, *value));
+                }
+
+                let value = PlutusData::map(self.arena, map)
+                    .constant(self.arena)
+                    .value(self.arena);
+
+                Ok(value)
+            }
             DefaultFunction::ListData => {
                 let (typ, fields) = runtime.args[0].unwrap_list()?;
 
