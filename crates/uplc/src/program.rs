@@ -85,4 +85,16 @@ impl<'a> Version<'a> {
     pub fn is_less_than_1_1_0(&'a self) -> bool {
         self.0 .0 == 0 || self.0 .1 == 0
     }
+
+    pub fn major(&'a self) -> usize {
+        self.0 .0
+    }
+
+    pub fn minor(&'a self) -> usize {
+        self.0 .1
+    }
+
+    pub fn patch(&'a self) -> usize {
+        self.0 .2
+    }
 }

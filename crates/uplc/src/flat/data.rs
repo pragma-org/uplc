@@ -4,7 +4,7 @@ use rug::ops::NegAssign;
 
 use crate::data::PlutusData;
 
-use super::decode::Ctx;
+use super::Ctx;
 
 impl<'a, 'b> minicbor::decode::Decode<'b, Ctx<'a>> for &'a PlutusData<'a> {
     fn decode(
