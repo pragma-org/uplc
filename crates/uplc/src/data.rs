@@ -2,7 +2,7 @@ use bumpalo::{collections::Vec as BumpVec, Bump};
 
 use crate::{
     constant::{integer_from, Constant, Integer},
-    flat::decode::Ctx,
+    flat::Ctx,
     machine::MachineError,
 };
 

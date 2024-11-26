@@ -1,3 +1,4 @@
+pub mod bind;
 pub mod bls;
 pub mod builtin;
 pub mod constant;

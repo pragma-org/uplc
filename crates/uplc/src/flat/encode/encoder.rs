@@ -1,0 +1,149 @@
+use super::FlatEncodeError;
+
+#[derive(Default)]
+pub struct Encoder {
+    pub buffer: Vec<u8>,
+    // Int
+    used_bits: i64,
+    // Int
+    current_byte: u8,
+}
+
+impl Encoder {
+    /// Encode a unsigned integer of any size.
+    /// This is byte alignment agnostic.
+    /// We encode the 7 least significant bits of the unsigned byte. If the char
+    /// value is greater than 127 we encode a leading 1 followed by
+    /// repeating the above for the next 7 bits and so on.
+    pub fn word(&mut self, c: usize) -> &mut Self {
+        let mut d = c;
+        loop {
+            let mut w = (d & 127) as u8;
+            d >>= 7;
+
+            if d != 0 {
+                w |= 128;
+            }
+            self.bits(8, w);
+
+            if d == 0 {
+                break;
+            }
+        }
+
+        self
+    }
+
+    /// Encodes up to 8 bits of information and is byte alignment agnostic.
+    /// Uses unused bits in the current byte to write out the passed in byte
+    /// value. Overflows to the most significant digits of the next byte if
+    /// number of bits to use is greater than unused bits. Expects that
+    /// number of bits to use is greater than or equal to required bits by the
+    /// value. The param num_bits is i64 to match unused_bits type.
+    pub fn bits(&mut self, num_bits: i64, val: u8) -> &mut Self {
+        match (num_bits, val) {
+            (1, 0) => self.zero(),
+            (1, 1) => self.one(),
+            (2, 0) => {
+                self.zero();
+                self.zero();
+            }
+            (2, 1) => {
+                self.zero();
+                self.one();
+            }
+            (2, 2) => {
+                self.one();
+                self.zero();
+            }
+            (2, 3) => {
+                self.one();
+                self.one();
+            }
+            (_, _) => {
+                self.used_bits += num_bits;
+                let unused_bits = 8 - self.used_bits;
+                match unused_bits {
+                    0 => {
+                        self.current_byte |= val;
+                        self.next_word();
+                    }
+                    x if x > 0 => {
+                        self.current_byte |= val << x;
+                    }
+                    x => {
+                        let used = -x;
+                        self.current_byte |= val >> used;
+                        self.next_word();
+                        self.current_byte = val << (8 - used);
+                        self.used_bits = used;
+                    }
+                }
+            }
+        }
+
+        self
+    }
+
+    /// Encode a list of bytes with a function
+    /// This is byte alignment agnostic.
+    /// If there are bytes in a list then write 1 bit followed by the functions
+    /// encoding. After the last item write a 0 bit. If the list is empty
+    /// only encode a 0 bit.
+    pub fn list_with<T>(
+        &mut self,
+        list: &[T],
+        encoder_func: for<'r> fn(&'r mut Encoder, &T) -> Result<(), FlatEncodeError>,
+    ) -> Result<&mut Self, FlatEncodeError> {
+        for item in list {
+            self.one();
+
+            encoder_func(self, item)?;
+        }
+
+        self.zero();
+
+        Ok(self)
+    }
+
+    /// A filler amount of end 0's followed by a 1 at the end of a byte.
+    /// Used to byte align the buffer by padding out the rest of the byte.
+    pub fn filler(&mut self) -> &mut Self {
+        self.current_byte |= 1;
+        self.next_word();
+
+        self
+    }
+
+    /// Write a 0 bit into the current byte.
+    /// Write out to buffer if last used bit in the current byte.
+    fn zero(&mut self) {
+        if self.used_bits == 7 {
+            self.next_word();
+        } else {
+            self.used_bits += 1;
+        }
+    }
+
+    /// Write a 1 bit into the current byte.
+    /// Write out to buffer if last used bit in the current byte.
+    fn one(&mut self) {
+        if self.used_bits == 7 {
+            self.current_byte |= 1;
+            self.next_word();
+        } else {
+            self.current_byte |= 128 >> self.used_bits;
+            self.used_bits += 1;
+        }
+    }
+
+    /// Write the current byte out to the buffer and begin next byte to write
+    /// out. Add current byte to the buffer and set current byte and used
+    /// bits to 0.
+    fn next_word(&mut self) {
+        self.buffer.push(self.current_byte);
+
+        self.current_byte = 0;
+        self.used_bits = 0;
+    }
+}
