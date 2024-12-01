@@ -23,7 +23,7 @@ pub fn encode<'a>(program: &'a Program<'a>) -> Result<Vec<u8>, FlatEncodeError> 
     Ok(encoder.buffer)
 }
 
-pub fn encode_term<'a>(encoder: &mut Encoder, term: &'a Term<'a>) -> Result<(), FlatEncodeError> {
+fn encode_term<'a>(encoder: &mut Encoder, term: &'a Term<'a>) -> Result<(), FlatEncodeError> {
     match term {
         Term::Var(name) => {
             encode_term_tag(encoder, tag::VAR)?;
