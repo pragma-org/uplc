@@ -1,34 +1,40 @@
 use bumpalo::Bump;
 
-use crate::term::Term;
+use crate::{binder::Eval, term::Term};
 
 use super::{context::Context, env::Env, value::Value};
 
-pub enum MachineState<'a> {
-    Return(&'a Context<'a>, &'a Value<'a>),
-    Compute(&'a Context<'a>, &'a Env<'a>, &'a Term<'a>),
-    Done(&'a Term<'a>),
+pub enum MachineState<'a, V>
+where
+    V: Eval,
+{
+    Return(&'a Context<'a, V>, &'a Value<'a, V>),
+    Compute(&'a Context<'a, V>, &'a Env<'a, V>, &'a Term<'a, V>),
+    Done(&'a Term<'a, V>),
 }
 
-impl<'a> MachineState<'a> {
+impl<'a, V> MachineState<'a, V>
+where
+    V: Eval,
+{
     pub fn compute(
         arena: &'a Bump,
-        context: &'a Context<'a>,
-        env: &'a Env<'a>,
-        term: &'a Term<'a>,
-    ) -> &'a mut MachineState<'a> {
+        context: &'a Context<'a, V>,
+        env: &'a Env<'a, V>,
+        term: &'a Term<'a, V>,
+    ) -> &'a mut MachineState<'a, V> {
         arena.alloc(MachineState::Compute(context, env, term))
     }
 
     pub fn return_(
         arena: &'a Bump,
-        context: &'a Context<'a>,
-        value: &'a Value<'a>,
-    ) -> &'a mut MachineState<'a> {
+        context: &'a Context<'a, V>,
+        value: &'a Value<'a, V>,
+    ) -> &'a mut MachineState<'a, V> {
         arena.alloc(MachineState::Return(context, value))
     }
 
-    pub fn done(arena: &'a Bump, term: &'a Term<'a>) -> &'a mut MachineState<'a> {
+    pub fn done(arena: &'a Bump, term: &'a Term<'a, V>) -> &'a mut MachineState<'a, V> {
         arena.alloc(MachineState::Done(term))
     }
 }

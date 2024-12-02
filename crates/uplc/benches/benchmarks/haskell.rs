@@ -3,6 +3,7 @@ use std::{fs, time::Duration};
 use bumpalo::Bump;
 use criterion::{criterion_group, Criterion};
 use itertools::Itertools;
+use uplc::{binder::DeBruijn, flat};
 
 pub fn run(c: &mut Criterion) {
     let data_dir = std::path::Path::new("benches/benchmarks/data");
@@ -27,7 +28,8 @@ pub fn run(c: &mut Criterion) {
 
             c.bench_function(&file_name, |b| {
                 b.iter(|| {
-                    let program = uplc::flat::decode(&arena, &script).expect("Failed to decode");
+                    let program =
+                        flat::decode::<DeBruijn>(&arena, &script).expect("Failed to decode");
 
                     let result = program.eval(&arena);
 

@@ -10,6 +10,7 @@ use bumpalo::{
     Bump,
 };
 
+use crate::binder::Binder;
 use crate::{
     constant::Constant,
     program::{Program, Version},
@@ -22,7 +23,10 @@ use super::{
     tag::{BUILTIN_TAG_WIDTH, CONST_TAG_WIDTH, TERM_TAG_WIDTH},
 };
 
-pub fn decode<'a>(arena: &'a Bump, bytes: &[u8]) -> Result<&'a Program<'a>, FlatDecodeError> {
+pub fn decode<'a, V>(arena: &'a Bump, bytes: &[u8]) -> Result<&'a Program<'a, V>, FlatDecodeError>
+where
+    V: Binder,
+{
     let mut decoder = Decoder::new(bytes);
 
     let major = decoder.word()?;
@@ -42,15 +46,18 @@ pub fn decode<'a>(arena: &'a Bump, bytes: &[u8]) -> Result<&'a Program<'a>, Flat
     Ok(Program::new(arena, version, term))
 }
 
-fn decode_term<'a>(
+fn decode_term<'a, V>(
     ctx: &mut Ctx<'a>,
     decoder: &mut Decoder<'_>,
-) -> Result<&'a Term<'a>, FlatDecodeError> {
+) -> Result<&'a Term<'a, V>, FlatDecodeError>
+where
+    V: Binder,
+{
     let tag = decoder.bits8(TERM_TAG_WIDTH)?;
 
     match tag {
         // Var
-        tag::VAR => Ok(Term::var(ctx.arena, decoder.word()?)),
+        tag::VAR => Ok(Term::var(ctx.arena, V::var_decode(ctx.arena, decoder)?)),
         // Delay
         tag::DELAY => {
             let term = decode_term(ctx, decoder)?;
@@ -61,7 +68,7 @@ fn decode_term<'a>(
         tag::LAMBDA => {
             let term = decode_term(ctx, decoder)?;
 
-            Ok(term.lambda(ctx.arena, 0))
+            Ok(term.lambda(ctx.arena, V::parameter_decode(ctx.arena, decoder)?))
         }
         // Apply
         tag::APPLY => {

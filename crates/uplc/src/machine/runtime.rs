@@ -7,6 +7,7 @@ use bumpalo::{
 use rug::Assign;
 
 use crate::{
+    binder::Eval,
     bls::{Compressable, SCALAR_PERIOD},
     builtin::DefaultFunction,
     constant::{self, Constant, Integer},
@@ -24,13 +25,19 @@ pub enum BuiltinSemantics {
 }
 
 #[derive(Debug)]
-pub struct Runtime<'a> {
-    pub args: BumpVec<'a, &'a Value<'a>>,
+pub struct Runtime<'a, V>
+where
+    V: Eval,
+{
+    pub args: BumpVec<'a, &'a Value<'a, V>>,
     pub fun: &'a DefaultFunction,
     pub forces: usize,
 }
 
-impl<'a> Runtime<'a> {
+impl<'a, V> Runtime<'a, V>
+where
+    V: Eval,
+{
     pub fn new(arena: &'a Bump, fun: &'a DefaultFunction) -> &'a Self {
         arena.alloc(Self {
             args: BumpVec::new_in(arena),
@@ -49,7 +56,7 @@ impl<'a> Runtime<'a> {
         new_runtime
     }
 
-    pub fn push(&self, arena: &'a Bump, arg: &'a Value<'a>) -> &'a Self {
+    pub fn push(&self, arena: &'a Bump, arg: &'a Value<'a, V>) -> &'a Self {
         let new_runtime = arena.alloc(Runtime {
             args: self.args.clone(),
             fun: self.fun,
@@ -75,7 +82,13 @@ impl<'a> Runtime<'a> {
 }
 
 impl<'a> Machine<'a> {
-    pub fn call(&mut self, runtime: &'a Runtime<'a>) -> Result<&'a Value<'a>, MachineError<'a>> {
+    pub fn call<V>(
+        &mut self,
+        runtime: &'a Runtime<'a, V>,
+    ) -> Result<&'a Value<'a, V>, MachineError<'a, V>>
+    where
+        V: Eval,
+    {
         match runtime.fun {
             DefaultFunction::AddInteger => {
                 let arg1 = runtime.args[0].unwrap_integer()?;

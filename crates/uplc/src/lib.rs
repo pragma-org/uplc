@@ -1,4 +1,4 @@
-pub mod bind;
+pub mod binder;
 pub mod bls;
 pub mod builtin;
 pub mod constant;
@@ -16,6 +16,7 @@ pub use bumpalo;
 mod tests {
     use pretty_assertions::assert_eq;
 
+    use crate::binder::DeBruijn;
     use crate::program::Version;
 
     use super::program::Program;
@@ -31,7 +32,7 @@ mod tests {
 
         let version = Version::plutus_v3(&arena);
 
-        let program = Program::new(&arena, version, term);
+        let program = Program::<DeBruijn>::new(&arena, version, term);
 
         let result = program.eval(&arena);
 
@@ -42,28 +43,28 @@ mod tests {
     fn fibonacci() {
         let arena = &bumpalo::Bump::new();
 
-        let double_force = Term::var(arena, 1)
-            .apply(arena, Term::var(arena, 1))
-            .lambda(arena, 0)
+        let double_force = Term::var(arena, DeBruijn::new(arena, 1))
+            .apply(arena, Term::var(arena, DeBruijn::new(arena, 1)))
+            .lambda(arena, DeBruijn::zero(arena))
             .delay(arena)
             .force(arena)
             .apply(
                 arena,
-                Term::var(arena, 3)
+                Term::var(arena, DeBruijn::new(arena, 3))
                     .apply(
                         arena,
-                        Term::var(arena, 1)
-                            .apply(arena, Term::var(arena, 1))
-                            .lambda(arena, 0)
+                        Term::var(arena, DeBruijn::new(arena, 1))
+                            .apply(arena, Term::var(arena, DeBruijn::new(arena, 1)))
+                            .lambda(arena, DeBruijn::zero(arena))
                             .delay(arena)
                             .force(arena)
-                            .apply(arena, Term::var(arena, 2)),
+                            .apply(arena, Term::var(arena, DeBruijn::new(arena, 2))),
                     )
-                    .apply(arena, Term::var(arena, 1))
-                    .lambda(arena, 0)
-                    .lambda(arena, 0),
+                    .apply(arena, Term::var(arena, DeBruijn::new(arena, 1)))
+                    .lambda(arena, DeBruijn::zero(arena))
+                    .lambda(arena, DeBruijn::zero(arena)),
             )
-            .lambda(arena, 0)
+            .lambda(arena, DeBruijn::zero(arena))
             .delay(arena)
             .delay(arena)
             .force(arena)
@@ -71,36 +72,36 @@ mod tests {
 
         let if_condition = Term::if_then_else(arena)
             .force(arena)
-            .apply(arena, Term::var(arena, 3))
-            .apply(arena, Term::var(arena, 2))
-            .apply(arena, Term::var(arena, 1))
+            .apply(arena, Term::var(arena, DeBruijn::new(arena, 3)))
+            .apply(arena, Term::var(arena, DeBruijn::new(arena, 2)))
+            .apply(arena, Term::var(arena, DeBruijn::new(arena, 1)))
             .apply(arena, Term::unit(arena))
-            .lambda(arena, 0)
-            .lambda(arena, 0)
-            .lambda(arena, 0)
+            .lambda(arena, DeBruijn::zero(arena))
+            .lambda(arena, DeBruijn::zero(arena))
+            .lambda(arena, DeBruijn::zero(arena))
             .delay(arena)
             .force(arena);
 
         let add = Term::add_integer(arena)
             .apply(
                 arena,
-                Term::var(arena, 3).apply(
+                Term::var(arena, DeBruijn::new(arena, 3)).apply(
                     arena,
                     Term::subtract_integer(arena)
-                        .apply(arena, Term::var(arena, 2))
+                        .apply(arena, Term::var(arena, DeBruijn::new(arena, 2)))
                         .apply(arena, Term::integer_from(arena, 1)),
                 ),
             )
             .apply(
                 arena,
-                Term::var(arena, 3).apply(
+                Term::var(arena, DeBruijn::new(arena, 3)).apply(
                     arena,
                     Term::subtract_integer(arena)
-                        .apply(arena, Term::var(arena, 2))
+                        .apply(arena, Term::var(arena, DeBruijn::new(arena, 2)))
                         .apply(arena, Term::integer_from(arena, 2)),
                 ),
             )
-            .lambda(arena, 0);
+            .lambda(arena, DeBruijn::zero(arena));
 
         let term = double_force
             .apply(
@@ -109,16 +110,20 @@ mod tests {
                     .apply(
                         arena,
                         Term::less_than_equals_integer(arena)
-                            .apply(arena, Term::var(arena, 1))
+                            .apply(arena, Term::var(arena, DeBruijn::new(arena, 1)))
                             .apply(arena, Term::integer_from(arena, 1)),
                     )
-                    .apply(arena, Term::var(arena, 2).lambda(arena, 0))
+                    .apply(
+                        arena,
+                        Term::var(arena, DeBruijn::new(arena, 2))
+                            .lambda(arena, DeBruijn::zero(arena)),
+                    )
                     .apply(arena, add)
-                    .lambda(arena, 0)
-                    .lambda(arena, 0),
+                    .lambda(arena, DeBruijn::zero(arena))
+                    .lambda(arena, DeBruijn::zero(arena)),
             )
-            .apply(arena, Term::var(arena, 1))
-            .lambda(arena, 0)
+            .apply(arena, Term::var(arena, DeBruijn::new(arena, 1)))
+            .lambda(arena, DeBruijn::zero(arena))
             .apply(arena, Term::integer_from(arena, 15));
 
         let version = Version::plutus_v3(arena);

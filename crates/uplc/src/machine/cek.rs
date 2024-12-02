@@ -1,6 +1,7 @@
 use bumpalo::Bump;
 
 use crate::{
+    binder::Eval,
     machine::{context::Context, env::Env, state::MachineState},
     term::Term,
 };
@@ -49,7 +50,10 @@ impl<'a> Machine<'a> {
         }
     }
 
-    pub fn run(&mut self, term: &'a Term<'a>) -> Result<&'a Term<'a>, MachineError<'a>> {
+    pub fn run<V>(&mut self, term: &'a Term<'a, V>) -> Result<&'a Term<'a, V>, MachineError<'a, V>>
+    where
+        V: Eval,
+    {
         self.spend_budget(ExBudget::start_up())?;
 
         let initial_context = Context::no_frame(self.arena);
@@ -70,18 +74,21 @@ impl<'a> Machine<'a> {
         }
     }
 
-    pub fn compute(
+    pub fn compute<V>(
         &mut self,
-        context: &'a Context<'a>,
-        env: &'a Env<'a>,
-        term: &'a Term<'a>,
-    ) -> Result<&'a mut MachineState<'a>, MachineError<'a>> {
+        context: &'a Context<'a, V>,
+        env: &'a Env<'a, V>,
+        term: &'a Term<'a, V>,
+    ) -> Result<&'a mut MachineState<'a, V>, MachineError<'a, V>>
+    where
+        V: Eval,
+    {
         match term {
             Term::Var(name) => {
                 self.step_and_maybe_spend(StepKind::Var)?;
 
                 let value = env
-                    .lookup(*name)
+                    .lookup(name.index())
                     .ok_or(MachineError::OpenTermEvaluated(term))?;
 
                 let state = MachineState::return_(self.arena, context, value);
@@ -174,11 +181,14 @@ impl<'a> Machine<'a> {
         }
     }
 
-    pub fn return_compute(
+    pub fn return_compute<V>(
         &mut self,
-        context: &'a Context<'a>,
-        value: &'a Value<'a>,
-    ) -> Result<&'a mut MachineState<'a>, MachineError<'a>> {
+        context: &'a Context<'a, V>,
+        value: &'a Value<'a, V>,
+    ) -> Result<&'a mut MachineState<'a, V>, MachineError<'a, V>>
+    where
+        V: Eval,
+    {
         match context {
             Context::FrameAwaitFunTerm(arg_env, argument, context) => {
                 let context = Context::frame_await_arg(self.arena, value, context);
@@ -241,11 +251,14 @@ impl<'a> Machine<'a> {
         }
     }
 
-    fn force_evaluate(
+    fn force_evaluate<V>(
         &mut self,
-        context: &'a Context<'a>,
-        value: &'a Value<'a>,
-    ) -> Result<&'a mut MachineState<'a>, MachineError<'a>> {
+        context: &'a Context<'a, V>,
+        value: &'a Value<'a, V>,
+    ) -> Result<&'a mut MachineState<'a, V>, MachineError<'a, V>>
+    where
+        V: Eval,
+    {
         match value {
             Value::Delay(term, env) => Ok(MachineState::compute(self.arena, context, env, term)),
             Value::Builtin(runtime) => {
@@ -269,12 +282,15 @@ impl<'a> Machine<'a> {
         }
     }
 
-    pub fn apply_evaluate(
+    fn apply_evaluate<V>(
         &mut self,
-        context: &'a Context<'a>,
-        function: &'a Value<'a>,
-        argument: &'a Value<'a>,
-    ) -> Result<&'a mut MachineState<'a>, MachineError<'a>> {
+        context: &'a Context<'a, V>,
+        function: &'a Value<'a, V>,
+        argument: &'a Value<'a, V>,
+    ) -> Result<&'a mut MachineState<'a, V>, MachineError<'a, V>>
+    where
+        V: Eval,
+    {
         match function {
             Value::Lambda { body, env, .. } => {
                 let new_env = env.push(self.arena, argument);
@@ -306,18 +322,24 @@ impl<'a> Machine<'a> {
         }
     }
 
-    pub fn eval_builtin_app(
+    fn eval_builtin_app<V>(
         &mut self,
-        runtime: &'a Runtime<'a>,
-    ) -> Result<&'a Value<'a>, MachineError<'a>> {
+        runtime: &'a Runtime<'a, V>,
+    ) -> Result<&'a Value<'a, V>, MachineError<'a, V>>
+    where
+        V: Eval,
+    {
         self.call(runtime)
     }
 
-    fn transfer_arg_stack(
+    fn transfer_arg_stack<V>(
         &mut self,
-        fields: &'a [&'a Value<'a>],
-        context: &'a Context<'a>,
-    ) -> &'a Context<'a> {
+        fields: &'a [&'a Value<'a, V>],
+        context: &'a Context<'a, V>,
+    ) -> &'a Context<'a, V>
+    where
+        V: Eval,
+    {
         if let Some((first, rest)) = fields.split_first() {
             let context = Context::frame_await_fun_value(self.arena, first, context);
 
@@ -327,7 +349,10 @@ impl<'a> Machine<'a> {
         }
     }
 
-    fn step_and_maybe_spend(&mut self, step: StepKind) -> Result<(), MachineError<'a>> {
+    fn step_and_maybe_spend<V>(&mut self, step: StepKind) -> Result<(), MachineError<'a, V>>
+    where
+        V: Eval,
+    {
         let index = step as usize;
 
         self.unbudgeted_steps[index] += 1;
@@ -340,7 +365,10 @@ impl<'a> Machine<'a> {
         Ok(())
     }
 
-    fn spend_unbudgeted_steps(&mut self) -> Result<(), MachineError<'a>> {
+    fn spend_unbudgeted_steps<V>(&mut self) -> Result<(), MachineError<'a, V>>
+    where
+        V: Eval,
+    {
         for step_kind in 0..self.unbudgeted_steps.len() - 1 {
             let mut unspent_step_budget = self.costs.machine_costs.get(step_kind);
 
@@ -356,7 +384,13 @@ impl<'a> Machine<'a> {
         Ok(())
     }
 
-    pub(super) fn spend_budget(&mut self, spend_budget: ExBudget) -> Result<(), MachineError<'a>> {
+    pub(super) fn spend_budget<V>(
+        &mut self,
+        spend_budget: ExBudget,
+    ) -> Result<(), MachineError<'a, V>>
+    where
+        V: Eval,
+    {
         self.ex_budget.mem -= spend_budget.mem;
         self.ex_budget.cpu -= spend_budget.cpu;
 
