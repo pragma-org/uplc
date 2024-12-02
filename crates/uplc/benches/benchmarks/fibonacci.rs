@@ -1,7 +1,7 @@
 use bumpalo::Bump;
 use criterion::{criterion_group, Criterion};
 
-use uplc::term::Term;
+use uplc::{binder::DeBruijn, term::Term};
 
 use super::utils;
 
@@ -10,28 +10,28 @@ pub fn run(c: &mut Criterion) {
         b.iter_with_setup(
             || {
                 utils::setup_term(|arena: &Bump| {
-                    let double_force = Term::var(arena, 1)
-                        .apply(arena, Term::var(arena, 1))
-                        .lambda(arena, 0)
+                    let double_force = Term::var(arena, DeBruijn::new(arena, 1))
+                        .apply(arena, Term::var(arena, DeBruijn::new(arena, 1)))
+                        .lambda(arena, DeBruijn::zero(arena))
                         .delay(arena)
                         .force(arena)
                         .apply(
                             arena,
-                            Term::var(arena, 3)
+                            Term::var(arena, DeBruijn::new(arena, 3))
                                 .apply(
                                     arena,
-                                    Term::var(arena, 1)
-                                        .apply(arena, Term::var(arena, 1))
-                                        .lambda(arena, 0)
+                                    Term::var(arena, DeBruijn::new(arena, 1))
+                                        .apply(arena, Term::var(arena, DeBruijn::new(arena, 1)))
+                                        .lambda(arena, DeBruijn::zero(arena))
                                         .delay(arena)
                                         .force(arena)
-                                        .apply(arena, Term::var(arena, 2)),
+                                        .apply(arena, Term::var(arena, DeBruijn::new(arena, 2))),
                                 )
-                                .apply(arena, Term::var(arena, 1))
-                                .lambda(arena, 0)
-                                .lambda(arena, 0),
+                                .apply(arena, Term::var(arena, DeBruijn::new(arena, 1)))
+                                .lambda(arena, DeBruijn::zero(arena))
+                                .lambda(arena, DeBruijn::zero(arena)),
                         )
-                        .lambda(arena, 0)
+                        .lambda(arena, DeBruijn::zero(arena))
                         .delay(arena)
                         .delay(arena)
                         .force(arena)
@@ -39,36 +39,36 @@ pub fn run(c: &mut Criterion) {
 
                     let if_condition = Term::if_then_else(arena)
                         .force(arena)
-                        .apply(arena, Term::var(arena, 3))
-                        .apply(arena, Term::var(arena, 2))
-                        .apply(arena, Term::var(arena, 1))
+                        .apply(arena, Term::var(arena, DeBruijn::new(arena, 3)))
+                        .apply(arena, Term::var(arena, DeBruijn::new(arena, 2)))
+                        .apply(arena, Term::var(arena, DeBruijn::new(arena, 1)))
                         .apply(arena, Term::unit(arena))
-                        .lambda(arena, 0)
-                        .lambda(arena, 0)
-                        .lambda(arena, 0)
+                        .lambda(arena, DeBruijn::zero(arena))
+                        .lambda(arena, DeBruijn::zero(arena))
+                        .lambda(arena, DeBruijn::zero(arena))
                         .delay(arena)
                         .force(arena);
 
                     let add = Term::add_integer(arena)
                         .apply(
                             arena,
-                            Term::var(arena, 3).apply(
+                            Term::var(arena, DeBruijn::new(arena, 3)).apply(
                                 arena,
                                 Term::subtract_integer(arena)
-                                    .apply(arena, Term::var(arena, 2))
+                                    .apply(arena, Term::var(arena, DeBruijn::new(arena, 2)))
                                     .apply(arena, Term::integer_from(arena, 1)),
                             ),
                         )
                         .apply(
                             arena,
-                            Term::var(arena, 3).apply(
+                            Term::var(arena, DeBruijn::new(arena, 3)).apply(
                                 arena,
                                 Term::subtract_integer(arena)
-                                    .apply(arena, Term::var(arena, 2))
+                                    .apply(arena, Term::var(arena, DeBruijn::new(arena, 2)))
                                     .apply(arena, Term::integer_from(arena, 2)),
                             ),
                         )
-                        .lambda(arena, 0);
+                        .lambda(arena, DeBruijn::zero(arena));
 
                     double_force
                         .apply(
@@ -77,17 +77,21 @@ pub fn run(c: &mut Criterion) {
                                 .apply(
                                     arena,
                                     Term::less_than_equals_integer(arena)
-                                        .apply(arena, Term::var(arena, 1))
+                                        .apply(arena, Term::var(arena, DeBruijn::new(arena, 1)))
                                         .apply(arena, Term::integer_from(arena, 1)),
                                 )
-                                .apply(arena, Term::var(arena, 2).lambda(arena, 0))
+                                .apply(
+                                    arena,
+                                    Term::var(arena, DeBruijn::new(arena, 2))
+                                        .lambda(arena, DeBruijn::zero(arena)),
+                                )
                                 .apply(arena, add)
-                                .lambda(arena, 0)
-                                .lambda(arena, 0),
+                                .lambda(arena, DeBruijn::zero(arena))
+                                .lambda(arena, DeBruijn::zero(arena)),
                         )
-                        .apply(arena, Term::var(arena, 1))
-                        .lambda(arena, 0)
-                        .apply(arena, Term::integer_from(arena, 20))
+                        .apply(arena, Term::var(arena, DeBruijn::new(arena, 1)))
+                        .lambda(arena, DeBruijn::zero(arena))
+                        .apply(arena, Term::integer_from(arena, 15))
                 })
             },
             // Benchmark: only the eval call

@@ -1,11 +1,14 @@
 use bumpalo::collections::CollectIn;
 use bumpalo::Bump;
 
-use crate::term::Term;
+use crate::{binder::Eval, term::Term};
 
 use super::{env::Env, value::Value};
 
-pub fn value_as_term<'a>(arena: &'a Bump, value: &'a Value<'a>) -> &'a Term<'a> {
+pub fn value_as_term<'a, V>(arena: &'a Bump, value: &'a Value<'a, V>) -> &'a Term<'a, V>
+where
+    V: Eval,
+{
     match value {
         Value::Con(x) => arena.alloc(Term::Constant(x)),
         Value::Builtin(runtime) => {
@@ -26,7 +29,7 @@ pub fn value_as_term<'a>(arena: &'a Bump, value: &'a Value<'a>) -> &'a Term<'a> 
             parameter,
             body,
             env,
-        } => with_env(arena, 0, env, body.lambda(arena, *parameter)),
+        } => with_env(arena, 0, env, body.lambda(arena, parameter)),
         Value::Constr(tag, fields) => Term::constr(
             arena,
             *tag,
@@ -38,18 +41,21 @@ pub fn value_as_term<'a>(arena: &'a Bump, value: &'a Value<'a>) -> &'a Term<'a> 
     }
 }
 
-fn with_env<'a>(
+fn with_env<'a, V>(
     arena: &'a Bump,
     lam_cnt: usize,
-    env: &'a Env<'a>,
-    term: &'a Term<'a>,
-) -> &'a Term<'a> {
+    env: &'a Env<'a, V>,
+    term: &'a Term<'a, V>,
+) -> &'a Term<'a, V>
+where
+    V: Eval,
+{
     match term {
         Term::Var(name) => {
-            let index = *name;
+            let index = name.index();
 
             if lam_cnt >= index {
-                Term::var(arena, *name)
+                Term::var(arena, name)
             } else {
                 env.lookup(index - lam_cnt).map_or_else(
                     || Term::var(arena, *name),

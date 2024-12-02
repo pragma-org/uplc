@@ -1,9 +1,12 @@
-use crate::term::Term;
+use crate::{binder::Eval, term::Term};
 
 use super::{info::MachineInfo, MachineError};
 
 #[derive(Debug)]
-pub struct EvalResult<'a> {
-    pub term: Result<&'a Term<'a>, MachineError<'a>>,
+pub struct EvalResult<'a, V>
+where
+    V: Eval,
+{
+    pub term: Result<&'a Term<'a, V>, MachineError<'a, V>>,
     pub info: MachineInfo,
 }

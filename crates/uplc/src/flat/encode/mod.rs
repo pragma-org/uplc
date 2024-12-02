@@ -4,11 +4,14 @@ mod error;
 pub use encoder::Encoder;
 pub use error::FlatEncodeError;
 
-use crate::{program::Program, term::Term};
+use crate::{binder::Binder, program::Program, term::Term};
 
 use super::tag::{self, BUILTIN_TAG_WIDTH, TERM_TAG_WIDTH};
 
-pub fn encode<'a>(program: &'a Program<'a>) -> Result<Vec<u8>, FlatEncodeError> {
+pub fn encode<'a, V>(program: &'a Program<'a, V>) -> Result<Vec<u8>, FlatEncodeError>
+where
+    V: Binder,
+{
     let mut encoder = Encoder::default();
 
     encoder
@@ -23,15 +26,20 @@ pub fn encode<'a>(program: &'a Program<'a>) -> Result<Vec<u8>, FlatEncodeError> 
     Ok(encoder.buffer)
 }
 
-fn encode_term<'a>(encoder: &mut Encoder, term: &'a Term<'a>) -> Result<(), FlatEncodeError> {
+fn encode_term<'a, V>(encoder: &mut Encoder, term: &'a Term<'a, V>) -> Result<(), FlatEncodeError>
+where
+    V: Binder,
+{
     match term {
         Term::Var(name) => {
             encode_term_tag(encoder, tag::VAR)?;
 
-            encoder.word(*name);
+            name.var_encode(encoder)?;
         }
         Term::Lambda { parameter, body } => {
             encode_term_tag(encoder, tag::LAMBDA)?;
+
+            parameter.parameter_encode(encoder)?;
 
             encode_term(encoder, body)?;
         }

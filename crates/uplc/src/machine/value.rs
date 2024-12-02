@@ -4,6 +4,7 @@ use bumpalo::{
 };
 
 use crate::{
+    binder::Eval,
     constant::{Constant, Integer},
     term::Term,
     typ::Type,
@@ -12,29 +13,35 @@ use crate::{
 use super::{env::Env, runtime::Runtime, MachineError};
 
 #[derive(Debug)]
-pub enum Value<'a> {
+pub enum Value<'a, V>
+where
+    V: Eval,
+{
     Con(&'a Constant<'a>),
     Lambda {
-        parameter: usize,
-        body: &'a Term<'a>,
-        env: &'a Env<'a>,
+        parameter: &'a V,
+        body: &'a Term<'a, V>,
+        env: &'a Env<'a, V>,
     },
-    Builtin(&'a Runtime<'a>),
-    Delay(&'a Term<'a>, &'a Env<'a>),
-    Constr(usize, BumpVec<'a, &'a Value<'a>>),
+    Builtin(&'a Runtime<'a, V>),
+    Delay(&'a Term<'a, V>, &'a Env<'a, V>),
+    Constr(usize, BumpVec<'a, &'a Value<'a, V>>),
 }
 
-impl<'a> Value<'a> {
-    pub fn con(arena: &'a Bump, constant: &'a Constant<'a>) -> &'a Value<'a> {
+impl<'a, V> Value<'a, V>
+where
+    V: Eval,
+{
+    pub fn con(arena: &'a Bump, constant: &'a Constant<'a>) -> &'a Value<'a, V> {
         arena.alloc(Value::Con(constant))
     }
 
     pub fn lambda(
         arena: &'a Bump,
-        parameter: usize,
-        body: &'a Term<'a>,
-        env: &'a Env<'a>,
-    ) -> &'a Value<'a> {
+        parameter: &'a V,
+        body: &'a Term<'a, V>,
+        env: &'a Env<'a, V>,
+    ) -> &'a Value<'a, V> {
         arena.alloc(Value::Lambda {
             parameter,
             body,
@@ -42,51 +49,51 @@ impl<'a> Value<'a> {
         })
     }
 
-    pub fn delay(arena: &'a Bump, body: &'a Term<'a>, env: &'a Env<'a>) -> &'a Value<'a> {
+    pub fn delay(arena: &'a Bump, body: &'a Term<'a, V>, env: &'a Env<'a, V>) -> &'a Value<'a, V> {
         arena.alloc(Value::Delay(body, env))
     }
 
-    pub fn constr_empty(arena: &'a Bump, tag: usize) -> &'a Value<'a> {
+    pub fn constr_empty(arena: &'a Bump, tag: usize) -> &'a Value<'a, V> {
         arena.alloc(Value::Constr(tag, BumpVec::new_in(arena)))
     }
 
     pub fn constr(
         arena: &'a Bump,
         tag: usize,
-        values: BumpVec<'a, &'a Value<'a>>,
-    ) -> &'a Value<'a> {
+        values: BumpVec<'a, &'a Value<'a, V>>,
+    ) -> &'a Value<'a, V> {
         arena.alloc(Value::Constr(tag, values))
     }
 
-    pub fn builtin(arena: &'a Bump, runtime: &'a Runtime<'a>) -> &'a Value<'a> {
+    pub fn builtin(arena: &'a Bump, runtime: &'a Runtime<'a, V>) -> &'a Value<'a, V> {
         arena.alloc(Value::Builtin(runtime))
     }
 
-    pub fn integer(arena: &'a Bump, i: &'a Integer) -> &'a Value<'a> {
+    pub fn integer(arena: &'a Bump, i: &'a Integer) -> &'a Value<'a, V> {
         let con = arena.alloc(Constant::Integer(i));
 
         Value::con(arena, con)
     }
 
-    pub fn byte_string(arena: &'a Bump, b: BumpVec<'a, u8>) -> &'a Value<'a> {
+    pub fn byte_string(arena: &'a Bump, b: BumpVec<'a, u8>) -> &'a Value<'a, V> {
         let con = arena.alloc(Constant::ByteString(b));
 
         Value::con(arena, con)
     }
 
-    pub fn string(arena: &'a Bump, s: BumpString<'a>) -> &'a Value<'a> {
+    pub fn string(arena: &'a Bump, s: BumpString<'a>) -> &'a Value<'a, V> {
         let con = arena.alloc(Constant::String(s));
 
         Value::con(arena, con)
     }
 
-    pub fn bool(arena: &'a Bump, b: bool) -> &'a Value<'a> {
+    pub fn bool(arena: &'a Bump, b: bool) -> &'a Value<'a, V> {
         let con = arena.alloc(Constant::Boolean(b));
 
         Value::con(arena, con)
     }
 
-    pub fn unwrap_integer(&'a self) -> Result<&'a Integer, MachineError<'a>> {
+    pub fn unwrap_integer(&'a self) -> Result<&'a Integer, MachineError<'a, V>> {
         let inner = self.unwrap_constant()?;
 
         let Constant::Integer(integer) = inner else {
@@ -96,7 +103,7 @@ impl<'a> Value<'a> {
         Ok(integer)
     }
 
-    pub fn unwrap_byte_string(&'a self) -> Result<&BumpVec<'a, u8>, MachineError<'a>> {
+    pub fn unwrap_byte_string(&'a self) -> Result<&BumpVec<'a, u8>, MachineError<'a, V>> {
         let inner = self.unwrap_constant()?;
 
         let Constant::ByteString(byte_string) = inner else {
@@ -106,7 +113,7 @@ impl<'a> Value<'a> {
         Ok(byte_string)
     }
 
-    pub fn unwrap_string(&'a self) -> Result<&BumpString<'a>, MachineError<'a>> {
+    pub fn unwrap_string(&'a self) -> Result<&BumpString<'a>, MachineError<'a, V>> {
         let inner = self.unwrap_constant()?;
 
         let Constant::String(string) = inner else {
@@ -116,7 +123,7 @@ impl<'a> Value<'a> {
         Ok(string)
     }
 
-    pub fn unwrap_bool(&'a self) -> Result<bool, MachineError<'a>> {
+    pub fn unwrap_bool(&'a self) -> Result<bool, MachineError<'a, V>> {
         let inner = self.unwrap_constant()?;
 
         let Constant::Boolean(b) = inner else {
@@ -135,7 +142,7 @@ impl<'a> Value<'a> {
             &'a Constant<'a>,
             &'a Constant<'a>,
         ),
-        MachineError<'a>,
+        MachineError<'a, V>,
     > {
         let inner = self.unwrap_constant()?;
 
@@ -148,7 +155,7 @@ impl<'a> Value<'a> {
 
     pub fn unwrap_list(
         &'a self,
-    ) -> Result<(&'a Type<'a>, &'a BumpVec<'a, &'a Constant<'a>>), MachineError<'a>> {
+    ) -> Result<(&'a Type<'a>, &'a BumpVec<'a, &'a Constant<'a>>), MachineError<'a, V>> {
         let inner = self.unwrap_constant()?;
 
         let Constant::ProtoList(t1, list) = inner else {
@@ -160,7 +167,7 @@ impl<'a> Value<'a> {
 
     pub fn unwrap_map(
         &'a self,
-    ) -> Result<(&'a Type<'a>, &'a BumpVec<'a, &'a Constant<'a>>), MachineError<'a>> {
+    ) -> Result<(&'a Type<'a>, &'a BumpVec<'a, &'a Constant<'a>>), MachineError<'a, V>> {
         let inner = self.unwrap_constant()?;
 
         let Constant::ProtoList(t1, list) = inner else {
@@ -170,7 +177,7 @@ impl<'a> Value<'a> {
         Ok((t1, list))
     }
 
-    pub fn unwrap_constant(&'a self) -> Result<&'a Constant<'a>, MachineError<'a>> {
+    pub fn unwrap_constant(&'a self) -> Result<&'a Constant<'a>, MachineError<'a, V>> {
         let Value::Con(item) = self else {
             return Err(MachineError::NotAConstant(self));
         };
@@ -178,7 +185,7 @@ impl<'a> Value<'a> {
         Ok(item)
     }
 
-    pub fn unwrap_unit(&'a self) -> Result<(), MachineError<'a>> {
+    pub fn unwrap_unit(&'a self) -> Result<(), MachineError<'a, V>> {
         let inner = self.unwrap_constant()?;
 
         let Constant::Unit = inner else {
@@ -188,7 +195,7 @@ impl<'a> Value<'a> {
         Ok(())
     }
 
-    pub fn unwrap_bls12_381_g1_element(&'a self) -> Result<&'a blst::blst_p1, MachineError<'a>> {
+    pub fn unwrap_bls12_381_g1_element(&'a self) -> Result<&'a blst::blst_p1, MachineError<'a, V>> {
         let inner = self.unwrap_constant()?;
 
         let Constant::Bls12_381G1Element(g1) = inner else {
@@ -198,7 +205,7 @@ impl<'a> Value<'a> {
         Ok(g1)
     }
 
-    pub fn unwrap_bls12_381_g2_element(&'a self) -> Result<&'a blst::blst_p2, MachineError<'a>> {
+    pub fn unwrap_bls12_381_g2_element(&'a self) -> Result<&'a blst::blst_p2, MachineError<'a, V>> {
         let inner = self.unwrap_constant()?;
 
         let Constant::Bls12_381G2Element(g2) = inner else {
@@ -208,7 +215,9 @@ impl<'a> Value<'a> {
         Ok(g2)
     }
 
-    pub fn unwrap_bls12_381_ml_result(&'a self) -> Result<&'a blst::blst_fp12, MachineError<'a>> {
+    pub fn unwrap_bls12_381_ml_result(
+        &'a self,
+    ) -> Result<&'a blst::blst_fp12, MachineError<'a, V>> {
         let inner = self.unwrap_constant()?;
 
         let Constant::Bls12_381MlResult(ml_res) = inner else {
@@ -220,7 +229,10 @@ impl<'a> Value<'a> {
 }
 
 impl<'a> Constant<'a> {
-    pub fn value(&'a self, arena: &'a Bump) -> &'a Value<'a> {
+    pub fn value<V>(&'a self, arena: &'a Bump) -> &'a Value<'a, V>
+    where
+        V: Eval,
+    {
         Value::con(arena, self)
     }
 }

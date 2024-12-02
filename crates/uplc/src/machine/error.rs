@@ -3,6 +3,7 @@ use std::array::TryFromSliceError;
 use bumpalo::collections::Vec as BumpVec;
 
 use crate::{
+    binder::Eval,
     bls::BlsError,
     constant::{Constant, Integer},
     data::PlutusData,
@@ -13,27 +14,30 @@ use crate::{
 use super::{value::Value, ExBudget};
 
 #[derive(thiserror::Error, Debug)]
-pub enum MachineError<'a> {
+pub enum MachineError<'a, V>
+where
+    V: Eval,
+{
     #[error("Explicit error term")]
     ExplicitErrorTerm,
     #[error("Non-function application")]
-    NonFunctionApplication(&'a Value<'a>, &'a Value<'a>),
+    NonFunctionApplication(&'a Value<'a, V>, &'a Value<'a, V>),
     #[error("Non-constant value")]
-    NotAConstant(&'a Value<'a>),
+    NotAConstant(&'a Value<'a, V>),
     #[error("Open term evaluated")]
-    OpenTermEvaluated(&'a Term<'a>),
+    OpenTermEvaluated(&'a Term<'a, V>),
     #[error("Out of budget")]
     OutOfExError(ExBudget),
     #[error("Unexpected builtin term argument")]
-    UnexpectedBuiltinTermArgument(&'a Term<'a>),
+    UnexpectedBuiltinTermArgument(&'a Term<'a, V>),
     #[error("Non-polymorphic instantiation")]
-    NonPolymorphicInstantiation(&'a Value<'a>),
+    NonPolymorphicInstantiation(&'a Value<'a, V>),
     #[error("Builtin term argument expected")]
-    BuiltinTermArgumentExpected(&'a Term<'a>),
+    BuiltinTermArgumentExpected(&'a Term<'a, V>),
     #[error("Non-constructor scrutinized")]
-    NonConstrScrutinized(&'a Value<'a>),
+    NonConstrScrutinized(&'a Value<'a, V>),
     #[error("Non-integer index")]
-    MissingCaseBranch(&'a [&'a Term<'a>], &'a Value<'a>),
+    MissingCaseBranch(&'a [&'a Term<'a, V>], &'a Value<'a, V>),
     #[error(transparent)]
     Runtime(RuntimeError<'a>),
 }
@@ -90,7 +94,10 @@ pub enum RuntimeError<'a> {
     IntegerToByteStringNegativeSize(&'a Integer),
 }
 
-impl<'a> MachineError<'a> {
+impl<'a, V> MachineError<'a, V>
+where
+    V: Eval,
+{
     pub fn runtime(runtime_error: RuntimeError<'a>) -> Self {
         MachineError::Runtime(runtime_error)
     }

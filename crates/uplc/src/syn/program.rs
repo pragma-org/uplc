@@ -1,10 +1,10 @@
 use chumsky::{prelude::*, Parser};
 
-use crate::program::Program;
+use crate::{binder::DeBruijn, program::Program};
 
 use super::{term, types::Extra, utils::comments, version};
 
-pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Program<'a>, Extra<'a>> {
+pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Program<'a, DeBruijn>, Extra<'a>> {
     text::keyword("program")
         .padded()
         .ignore_then(version::parser().padded())

@@ -1,6 +1,7 @@
 use rug::integer::BorrowInteger;
 
 use crate::{
+    binder::Eval,
     constant::{Constant, Integer},
     data::PlutusData,
     machine::value::Value,
@@ -55,7 +56,10 @@ pub fn proto_list_ex_mem(items: &[&Constant]) -> i64 {
         .fold(0, |acc, constant| acc + constant_ex_mem(constant))
 }
 
-pub fn value_ex_mem(v: &Value) -> i64 {
+pub fn value_ex_mem<'a, V>(v: &'a Value<'a, V>) -> i64
+where
+    V: Eval,
+{
     match v {
         Value::Con(c) => constant_ex_mem(c),
         Value::Lambda { .. } => 1,

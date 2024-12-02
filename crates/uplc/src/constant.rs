@@ -3,7 +3,7 @@ use bumpalo::{
     Bump,
 };
 
-use crate::{data::PlutusData, machine::MachineError, typ::Type};
+use crate::{binder::Eval, data::PlutusData, machine::MachineError, typ::Type};
 
 #[derive(Debug, PartialEq)]
 pub enum Constant<'a> {
@@ -99,7 +99,10 @@ impl<'a> Constant<'a> {
         arena.alloc(Constant::Bls12_381MlResult(ml_res))
     }
 
-    pub fn unwrap_data(&'a self) -> Result<&'a PlutusData<'a>, MachineError<'a>> {
+    pub fn unwrap_data<V>(&'a self) -> Result<&'a PlutusData<'a>, MachineError<'a, V>>
+    where
+        V: Eval,
+    {
         match self {
             Constant::Data(data) => Ok(data),
             _ => Err(MachineError::not_data(self)),

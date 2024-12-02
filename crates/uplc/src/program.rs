@@ -1,24 +1,36 @@
 use bumpalo::Bump;
 
 use crate::{
+    binder::Eval,
     machine::{BuiltinSemantics, CostModel, EvalResult, ExBudget, Machine},
     term::Term,
 };
 
 #[derive(Debug)]
-pub struct Program<'a> {
+pub struct Program<'a, V> {
     pub version: &'a Version<'a>,
-    pub term: &'a Term<'a>,
+    pub term: &'a Term<'a, V>,
 }
 
-impl<'a> Program<'a> {
-    pub fn new(arena: &'a Bump, version: &'a Version<'a>, term: &'a Term<'a>) -> &'a Self {
+impl<'a, V> Program<'a, V> {
+    pub fn new(arena: &'a Bump, version: &'a Version<'a>, term: &'a Term<'a, V>) -> &'a Self {
         let program = Program { version, term };
 
         arena.alloc(program)
     }
 
-    pub fn eval(&'a self, arena: &'a Bump) -> EvalResult<'a> {
+    pub fn apply(&'a self, arena: &'a Bump, term: &'a Term<'a, V>) -> &'a Self {
+        let term = self.term.apply(arena, term);
+
+        Self::new(arena, self.version, term)
+    }
+}
+
+impl<'a, V> Program<'a, V>
+where
+    V: Eval,
+{
+    pub fn eval(&'a self, arena: &'a Bump) -> EvalResult<'a, V> {
         let mut machine = Machine::new(
             arena,
             ExBudget::default(),
@@ -39,12 +51,6 @@ impl<'a> Program<'a> {
         info.consumed_budget = ExBudget::default() - info.consumed_budget;
 
         EvalResult { term, info }
-    }
-
-    pub fn apply(&'a self, arena: &'a Bump, term: &'a Term<'a>) -> &'a Self {
-        let term = self.term.apply(arena, term);
-
-        Self::new(arena, self.version, term)
     }
 }
 

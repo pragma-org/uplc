@@ -1,6 +1,7 @@
 use bumpalo::{collections::Vec as BumpVec, Bump};
 
 use crate::{
+    binder::Eval,
     constant::{integer_from, Constant, Integer},
     flat::Ctx,
     machine::MachineError,
@@ -57,39 +58,54 @@ impl<'a> PlutusData<'a> {
         minicbor::decode_with(cbor, &mut Ctx { arena })
     }
 
-    pub fn unwrap_constr(
+    pub fn unwrap_constr<V>(
         &'a self,
-    ) -> Result<(&'a u64, &'a BumpVec<&'a PlutusData<'a>>), MachineError<'a>> {
+    ) -> Result<(&'a u64, &'a BumpVec<&'a PlutusData<'a>>), MachineError<'a, V>>
+    where
+        V: Eval,
+    {
         match self {
             PlutusData::Constr { tag, fields } => Ok((tag, fields)),
             _ => Err(MachineError::malformed_data(self)),
         }
     }
 
-    pub fn unwrap_map(
+    pub fn unwrap_map<V>(
         &'a self,
-    ) -> Result<&'a BumpVec<(&'a PlutusData<'a>, &'a PlutusData<'a>)>, MachineError<'a>> {
+    ) -> Result<&'a BumpVec<(&'a PlutusData<'a>, &'a PlutusData<'a>)>, MachineError<'a, V>>
+    where
+        V: Eval,
+    {
         match self {
             PlutusData::Map(fields) => Ok(fields),
             _ => Err(MachineError::malformed_data(self)),
         }
     }
 
-    pub fn unwrap_integer(&'a self) -> Result<&'a Integer, MachineError<'a>> {
+    pub fn unwrap_integer<V>(&'a self) -> Result<&'a Integer, MachineError<'a, V>>
+    where
+        V: Eval,
+    {
         match self {
             PlutusData::Integer(i) => Ok(i),
             _ => Err(MachineError::malformed_data(self)),
         }
     }
 
-    pub fn unwrap_byte_string(&'a self) -> Result<&'a BumpVec<u8>, MachineError<'a>> {
+    pub fn unwrap_byte_string<V>(&'a self) -> Result<&'a BumpVec<u8>, MachineError<'a, V>>
+    where
+        V: Eval,
+    {
         match self {
             PlutusData::ByteString(bytes) => Ok(bytes),
             _ => Err(MachineError::malformed_data(self)),
         }
     }
 
-    pub fn unwrap_list(&'a self) -> Result<&'a BumpVec<&'a PlutusData<'a>>, MachineError<'a>> {
+    pub fn unwrap_list<V>(&'a self) -> Result<&'a BumpVec<&'a PlutusData<'a>>, MachineError<'a, V>>
+    where
+        V: Eval,
+    {
         match self {
             PlutusData::List(items) => Ok(items),
             _ => Err(MachineError::malformed_data(self)),

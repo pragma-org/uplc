@@ -1,14 +1,14 @@
 use bumpalo::{collections::Vec as BumpVec, Bump};
 use chumsky::{prelude::*, Parser};
 
-use crate::term::Term;
+use crate::{binder::DeBruijn, term::Term};
 
 use super::{
     constant,
     types::{Extra, MapExtra},
 };
 
-pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
+pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a, DeBruijn>, Extra<'a>> {
     recursive(|term| {
         choice((
             // Var
@@ -20,7 +20,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
                     let position = state.env.iter().rev().position(|&x| x == v);
 
                     if position.is_none() {
-                        let placeholder = Term::var(state.arena, 0);
+                        let placeholder = Term::var(state.arena, DeBruijn::zero(state.arena));
 
                         // this will fail at eval time
                         // the conformance tests don't expect this
@@ -29,7 +29,9 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
                     } else {
                         let debruijn_index = state.env.len() - position.unwrap_or_default();
 
-                        Term::var(state.arena, debruijn_index)
+                        let d = DeBruijn::new(state.arena, debruijn_index);
+
+                        Term::var(state.arena, d)
                     }
                 }),
             // Delay
@@ -37,7 +39,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
                 .padded()
                 .ignore_then(term.clone().padded())
                 .delimited_by(just('('), just(')'))
-                .map_with(|term: &Term<'_>, e: &mut MapExtra<'a, '_>| {
+                .map_with(|term: &Term<'_, DeBruijn>, e: &mut MapExtra<'a, '_>| {
                     let state = e.state();
 
                     term.delay(state.arena)
@@ -70,7 +72,9 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
 
                     state.env.pop();
 
-                    term.lambda(state.arena, v)
+                    let d = DeBruijn::new(state.arena, v);
+
+                    term.lambda(state.arena, d)
                 }),
             // Apply
             term.clone()
@@ -118,7 +122,12 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
             text::keyword("constr")
                 .padded()
                 .ignore_then(text::int(10).padded())
-                .then(term.clone().padded().repeated().collect::<Vec<&Term>>())
+                .then(
+                    term.clone()
+                        .padded()
+                        .repeated()
+                        .collect::<Vec<&Term<'_, DeBruijn>>>(),
+                )
                 .delimited_by(just('('), just(')'))
                 .validate(|(tag, fields), e: &mut MapExtra<'a, '_>, emitter| {
                     let state = e.state();
@@ -139,7 +148,11 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
             text::keyword("case")
                 .padded()
                 .ignore_then(term.clone().padded())
-                .then(term.padded().repeated().collect::<Vec<&Term>>())
+                .then(
+                    term.padded()
+                        .repeated()
+                        .collect::<Vec<&Term<'_, DeBruijn>>>(),
+                )
                 .delimited_by(just('('), just(')'))
                 .validate(|(tag, branches), e: &mut MapExtra<'a, '_>, emitter| {
                     let state = e.state();
@@ -159,7 +172,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a>, Extra<'a>> {
     })
 }
 
-pub fn builtin_from_str<'a>(arena: &'a Bump, name: &str) -> Option<&'a Term<'a>> {
+pub fn builtin_from_str<'a>(arena: &'a Bump, name: &str) -> Option<&'a Term<'a, DeBruijn>> {
     match name {
         "addInteger" => Some(Term::add_integer(arena)),
         "subtractInteger" => Some(Term::subtract_integer(arena)),
