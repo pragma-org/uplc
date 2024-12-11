@@ -27,7 +27,7 @@ pub enum BuiltinSemantics {
 #[derive(Debug)]
 pub struct Runtime<'a, V>
 where
-    V: Eval,
+    V: Eval<'a>,
 {
     pub args: BumpVec<'a, &'a Value<'a, V>>,
     pub fun: &'a DefaultFunction,
@@ -36,7 +36,7 @@ where
 
 impl<'a, V> Runtime<'a, V>
 where
-    V: Eval,
+    V: Eval<'a>,
 {
     pub fn new(arena: &'a Bump, fun: &'a DefaultFunction) -> &'a Self {
         arena.alloc(Self {
@@ -87,7 +87,7 @@ impl<'a> Machine<'a> {
         runtime: &'a Runtime<'a, V>,
     ) -> Result<&'a Value<'a, V>, MachineError<'a, V>>
     where
-        V: Eval,
+        V: Eval<'a>,
     {
         match runtime.fun {
             DefaultFunction::AddInteger => {

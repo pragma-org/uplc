@@ -62,7 +62,7 @@ impl<'a> PlutusData<'a> {
         &'a self,
     ) -> Result<(&'a u64, &'a BumpVec<&'a PlutusData<'a>>), MachineError<'a, V>>
     where
-        V: Eval,
+        V: Eval<'a>,
     {
         match self {
             PlutusData::Constr { tag, fields } => Ok((tag, fields)),
@@ -74,7 +74,7 @@ impl<'a> PlutusData<'a> {
         &'a self,
     ) -> Result<&'a BumpVec<(&'a PlutusData<'a>, &'a PlutusData<'a>)>, MachineError<'a, V>>
     where
-        V: Eval,
+        V: Eval<'a>,
     {
         match self {
             PlutusData::Map(fields) => Ok(fields),
@@ -84,7 +84,7 @@ impl<'a> PlutusData<'a> {
 
     pub fn unwrap_integer<V>(&'a self) -> Result<&'a Integer, MachineError<'a, V>>
     where
-        V: Eval,
+        V: Eval<'a>,
     {
         match self {
             PlutusData::Integer(i) => Ok(i),
@@ -94,7 +94,7 @@ impl<'a> PlutusData<'a> {
 
     pub fn unwrap_byte_string<V>(&'a self) -> Result<&'a BumpVec<u8>, MachineError<'a, V>>
     where
-        V: Eval,
+        V: Eval<'a>,
     {
         match self {
             PlutusData::ByteString(bytes) => Ok(bytes),
@@ -104,7 +104,7 @@ impl<'a> PlutusData<'a> {
 
     pub fn unwrap_list<V>(&'a self) -> Result<&'a BumpVec<&'a PlutusData<'a>>, MachineError<'a, V>>
     where
-        V: Eval,
+        V: Eval<'a>,
     {
         match self {
             PlutusData::List(items) => Ok(items),

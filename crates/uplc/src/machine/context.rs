@@ -6,7 +6,7 @@ use super::{env::Env, value::Value};
 
 pub enum Context<'a, V>
 where
-    V: Eval,
+    V: Eval<'a>,
 {
     FrameAwaitArg(&'a Value<'a, V>, &'a Context<'a, V>),
     FrameAwaitFunTerm(&'a Env<'a, V>, &'a Term<'a, V>, &'a Context<'a, V>),
@@ -25,7 +25,7 @@ where
 
 impl<'a, V> Context<'a, V>
 where
-    V: Eval,
+    V: Eval<'a>,
 {
     pub fn no_frame(arena: &'a Bump) -> &'a Context<'a, V> {
         arena.alloc(Context::NoFrame)

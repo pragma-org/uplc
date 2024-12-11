@@ -7,11 +7,11 @@ use super::value::Value;
 #[derive(Debug)]
 pub struct Env<'a, V>(BumpVec<'a, &'a Value<'a, V>>)
 where
-    V: Eval;
+    V: Eval<'a>;
 
 impl<'a, V> Env<'a, V>
 where
-    V: Eval,
+    V: Eval<'a>,
 {
     pub fn new_in(arena: &'a Bump) -> &'a Self {
         arena.alloc(Self(BumpVec::new_in(arena)))

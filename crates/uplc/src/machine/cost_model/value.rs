@@ -58,7 +58,7 @@ pub fn proto_list_ex_mem(items: &[&Constant]) -> i64 {
 
 pub fn value_ex_mem<'a, V>(v: &'a Value<'a, V>) -> i64
 where
-    V: Eval,
+    V: Eval<'a>,
 {
     match v {
         Value::Con(c) => constant_ex_mem(c),

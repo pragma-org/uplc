@@ -15,7 +15,7 @@ use super::{env::Env, runtime::Runtime, MachineError};
 #[derive(Debug)]
 pub enum Value<'a, V>
 where
-    V: Eval,
+    V: Eval<'a>,
 {
     Con(&'a Constant<'a>),
     Lambda {
@@ -30,7 +30,7 @@ where
 
 impl<'a, V> Value<'a, V>
 where
-    V: Eval,
+    V: Eval<'a>,
 {
     pub fn con(arena: &'a Bump, constant: &'a Constant<'a>) -> &'a Value<'a, V> {
         arena.alloc(Value::Con(constant))
@@ -231,7 +231,7 @@ where
 impl<'a> Constant<'a> {
     pub fn value<V>(&'a self, arena: &'a Bump) -> &'a Value<'a, V>
     where
-        V: Eval,
+        V: Eval<'a>,
     {
         Value::con(arena, self)
     }

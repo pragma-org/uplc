@@ -52,7 +52,7 @@ impl<'a> Machine<'a> {
 
     pub fn run<V>(&mut self, term: &'a Term<'a, V>) -> Result<&'a Term<'a, V>, MachineError<'a, V>>
     where
-        V: Eval,
+        V: Eval<'a>,
     {
         self.spend_budget(ExBudget::start_up())?;
 
@@ -81,7 +81,7 @@ impl<'a> Machine<'a> {
         term: &'a Term<'a, V>,
     ) -> Result<&'a mut MachineState<'a, V>, MachineError<'a, V>>
     where
-        V: Eval,
+        V: Eval<'a>,
     {
         match term {
             Term::Var(name) => {
@@ -187,7 +187,7 @@ impl<'a> Machine<'a> {
         value: &'a Value<'a, V>,
     ) -> Result<&'a mut MachineState<'a, V>, MachineError<'a, V>>
     where
-        V: Eval,
+        V: Eval<'a>,
     {
         match context {
             Context::FrameAwaitFunTerm(arg_env, argument, context) => {
@@ -257,7 +257,7 @@ impl<'a> Machine<'a> {
         value: &'a Value<'a, V>,
     ) -> Result<&'a mut MachineState<'a, V>, MachineError<'a, V>>
     where
-        V: Eval,
+        V: Eval<'a>,
     {
         match value {
             Value::Delay(term, env) => Ok(MachineState::compute(self.arena, context, env, term)),
@@ -289,7 +289,7 @@ impl<'a> Machine<'a> {
         argument: &'a Value<'a, V>,
     ) -> Result<&'a mut MachineState<'a, V>, MachineError<'a, V>>
     where
-        V: Eval,
+        V: Eval<'a>,
     {
         match function {
             Value::Lambda { body, env, .. } => {
@@ -327,7 +327,7 @@ impl<'a> Machine<'a> {
         runtime: &'a Runtime<'a, V>,
     ) -> Result<&'a Value<'a, V>, MachineError<'a, V>>
     where
-        V: Eval,
+        V: Eval<'a>,
     {
         self.call(runtime)
     }
@@ -338,7 +338,7 @@ impl<'a> Machine<'a> {
         context: &'a Context<'a, V>,
     ) -> &'a Context<'a, V>
     where
-        V: Eval,
+        V: Eval<'a>,
     {
         if let Some((first, rest)) = fields.split_first() {
             let context = Context::frame_await_fun_value(self.arena, first, context);
@@ -351,7 +351,7 @@ impl<'a> Machine<'a> {
 
     fn step_and_maybe_spend<V>(&mut self, step: StepKind) -> Result<(), MachineError<'a, V>>
     where
-        V: Eval,
+        V: Eval<'a>,
     {
         let index = step as usize;
 
@@ -367,7 +367,7 @@ impl<'a> Machine<'a> {
 
     fn spend_unbudgeted_steps<V>(&mut self) -> Result<(), MachineError<'a, V>>
     where
-        V: Eval,
+        V: Eval<'a>,
     {
         for step_kind in 0..self.unbudgeted_steps.len() - 1 {
             let mut unspent_step_budget = self.costs.machine_costs.get(step_kind);
@@ -389,7 +389,7 @@ impl<'a> Machine<'a> {
         spend_budget: ExBudget,
     ) -> Result<(), MachineError<'a, V>>
     where
-        V: Eval,
+        V: Eval<'a>,
     {
         self.ex_budget.mem -= spend_budget.mem;
         self.ex_budget.cpu -= spend_budget.cpu;

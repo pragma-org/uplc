@@ -25,7 +25,7 @@ use super::{
 
 pub fn decode<'a, V>(arena: &'a Bump, bytes: &[u8]) -> Result<&'a Program<'a, V>, FlatDecodeError>
 where
-    V: Binder,
+    V: Binder<'a>,
 {
     let mut decoder = Decoder::new(bytes);
 
@@ -51,7 +51,7 @@ fn decode_term<'a, V>(
     decoder: &mut Decoder<'_>,
 ) -> Result<&'a Term<'a, V>, FlatDecodeError>
 where
-    V: Binder,
+    V: Binder<'a>,
 {
     let tag = decoder.bits8(TERM_TAG_WIDTH)?;
 

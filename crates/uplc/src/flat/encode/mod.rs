@@ -10,7 +10,7 @@ use super::tag::{self, BUILTIN_TAG_WIDTH, TERM_TAG_WIDTH};
 
 pub fn encode<'a, V>(program: &'a Program<'a, V>) -> Result<Vec<u8>, FlatEncodeError>
 where
-    V: Binder,
+    V: Binder<'a>,
 {
     let mut encoder = Encoder::default();
 
@@ -28,7 +28,7 @@ where
 
 fn encode_term<'a, V>(encoder: &mut Encoder, term: &'a Term<'a, V>) -> Result<(), FlatEncodeError>
 where
-    V: Binder,
+    V: Binder<'a>,
 {
     match term {
         Term::Var(name) => {
