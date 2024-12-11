@@ -1,4 +1,7 @@
-use bumpalo::{collections::Vec as BumpVec, Bump};
+use bumpalo::{
+    collections::{String as BumpString, Vec as BumpVec},
+    Bump,
+};
 
 use crate::flat::zigzag::ZigZag;
 
@@ -230,6 +233,25 @@ impl<'b> Decoder<'b> {
         }
 
         Ok(blk_array)
+    }
+
+    /// Decode a string.
+    /// Convert to byte array and then use byte array decoding.
+    /// Decodes a filler to byte align the buffer,
+    /// then decodes the next byte to get the array length up to a max of 255.
+    /// We decode bytes equal to the array length to form the byte array.
+    /// If the following byte for array length is not 0 we decode it and repeat
+    /// above to continue decoding the byte array. We stop once we hit a
+    /// byte array length of 0. If array length is 0 for first byte array
+    /// length the we return a empty array.
+    pub fn utf8<'a>(&mut self, arena: &'a Bump) -> Result<&'a str, FlatDecodeError> {
+        let b = self.bytes(arena)?;
+
+        let s =
+            BumpString::from_utf8(b).map_err(|e| FlatDecodeError::DecodeUtf8(e.utf8_error()))?;
+        let s = arena.alloc(s);
+
+        Ok(s)
     }
 
     /// Increment used bits by 1.

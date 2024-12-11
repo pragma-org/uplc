@@ -28,7 +28,7 @@ impl<'a, V> Program<'a, V> {
 
 impl<'a, V> Program<'a, V>
 where
-    V: Eval,
+    V: Eval<'a>,
 {
     pub fn eval(&'a self, arena: &'a Bump) -> EvalResult<'a, V> {
         let mut machine = Machine::new(

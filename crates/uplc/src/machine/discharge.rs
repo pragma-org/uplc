@@ -7,7 +7,7 @@ use super::{env::Env, value::Value};
 
 pub fn value_as_term<'a, V>(arena: &'a Bump, value: &'a Value<'a, V>) -> &'a Term<'a, V>
 where
-    V: Eval,
+    V: Eval<'a>,
 {
     match value {
         Value::Con(x) => arena.alloc(Term::Constant(x)),
@@ -48,7 +48,7 @@ fn with_env<'a, V>(
     term: &'a Term<'a, V>,
 ) -> &'a Term<'a, V>
 where
-    V: Eval,
+    V: Eval<'a>,
 {
     match term {
         Term::Var(name) => {

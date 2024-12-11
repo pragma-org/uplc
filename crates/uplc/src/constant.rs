@@ -101,7 +101,7 @@ impl<'a> Constant<'a> {
 
     pub fn unwrap_data<V>(&'a self) -> Result<&'a PlutusData<'a>, MachineError<'a, V>>
     where
-        V: Eval,
+        V: Eval<'a>,
     {
         match self {
             Constant::Data(data) => Ok(data),

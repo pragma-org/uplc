@@ -15,14 +15,14 @@ impl DeBruijn {
     }
 }
 
-impl Binder for DeBruijn {
+impl<'a> Binder<'a> for DeBruijn {
     fn var_encode(&self, e: &mut crate::flat::Encoder) -> Result<(), crate::flat::FlatEncodeError> {
         e.word(self.0);
 
         Ok(())
     }
 
-    fn var_decode<'a>(
+    fn var_decode(
         arena: &'a bumpalo::Bump,
         d: &mut crate::flat::Decoder,
     ) -> Result<&'a Self, crate::flat::FlatDecodeError> {
@@ -40,7 +40,7 @@ impl Binder for DeBruijn {
         Ok(())
     }
 
-    fn parameter_decode<'a>(
+    fn parameter_decode(
         arena: &'a bumpalo::Bump,
         _d: &mut crate::flat::Decoder,
     ) -> Result<&'a Self, crate::flat::FlatDecodeError> {
@@ -50,7 +50,7 @@ impl Binder for DeBruijn {
     }
 }
 
-impl Eval for DeBruijn {
+impl<'a> Eval<'a> for DeBruijn {
     fn index(&self) -> usize {
         self.0
     }

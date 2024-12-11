@@ -16,7 +16,7 @@ use super::{value::Value, ExBudget};
 #[derive(thiserror::Error, Debug)]
 pub enum MachineError<'a, V>
 where
-    V: Eval,
+    V: Eval<'a>,
 {
     #[error("Explicit error term")]
     ExplicitErrorTerm,
@@ -96,7 +96,7 @@ pub enum RuntimeError<'a> {
 
 impl<'a, V> MachineError<'a, V>
 where
-    V: Eval,
+    V: Eval<'a>,
 {
     pub fn runtime(runtime_error: RuntimeError<'a>) -> Self {
         MachineError::Runtime(runtime_error)

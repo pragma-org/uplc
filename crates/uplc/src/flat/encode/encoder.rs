@@ -85,6 +85,45 @@ impl Encoder {
         self
     }
 
+    /// Encode a byte array.
+    /// Uses filler to byte align the buffer, then writes byte array length up
+    /// to 255. Following that it writes the next 255 bytes from the array.
+    /// We repeat writing length up to 255 and the next 255 bytes until we reach
+    /// the end of the byte array. After reaching the end of the byte array
+    /// we write a 0 byte. Only write 0 byte if the byte array is empty.
+    pub fn bytes(&mut self, x: &[u8]) -> Result<&mut Self, FlatEncodeError> {
+        // use filler to write current buffer so bits used gets reset
+        self.filler();
+
+        self.byte_array(x)
+    }
+
+    /// Encode a byte array in a byte aligned buffer. Throws exception if any
+    /// bits for the current byte were used. Writes byte array length up to
+    /// 255 Following that it writes the next 255 bytes from the array.
+    /// We repeat writing length up to 255 and the next 255 bytes until we reach
+    /// the end of the byte array. After reaching the end of the buffer we
+    /// write a 0 byte. Only write 0 if the byte array is empty.
+    pub fn byte_array(&mut self, arr: &[u8]) -> Result<&mut Self, FlatEncodeError> {
+        if self.used_bits != 0 {
+            return Err(FlatEncodeError::BufferNotByteAligned);
+        }
+
+        self.write_blk(arr);
+
+        Ok(self)
+    }
+
+    /// Encode a string.
+    /// Convert to byte array and then use byte array encoding.
+    /// Uses filler to byte align the buffer, then writes byte array length up
+    /// to 255. Following that it writes the next 255 bytes from the array.
+    /// After reaching the end of the buffer we write a 0 byte. Only write 0
+    /// byte if the byte array is empty.
+    pub fn utf8(&mut self, s: &str) -> Result<&mut Self, FlatEncodeError> {
+        self.bytes(s.as_bytes())
+    }
+
     /// Encode a list of bytes with a function
     /// This is byte alignment agnostic.
     /// If there are bytes in a list then write 1 bit followed by the functions
@@ -145,5 +184,19 @@ impl Encoder {
 
         self.current_byte = 0;
         self.used_bits = 0;
+    }
+
+    /// Writes byte array length up to 255
+    /// Following that it writes the next 255 bytes from the array.
+    /// After reaching the end of the buffer we write a 0 byte. Only write 0 if
+    /// the byte array is empty. This is byte alignment agnostic.
+    fn write_blk(&mut self, arr: &[u8]) {
+        let chunks = arr.chunks(255);
+
+        for chunk in chunks {
+            self.buffer.push(chunk.len() as u8);
+            self.buffer.extend(chunk);
+        }
+        self.buffer.push(0_u8);
     }
 }

@@ -6,7 +6,7 @@ use super::{context::Context, env::Env, value::Value};
 
 pub enum MachineState<'a, V>
 where
-    V: Eval,
+    V: Eval<'a>,
 {
     Return(&'a Context<'a, V>, &'a Value<'a, V>),
     Compute(&'a Context<'a, V>, &'a Env<'a, V>, &'a Term<'a, V>),
@@ -15,7 +15,7 @@ where
 
 impl<'a, V> MachineState<'a, V>
 where
-    V: Eval,
+    V: Eval<'a>,
 {
     pub fn compute(
         arena: &'a Bump,
