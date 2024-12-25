@@ -19,6 +19,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a PlutusData<'a>, Extra<'a>> {
                     let state = e.state();
 
                     let bytes = BumpVec::from_iter_in(v, state.arena);
+                    let bytes = state.arena.alloc(bytes);
 
                     PlutusData::byte_string(state.arena, bytes)
                 }),
@@ -57,6 +58,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a PlutusData<'a>, Extra<'a>> {
                         let state = e.state();
 
                         let fields = BumpVec::from_iter_in(fields, state.arena);
+                        let fields = state.arena.alloc(fields);
 
                         PlutusData::constr(state.arena, tag.parse().unwrap(), fields)
                     },
@@ -73,6 +75,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a PlutusData<'a>, Extra<'a>> {
                     let state = e.state();
 
                     let fields = BumpVec::from_iter_in(items, state.arena);
+                    let fields = state.arena.alloc(fields);
 
                     PlutusData::list(state.arena, fields)
                 }),
@@ -95,6 +98,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a PlutusData<'a>, Extra<'a>> {
                         let state = e.state();
 
                         let fields = BumpVec::from_iter_in(items, state.arena);
+                        let fields = state.arena.alloc(fields);
 
                         PlutusData::map(state.arena, fields)
                     },

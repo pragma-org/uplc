@@ -1,4 +1,4 @@
-use bumpalo::{collections::Vec as BumpVec, Bump};
+use bumpalo::Bump;
 
 use crate::{
     binder::Eval,
@@ -11,30 +11,30 @@ use crate::{
 pub enum PlutusData<'a> {
     Constr {
         tag: u64,
-        fields: BumpVec<'a, &'a PlutusData<'a>>,
+        fields: &'a [&'a PlutusData<'a>],
     },
-    Map(BumpVec<'a, (&'a PlutusData<'a>, &'a PlutusData<'a>)>),
+    Map(&'a [(&'a PlutusData<'a>, &'a PlutusData<'a>)]),
     Integer(&'a Integer),
-    ByteString(BumpVec<'a, u8>),
-    List(BumpVec<'a, &'a PlutusData<'a>>),
+    ByteString(&'a [u8]),
+    List(&'a [&'a PlutusData<'a>]),
 }
 
 impl<'a> PlutusData<'a> {
     pub fn constr(
         arena: &'a Bump,
         tag: u64,
-        fields: BumpVec<'a, &'a PlutusData<'a>>,
+        fields: &'a [&'a PlutusData<'a>],
     ) -> &'a PlutusData<'a> {
         arena.alloc(PlutusData::Constr { tag, fields })
     }
 
-    pub fn list(arena: &'a Bump, items: BumpVec<'a, &'a PlutusData<'a>>) -> &'a PlutusData<'a> {
+    pub fn list(arena: &'a Bump, items: &'a [&'a PlutusData<'a>]) -> &'a PlutusData<'a> {
         arena.alloc(PlutusData::List(items))
     }
 
     pub fn map(
         arena: &'a Bump,
-        items: BumpVec<'a, (&'a PlutusData<'a>, &'a PlutusData<'a>)>,
+        items: &'a [(&'a PlutusData<'a>, &'a PlutusData<'a>)],
     ) -> &'a PlutusData<'a> {
         arena.alloc(PlutusData::Map(items))
     }
@@ -47,7 +47,7 @@ impl<'a> PlutusData<'a> {
         arena.alloc(PlutusData::Integer(integer_from(arena, i)))
     }
 
-    pub fn byte_string(arena: &'a Bump, bytes: BumpVec<'a, u8>) -> &'a PlutusData<'a> {
+    pub fn byte_string(arena: &'a Bump, bytes: &'a [u8]) -> &'a PlutusData<'a> {
         arena.alloc(PlutusData::ByteString(bytes))
     }
 
@@ -60,7 +60,7 @@ impl<'a> PlutusData<'a> {
 
     pub fn unwrap_constr<V>(
         &'a self,
-    ) -> Result<(&'a u64, &'a BumpVec<&'a PlutusData<'a>>), MachineError<'a, V>>
+    ) -> Result<(&'a u64, &'a [&'a PlutusData<'a>]), MachineError<'a, V>>
     where
         V: Eval<'a>,
     {
@@ -72,7 +72,7 @@ impl<'a> PlutusData<'a> {
 
     pub fn unwrap_map<V>(
         &'a self,
-    ) -> Result<&'a BumpVec<(&'a PlutusData<'a>, &'a PlutusData<'a>)>, MachineError<'a, V>>
+    ) -> Result<&'a [(&'a PlutusData<'a>, &'a PlutusData<'a>)], MachineError<'a, V>>
     where
         V: Eval<'a>,
     {
@@ -92,7 +92,7 @@ impl<'a> PlutusData<'a> {
         }
     }
 
-    pub fn unwrap_byte_string<V>(&'a self) -> Result<&'a BumpVec<u8>, MachineError<'a, V>>
+    pub fn unwrap_byte_string<V>(&'a self) -> Result<&'a [u8], MachineError<'a, V>>
     where
         V: Eval<'a>,
     {
@@ -102,7 +102,7 @@ impl<'a> PlutusData<'a> {
         }
     }
 
-    pub fn unwrap_list<V>(&'a self) -> Result<&'a BumpVec<&'a PlutusData<'a>>, MachineError<'a, V>>
+    pub fn unwrap_list<V>(&'a self) -> Result<&'a [&'a PlutusData<'a>], MachineError<'a, V>>
     where
         V: Eval<'a>,
     {

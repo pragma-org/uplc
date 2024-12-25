@@ -24,7 +24,7 @@ pub const INTEGER_TO_BYTE_STRING_MAXIMUM_OUTPUT_LENGTH: i64 = 8192;
 pub struct BlsError(blst::BLST_ERROR);
 
 pub trait Compressable {
-    fn compress<'a>(&self, arena: &'a Bump) -> BumpVec<'a, u8>;
+    fn compress<'a>(&self, arena: &'a Bump) -> &'a [u8];
 
     fn uncompress<'a>(arena: &'a Bump, bytes: &[u8]) -> Result<&'a Self, BlsError>
     where
@@ -32,14 +32,14 @@ pub trait Compressable {
 }
 
 impl Compressable for blst::blst_p1 {
-    fn compress<'a>(&self, arena: &'a Bump) -> BumpVec<'a, u8> {
+    fn compress<'a>(&self, arena: &'a Bump) -> &'a [u8] {
         let mut out = [0u8; BLST_P1_COMPRESSED_SIZE];
 
         unsafe {
             blst::blst_p1_compress(&mut out as *mut _, self);
         };
 
-        BumpVec::from_iter_in(out, arena)
+        arena.alloc(BumpVec::from_iter_in(out, arena))
     }
 
     fn uncompress<'a>(arena: &'a Bump, bytes: &[u8]) -> Result<&'a Self, BlsError> {
@@ -72,14 +72,14 @@ impl Compressable for blst::blst_p1 {
 }
 
 impl Compressable for blst::blst_p2 {
-    fn compress<'a>(&self, arena: &'a Bump) -> BumpVec<'a, u8> {
+    fn compress<'a>(&self, arena: &'a Bump) -> &'a [u8] {
         let mut out = [0; BLST_P2_COMPRESSED_SIZE];
 
         unsafe {
             blst::blst_p2_compress(&mut out as *mut _, self);
         };
 
-        BumpVec::from_iter_in(out, arena)
+        arena.alloc(BumpVec::from_iter_in(out, arena))
     }
 
     fn uncompress<'a>(arena: &'a Bump, bytes: &[u8]) -> Result<&'a Self, BlsError> {

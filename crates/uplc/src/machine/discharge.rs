@@ -1,5 +1,5 @@
 use bumpalo::collections::CollectIn;
-use bumpalo::Bump;
+use bumpalo::{collections::Vec as BumpVec, Bump};
 
 use crate::{binder::Eval, term::Term};
 
@@ -30,14 +30,16 @@ where
             body,
             env,
         } => with_env(arena, 0, env, body.lambda(arena, parameter)),
-        Value::Constr(tag, fields) => Term::constr(
-            arena,
-            *tag,
-            fields
-                .into_iter()
+        Value::Constr(tag, fields) => {
+            let fields: BumpVec<'_, _> = fields
+                .iter()
                 .map(|value| value_as_term(arena, value))
-                .collect_in(arena),
-        ),
+                .collect_in(arena);
+
+            let fields = arena.alloc(fields);
+
+            Term::constr(arena, *tag, fields)
+        }
     }
 }
 

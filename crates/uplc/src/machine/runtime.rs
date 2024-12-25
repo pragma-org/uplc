@@ -1,3 +1,4 @@
+use core::str;
 use std::array::TryFromSliceError;
 
 use bumpalo::{
@@ -181,6 +182,8 @@ impl<'a> Machine<'a> {
 
                 result.extend_from_slice(arg1);
                 result.extend_from_slice(arg2);
+
+                let result = self.arena.alloc(result);
 
                 let value = Value::byte_string(self.arena, result);
 
@@ -394,6 +397,8 @@ impl<'a> Machine<'a> {
 
                 ret.extend_from_slice(arg2);
 
+                let ret = self.arena.alloc(ret);
+
                 let value = Value::byte_string(self.arena, ret);
 
                 Ok(value)
@@ -423,14 +428,7 @@ impl<'a> Machine<'a> {
                     arg2.try_into().expect("should cast to usize just fine")
                 };
 
-                let ret = arg3
-                    .iter()
-                    .skip(skip)
-                    .take(take)
-                    .cloned()
-                    .collect_in(self.arena);
-
-                let value = Value::byte_string(self.arena, ret);
+                let value = Value::byte_string(self.arena, &arg3[skip..(skip + take)]);
 
                 Ok(value)
             }
@@ -539,6 +537,8 @@ impl<'a> Machine<'a> {
 
                 hasher.result(&mut bytes);
 
+                let bytes = self.arena.alloc(bytes);
+
                 let value = Value::byte_string(self.arena, bytes);
 
                 Ok(value)
@@ -567,6 +567,8 @@ impl<'a> Machine<'a> {
 
                 hasher.result(&mut bytes);
 
+                let bytes = self.arena.alloc(bytes);
+
                 let value = Value::byte_string(self.arena, bytes);
 
                 Ok(value)
@@ -593,6 +595,8 @@ impl<'a> Machine<'a> {
 
                 context.input(arg1);
                 context.result(&mut digest);
+
+                let digest = self.arena.alloc(digest);
 
                 let value = Value::byte_string(self.arena, digest);
 
@@ -622,6 +626,8 @@ impl<'a> Machine<'a> {
 
                 hasher.result(&mut bytes);
 
+                let bytes = self.arena.alloc(bytes);
+
                 let value = Value::byte_string(self.arena, bytes);
 
                 Ok(value)
@@ -649,6 +655,8 @@ impl<'a> Machine<'a> {
                 context.input(arg1);
                 context.result(&mut digest);
 
+                let digest = self.arena.alloc(digest);
+
                 let value = Value::byte_string(self.arena, digest);
 
                 Ok(value)
@@ -669,20 +677,14 @@ impl<'a> Machine<'a> {
                 self.spend_budget(budget)?;
 
                 let public_key: [u8; 32] =
-                    public_key
-                        .as_slice()
-                        .try_into()
-                        .map_err(|e: TryFromSliceError| {
-                            MachineError::unexpected_ed25519_public_key_length(e)
-                        })?;
+                    public_key.try_into().map_err(|e: TryFromSliceError| {
+                        MachineError::unexpected_ed25519_public_key_length(e)
+                    })?;
 
                 let signature: [u8; 64] =
-                    signature
-                        .as_slice()
-                        .try_into()
-                        .map_err(|e: TryFromSliceError| {
-                            MachineError::unexpected_ed25519_signature_length(e)
-                        })?;
+                    signature.try_into().map_err(|e: TryFromSliceError| {
+                        MachineError::unexpected_ed25519_signature_length(e)
+                    })?;
 
                 let valid = ed25519::verify(message, &public_key, &signature);
 
@@ -770,6 +772,8 @@ impl<'a> Machine<'a> {
                 new.push_str(arg1);
                 new.push_str(arg2);
 
+                let new = self.arena.alloc(new);
+
                 let value = Value::string(self.arena, new);
 
                 Ok(value)
@@ -805,6 +809,8 @@ impl<'a> Machine<'a> {
 
                 bytes.extend_from_slice(s_bytes);
 
+                let bytes = self.arena.alloc(bytes);
+
                 let value = Value::byte_string(self.arena, bytes);
 
                 Ok(value)
@@ -819,8 +825,7 @@ impl<'a> Machine<'a> {
 
                 self.spend_budget(budget)?;
 
-                let string = BumpString::from_utf8(arg1.clone())
-                    .map_err(|e| MachineError::decode_utf8(e.utf8_error()))?;
+                let string = str::from_utf8(arg1).map_err(|e| MachineError::decode_utf8(e))?;
 
                 let value = Value::string(self.arena, string);
 
@@ -922,6 +927,8 @@ impl<'a> Machine<'a> {
 
                 new_list.extend_from_slice(list);
 
+                let new_list = self.arena.alloc(new_list);
+
                 let constant = Constant::proto_list(self.arena, typ, new_list);
 
                 let value = constant.value(self.arena);
@@ -959,11 +966,7 @@ impl<'a> Machine<'a> {
                 if list.is_empty() {
                     Err(MachineError::empty_list(list))
                 } else {
-                    let mut tail = BumpVec::with_capacity_in(list.len(), self.arena);
-
-                    tail.extend_from_slice(&list[1..]);
-
-                    let constant = Constant::proto_list(self.arena, t1, tail);
+                    let constant = Constant::proto_list(self.arena, t1, &list[1..]);
 
                     let value = Value::con(self.arena, constant);
 
@@ -1030,13 +1033,14 @@ impl<'a> Machine<'a> {
                 }
 
                 let tag = tag.try_into().expect("should cast to u64 just fine");
-                let fields = fields
+                let fields: BumpVec<'_, _> = fields
                     .iter()
                     .map(|d| match d {
                         Constant::Data(d) => *d,
                         _ => unreachable!(),
                     })
                     .collect_in(self.arena);
+                let fields = self.arena.alloc(fields);
 
                 let data = PlutusData::constr(self.arena, tag, fields);
 
@@ -1085,6 +1089,8 @@ impl<'a> Machine<'a> {
                     map.push((*key, *value));
                 }
 
+                let map = self.arena.alloc(map);
+
                 let value = PlutusData::map(self.arena, map)
                     .constant(self.arena)
                     .value(self.arena);
@@ -1108,13 +1114,14 @@ impl<'a> Machine<'a> {
                     ));
                 }
 
-                let fields = fields
+                let fields: BumpVec<'_, _> = fields
                     .iter()
                     .map(|d| match d {
                         Constant::Data(d) => *d,
                         _ => unreachable!(),
                     })
                     .collect_in(self.arena);
+                let fields = self.arena.alloc(fields);
 
                 let value = PlutusData::list(self.arena, fields)
                     .constant(self.arena)
@@ -1148,7 +1155,7 @@ impl<'a> Machine<'a> {
 
                 self.spend_budget(budget)?;
 
-                let b = PlutusData::byte_string(self.arena, b.clone());
+                let b = PlutusData::byte_string(self.arena, b);
 
                 let value = b.constant(self.arena).value(self.arena);
 
@@ -1167,19 +1174,18 @@ impl<'a> Machine<'a> {
 
                 self.spend_budget(budget)?;
 
+                let list: BumpVec<'_, _> = fields
+                    .iter()
+                    .map(|d| Constant::data(self.arena, d))
+                    .collect_in(self.arena);
+                let list = self.arena.alloc(list);
+
                 let constant = Constant::proto_pair(
                     self.arena,
                     Type::integer(self.arena),
                     Type::list(self.arena, Type::data(self.arena)),
                     Constant::integer_from(self.arena, *tag as i128),
-                    Constant::proto_list(
-                        self.arena,
-                        Type::data(self.arena),
-                        fields
-                            .iter()
-                            .map(|d| Constant::data(self.arena, d))
-                            .collect_in(self.arena),
-                    ),
+                    Constant::proto_list(self.arena, Type::data(self.arena), list),
                 );
 
                 let value = Value::con(self.arena, constant);
@@ -1199,20 +1205,24 @@ impl<'a> Machine<'a> {
 
                 self.spend_budget(budget)?;
 
+                let list: BumpVec<'_, _> = map
+                    .iter()
+                    .map(|(k, v)| {
+                        Constant::proto_pair(
+                            self.arena,
+                            Type::data(self.arena),
+                            Type::data(self.arena),
+                            Constant::data(self.arena, k),
+                            Constant::data(self.arena, v),
+                        )
+                    })
+                    .collect_in(self.arena);
+                let list = self.arena.alloc(list);
+
                 let constant = Constant::proto_list(
                     self.arena,
                     Type::pair(self.arena, Type::data(self.arena), Type::data(self.arena)),
-                    map.iter()
-                        .map(|(k, v)| {
-                            Constant::proto_pair(
-                                self.arena,
-                                Type::data(self.arena),
-                                Type::data(self.arena),
-                                Constant::data(self.arena, k),
-                                Constant::data(self.arena, v),
-                            )
-                        })
-                        .collect_in(self.arena),
+                    list,
                 );
 
                 let value = Value::con(self.arena, constant);
@@ -1232,13 +1242,13 @@ impl<'a> Machine<'a> {
 
                 self.spend_budget(budget)?;
 
-                let constant = Constant::proto_list(
-                    self.arena,
-                    Type::data(self.arena),
-                    list.iter()
-                        .map(|d| Constant::data(self.arena, d))
-                        .collect_in(self.arena),
-                );
+                let list: BumpVec<'_, _> = list
+                    .iter()
+                    .map(|d| Constant::data(self.arena, d))
+                    .collect_in(self.arena);
+                let list = self.arena.alloc(list);
+
+                let constant = Constant::proto_list(self.arena, Type::data(self.arena), list);
 
                 let value = Value::con(self.arena, constant);
 
@@ -1274,7 +1284,7 @@ impl<'a> Machine<'a> {
 
                 self.spend_budget(budget)?;
 
-                let value = Value::byte_string(self.arena, bs.clone());
+                let value = Value::byte_string(self.arena, bs);
 
                 Ok(value)
             }
@@ -1327,11 +1337,10 @@ impl<'a> Machine<'a> {
 
                 self.spend_budget(budget)?;
 
-                let constant = Constant::proto_list(
-                    self.arena,
-                    Type::data(self.arena),
-                    BumpVec::new_in(self.arena),
-                );
+                let list = BumpVec::new_in(self.arena);
+                let list = self.arena.alloc(list);
+
+                let constant = Constant::proto_list(self.arena, Type::data(self.arena), list);
 
                 let value = Value::con(self.arena, constant);
 
@@ -1347,10 +1356,13 @@ impl<'a> Machine<'a> {
 
                 self.spend_budget(budget)?;
 
+                let list = BumpVec::new_in(self.arena);
+                let list = self.arena.alloc(list);
+
                 let constant = Constant::proto_list(
                     self.arena,
                     Type::pair(self.arena, Type::data(self.arena), Type::data(self.arena)),
-                    BumpVec::new_in(self.arena),
+                    list,
                 );
 
                 let value = Value::con(self.arena, constant);
@@ -1864,6 +1876,8 @@ impl<'a> Machine<'a> {
 
                     new_bytes.fill(0);
 
+                    let new_bytes = self.arena.alloc(new_bytes);
+
                     let value = Value::byte_string(self.arena, new_bytes);
 
                     return Ok(value);
@@ -1901,6 +1915,8 @@ impl<'a> Machine<'a> {
                         bytes.append(&mut padding);
                     }
                 };
+
+                let bytes = self.arena.alloc(bytes);
 
                 let value = Value::byte_string(self.arena, bytes);
 

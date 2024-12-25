@@ -1,4 +1,4 @@
-use bumpalo::Bump;
+use bumpalo::{collections::Vec as BumpVec, Bump};
 
 use crate::{
     binder::Eval,
@@ -205,9 +205,13 @@ impl<'a> Machine<'a> {
             }
             Context::FrameForce(context) => self.force_evaluate(context, value),
             Context::FrameConstr(env, tag, terms, values, context) => {
-                let mut values = values.clone();
+                let mut new_values = BumpVec::with_capacity_in(values.len() + 1, self.arena);
 
-                values.push(value);
+                for value in values.iter() {
+                    new_values.push(*value);
+                }
+
+                let values = self.arena.alloc(new_values);
 
                 if let Some((first, terms)) = terms.split_first() {
                     let frame =

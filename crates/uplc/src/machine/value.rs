@@ -1,7 +1,4 @@
-use bumpalo::{
-    collections::{String as BumpString, Vec as BumpVec},
-    Bump,
-};
+use bumpalo::{collections::Vec as BumpVec, Bump};
 
 use crate::{
     binder::Eval,
@@ -25,7 +22,7 @@ where
     },
     Builtin(&'a Runtime<'a, V>),
     Delay(&'a Term<'a, V>, &'a Env<'a, V>),
-    Constr(usize, BumpVec<'a, &'a Value<'a, V>>),
+    Constr(usize, &'a [&'a Value<'a, V>]),
 }
 
 impl<'a, V> Value<'a, V>
@@ -54,14 +51,13 @@ where
     }
 
     pub fn constr_empty(arena: &'a Bump, tag: usize) -> &'a Value<'a, V> {
-        arena.alloc(Value::Constr(tag, BumpVec::new_in(arena)))
+        let empty = BumpVec::new_in(arena);
+        let empty = arena.alloc(empty);
+
+        arena.alloc(Value::Constr(tag, empty))
     }
 
-    pub fn constr(
-        arena: &'a Bump,
-        tag: usize,
-        values: BumpVec<'a, &'a Value<'a, V>>,
-    ) -> &'a Value<'a, V> {
+    pub fn constr(arena: &'a Bump, tag: usize, values: &'a [&'a Value<'a, V>]) -> &'a Value<'a, V> {
         arena.alloc(Value::Constr(tag, values))
     }
 
@@ -75,13 +71,13 @@ where
         Value::con(arena, con)
     }
 
-    pub fn byte_string(arena: &'a Bump, b: BumpVec<'a, u8>) -> &'a Value<'a, V> {
+    pub fn byte_string(arena: &'a Bump, b: &'a [u8]) -> &'a Value<'a, V> {
         let con = arena.alloc(Constant::ByteString(b));
 
         Value::con(arena, con)
     }
 
-    pub fn string(arena: &'a Bump, s: BumpString<'a>) -> &'a Value<'a, V> {
+    pub fn string(arena: &'a Bump, s: &'a str) -> &'a Value<'a, V> {
         let con = arena.alloc(Constant::String(s));
 
         Value::con(arena, con)
@@ -103,7 +99,7 @@ where
         Ok(integer)
     }
 
-    pub fn unwrap_byte_string(&'a self) -> Result<&BumpVec<'a, u8>, MachineError<'a, V>> {
+    pub fn unwrap_byte_string(&'a self) -> Result<&'a [u8], MachineError<'a, V>> {
         let inner = self.unwrap_constant()?;
 
         let Constant::ByteString(byte_string) = inner else {
@@ -113,7 +109,7 @@ where
         Ok(byte_string)
     }
 
-    pub fn unwrap_string(&'a self) -> Result<&BumpString<'a>, MachineError<'a, V>> {
+    pub fn unwrap_string(&'a self) -> Result<&'a str, MachineError<'a, V>> {
         let inner = self.unwrap_constant()?;
 
         let Constant::String(string) = inner else {
@@ -155,7 +151,7 @@ where
 
     pub fn unwrap_list(
         &'a self,
-    ) -> Result<(&'a Type<'a>, &'a BumpVec<'a, &'a Constant<'a>>), MachineError<'a, V>> {
+    ) -> Result<(&'a Type<'a>, &'a [&'a Constant<'a>]), MachineError<'a, V>> {
         let inner = self.unwrap_constant()?;
 
         let Constant::ProtoList(t1, list) = inner else {
@@ -167,7 +163,7 @@ where
 
     pub fn unwrap_map(
         &'a self,
-    ) -> Result<(&'a Type<'a>, &'a BumpVec<'a, &'a Constant<'a>>), MachineError<'a, V>> {
+    ) -> Result<(&'a Type<'a>, &'a [&'a Constant<'a>]), MachineError<'a, V>> {
         let inner = self.unwrap_constant()?;
 
         let Constant::ProtoList(t1, list) = inner else {
