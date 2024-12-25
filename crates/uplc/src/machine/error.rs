@@ -1,7 +1,5 @@
 use std::array::TryFromSliceError;
 
-use bumpalo::collections::Vec as BumpVec;
-
 use crate::{
     binder::Eval,
     bls::BlsError,
@@ -45,7 +43,7 @@ where
 #[derive(thiserror::Error, Debug)]
 pub enum RuntimeError<'a> {
     #[error("Byte string out of bounds")]
-    ByteStringOutOfBounds(&'a BumpVec<'a, u8>, &'a Integer),
+    ByteStringOutOfBounds(&'a [u8], &'a Integer),
     #[error("Type mismatch")]
     TypeMismatch(Type<'a>, &'a Constant<'a>),
     #[error("Expected pair")]
@@ -57,7 +55,7 @@ pub enum RuntimeError<'a> {
     #[error("Malformed data")]
     MalFormedData(&'a PlutusData<'a>),
     #[error("Empty list")]
-    EmptyList(&'a BumpVec<'a, &'a Constant<'a>>),
+    EmptyList(&'a [&'a Constant<'a>]),
     #[error("Unexpected Ed25519 public key length")]
     UnexpectedEd25519PublicKeyLength(TryFromSliceError),
     #[error("Unexpected Ed25519 signature length")]
@@ -118,11 +116,11 @@ where
         MachineError::runtime(RuntimeError::ExpectedList(constant))
     }
 
-    pub fn empty_list(constant: &'a BumpVec<'a, &'a Constant<'a>>) -> Self {
+    pub fn empty_list(constant: &'a [&'a Constant<'a>]) -> Self {
         MachineError::runtime(RuntimeError::EmptyList(constant))
     }
 
-    pub fn byte_string_out_of_bounds(byte_string: &'a BumpVec<'a, u8>, index: &'a Integer) -> Self {
+    pub fn byte_string_out_of_bounds(byte_string: &'a [u8], index: &'a Integer) -> Self {
         MachineError::runtime(RuntimeError::ByteStringOutOfBounds(byte_string, index))
     }
 

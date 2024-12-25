@@ -64,6 +64,8 @@ fn check_type<'a>(
                 constants.push(constant);
             }
 
+            let constants = arena.alloc(constants);
+
             Constant::proto_list(arena, inner, constants)
         }
 
@@ -102,8 +104,8 @@ fn check_type<'a>(
 #[derive(Debug, PartialEq)]
 enum TempConstant<'a> {
     Integer(&'a Integer),
-    ByteString(BumpVec<'a, u8>),
-    String(BumpString<'a>),
+    ByteString(&'a [u8]),
+    String(&'a str),
     Boolean(bool),
     Data(&'a PlutusData<'a>),
     ProtoList(BumpVec<'a, TempConstant<'a>>),
@@ -160,6 +162,7 @@ fn value_parser<'a>() -> impl Parser<'a, &'a str, TempConstant<'a>, Extra<'a>> {
                     let state = e.state();
 
                     let bytes = BumpVec::from_iter_in(v, state.arena);
+                    let bytes = state.arena.alloc(bytes);
 
                     TempConstant::ByteString(bytes)
                 }),
@@ -172,6 +175,7 @@ fn value_parser<'a>() -> impl Parser<'a, &'a str, TempConstant<'a>, Extra<'a>> {
                     let state = e.state();
 
                     let string = BumpString::from_str_in(&v, state.arena);
+                    let string = state.arena.alloc(string);
 
                     TempConstant::String(string)
                 }),

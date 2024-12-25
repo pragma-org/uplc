@@ -1,18 +1,15 @@
-use bumpalo::{
-    collections::{String as BumpString, Vec as BumpVec},
-    Bump,
-};
+use bumpalo::Bump;
 
 use crate::{binder::Eval, data::PlutusData, machine::MachineError, typ::Type};
 
 #[derive(Debug, PartialEq)]
 pub enum Constant<'a> {
     Integer(&'a Integer),
-    ByteString(BumpVec<'a, u8>),
-    String(BumpString<'a>),
+    ByteString(&'a [u8]),
+    String(&'a str),
     Boolean(bool),
     Data(&'a PlutusData<'a>),
-    ProtoList(&'a Type<'a>, BumpVec<'a, &'a Constant<'a>>),
+    ProtoList(&'a Type<'a>, &'a [&'a Constant<'a>]),
     ProtoPair(
         &'a Type<'a>,
         &'a Type<'a>,
@@ -44,11 +41,11 @@ impl<'a> Constant<'a> {
         arena.alloc(Constant::Integer(integer_from(arena, i)))
     }
 
-    pub fn byte_string(arena: &'a Bump, bytes: BumpVec<'a, u8>) -> &'a Constant<'a> {
+    pub fn byte_string(arena: &'a Bump, bytes: &'a [u8]) -> &'a Constant<'a> {
         arena.alloc(Constant::ByteString(bytes))
     }
 
-    pub fn string(arena: &'a Bump, s: BumpString<'a>) -> &'a Constant<'a> {
+    pub fn string(arena: &'a Bump, s: &'a str) -> &'a Constant<'a> {
         arena.alloc(Constant::String(s))
     }
 
@@ -67,7 +64,7 @@ impl<'a> Constant<'a> {
     pub fn proto_list(
         arena: &'a Bump,
         inner: &'a Type<'a>,
-        values: BumpVec<'a, &'a Constant<'a>>,
+        values: &'a [&'a Constant<'a>],
     ) -> &'a Constant<'a> {
         arena.alloc(Constant::ProtoList(inner, values))
     }

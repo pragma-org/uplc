@@ -16,7 +16,7 @@ where
         &'a Env<'a, V>,
         usize,
         &'a [&'a Term<'a, V>],
-        BumpVec<'a, &'a Value<'a, V>>,
+        &'a [&'a Value<'a, V>],
         &'a Context<'a, V>,
     ),
     FrameCases(&'a Env<'a, V>, &'a [&'a Term<'a, V>], &'a Context<'a, V>),
@@ -67,13 +67,10 @@ where
         terms: &'a [&'a Term<'a, V>],
         context: &'a Context<'a, V>,
     ) -> &'a Context<'a, V> {
-        arena.alloc(Context::FrameConstr(
-            env,
-            index,
-            terms,
-            BumpVec::new_in(arena),
-            context,
-        ))
+        let empty = BumpVec::new_in(arena);
+        let empty = arena.alloc(empty);
+
+        arena.alloc(Context::FrameConstr(env, index, terms, empty, context))
     }
 
     pub fn frame_constr(
@@ -81,7 +78,7 @@ where
         env: &'a Env<'a, V>,
         index: usize,
         terms: &'a [&'a Term<'a, V>],
-        values: BumpVec<'a, &'a Value<'a, V>>,
+        values: &'a [&'a Value<'a, V>],
         context: &'a Context<'a, V>,
     ) -> &'a Context<'a, V> {
         arena.alloc(Context::FrameConstr(env, index, terms, values, context))

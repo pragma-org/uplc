@@ -1,7 +1,4 @@
-use bumpalo::{
-    collections::{String as BumpString, Vec as BumpVec},
-    Bump,
-};
+use bumpalo::Bump;
 
 use crate::{
     builtin::DefaultFunction,
@@ -29,13 +26,13 @@ pub enum Term<'a, V> {
 
     Case {
         constr: &'a Term<'a, V>,
-        branches: BumpVec<'a, &'a Term<'a, V>>,
+        branches: &'a [&'a Term<'a, V>],
     },
 
     Constr {
         // TODO: revisit what the best type is for this
         tag: usize,
-        fields: BumpVec<'a, &'a Term<'a, V>>,
+        fields: &'a [&'a Term<'a, V>],
     },
 
     Constant(&'a Constant<'a>),
@@ -76,18 +73,14 @@ impl<'a, V> Term<'a, V> {
         arena.alloc(Term::Constant(constant))
     }
 
-    pub fn constr(
-        arena: &'a Bump,
-        tag: usize,
-        fields: BumpVec<'a, &'a Term<'a, V>>,
-    ) -> &'a Term<'a, V> {
+    pub fn constr(arena: &'a Bump, tag: usize, fields: &'a [&'a Term<'a, V>]) -> &'a Term<'a, V> {
         arena.alloc(Term::Constr { tag, fields })
     }
 
     pub fn case(
         arena: &'a Bump,
         constr: &'a Term<'a, V>,
-        branches: BumpVec<'a, &'a Term<'a, V>>,
+        branches: &'a [&'a Term<'a, V>],
     ) -> &'a Term<'a, V> {
         arena.alloc(Term::Case { constr, branches })
     }
@@ -102,13 +95,13 @@ impl<'a, V> Term<'a, V> {
         Self::integer(arena, integer_from(arena, i))
     }
 
-    pub fn byte_string(arena: &'a Bump, bytes: BumpVec<'a, u8>) -> &'a Term<'a, V> {
+    pub fn byte_string(arena: &'a Bump, bytes: &'a [u8]) -> &'a Term<'a, V> {
         let constant = Constant::byte_string(arena, bytes);
 
         Term::constant(arena, constant)
     }
 
-    pub fn string(arena: &'a Bump, s: BumpString<'a>) -> &'a Term<'a, V> {
+    pub fn string(arena: &'a Bump, s: &'a str) -> &'a Term<'a, V> {
         let constant = Constant::string(arena, s);
 
         Term::constant(arena, constant)
@@ -126,7 +119,7 @@ impl<'a, V> Term<'a, V> {
         Term::constant(arena, constant)
     }
 
-    pub fn data_byte_string(arena: &'a Bump, bytes: BumpVec<'a, u8>) -> &'a Term<'a, V> {
+    pub fn data_byte_string(arena: &'a Bump, bytes: &'a [u8]) -> &'a Term<'a, V> {
         let data = PlutusData::byte_string(arena, bytes);
 
         Term::data(arena, data)

@@ -30,6 +30,8 @@ impl<'a, 'b> minicbor::decode::Decode<'b, Ctx<'a>> for &'a PlutusData<'a> {
                                 fields.push(x?);
                             }
 
+                            let fields = ctx.arena.alloc(fields);
+
                             let data = PlutusData::constr(ctx.arena, x - 121, fields);
 
                             Ok(data)
@@ -40,6 +42,8 @@ impl<'a, 'b> minicbor::decode::Decode<'b, Ctx<'a>> for &'a PlutusData<'a> {
                             for x in decoder.array_iter_with(ctx)? {
                                 fields.push(x?);
                             }
+
+                            let fields = ctx.arena.alloc(fields);
 
                             let data = PlutusData::constr(ctx.arena, (x - 1280) + 7, fields);
 
@@ -98,6 +102,8 @@ impl<'a, 'b> minicbor::decode::Decode<'b, Ctx<'a>> for &'a PlutusData<'a> {
                     fields.push(x);
                 }
 
+                let fields = ctx.arena.alloc(fields);
+
                 Ok(PlutusData::map(ctx.arena, fields))
             }
             minicbor::data::Type::Bytes | minicbor::data::Type::BytesIndef => {
@@ -109,6 +115,8 @@ impl<'a, 'b> minicbor::decode::Decode<'b, Ctx<'a>> for &'a PlutusData<'a> {
                     bs.extend_from_slice(chunk);
                 }
 
+                let bs = ctx.arena.alloc(bs);
+
                 Ok(PlutusData::byte_string(ctx.arena, bs))
             }
             minicbor::data::Type::Array | minicbor::data::Type::ArrayIndef => {
@@ -117,6 +125,8 @@ impl<'a, 'b> minicbor::decode::Decode<'b, Ctx<'a>> for &'a PlutusData<'a> {
                 for x in decoder.array_iter_with(ctx)? {
                     fields.push(x?);
                 }
+
+                let fields = ctx.arena.alloc(fields);
 
                 Ok(PlutusData::list(ctx.arena, fields))
             }

@@ -107,6 +107,7 @@ where
         tag::CONSTR => {
             let tag = decoder.word()?;
             let fields = decoder.list_with(ctx, decode_term)?;
+            let fields = ctx.arena.alloc(fields);
 
             let term = Term::constr(ctx.arena, tag, fields);
 
@@ -116,6 +117,7 @@ where
         tag::CASE => {
             let constr = decode_term(ctx, decoder)?;
             let branches = decoder.list_with(ctx, decode_term)?;
+            let branches = ctx.arena.alloc(branches);
 
             Ok(Term::case(ctx.arena, constr, branches))
         }
@@ -138,6 +140,7 @@ fn decode_constant<'a>(
         }
         [1] => {
             let b = d.bytes(ctx.arena)?;
+            let b = ctx.arena.alloc(b);
 
             Ok(Constant::byte_string(ctx.arena, b))
         }
@@ -146,6 +149,8 @@ fn decode_constant<'a>(
 
             let s = BumpString::from_utf8(utf8_bytes)
                 .map_err(|e| FlatDecodeError::DecodeUtf8(e.utf8_error()))?;
+
+            let s = ctx.arena.alloc(s);
 
             Ok(Constant::string(ctx.arena, s))
         }

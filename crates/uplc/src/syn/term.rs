@@ -133,6 +133,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a, DeBruijn>, Extra<'a
                     let state = e.state();
 
                     let fields = BumpVec::from_iter_in(fields, state.arena);
+                    let fields = state.arena.alloc(fields);
 
                     let ret = Term::constr(state.arena, tag.parse().unwrap(), fields);
 
@@ -158,6 +159,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a, DeBruijn>, Extra<'a
                     let state = e.state();
 
                     let branches = BumpVec::from_iter_in(branches, state.arena);
+                    let branches = state.arena.alloc(branches);
 
                     let ret = Term::case(state.arena, tag, branches);
 
