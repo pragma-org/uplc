@@ -133,18 +133,18 @@ fn decode_constant<'a>(
     let tags = decode_constant_tags(ctx, d)?;
 
     match &tags.as_slice() {
-        [0] => {
+        [tag::INTEGER] => {
             let v = ctx.arena.alloc(d.integer()?);
 
             Ok(Constant::integer(ctx.arena, v))
         }
-        [1] => {
+        [tag::BYTE_STRING] => {
             let b = d.bytes(ctx.arena)?;
             let b = ctx.arena.alloc(b);
 
             Ok(Constant::byte_string(ctx.arena, b))
         }
-        [2] => {
+        [tag::STRING] => {
             let utf8_bytes = d.bytes(ctx.arena)?;
 
             let s = BumpString::from_utf8(utf8_bytes)
@@ -154,17 +154,19 @@ fn decode_constant<'a>(
 
             Ok(Constant::string(ctx.arena, s))
         }
-        [3] => Ok(Constant::unit(ctx.arena)),
-        [4] => {
+        [tag::UNIT] => Ok(Constant::unit(ctx.arena)),
+        [tag::BOOL] => {
             let v = d.bit()?;
 
             Ok(Constant::bool(ctx.arena, v))
         }
-        [7, 5, rest @ ..] => todo!("list"),
+        [tag::PROTO_LIST_ONE, tag::PROTO_LIST_TWO, rest @ ..] => todo!("list"),
 
-        [7, 7, 6, rest @ ..] => todo!("pair"),
+        [tag::PROTO_PAIR_ONE, tag::PROTO_PAIR_TWO, tag::PROTO_PAIR_THREE, rest @ ..] => {
+            todo!("pair")
+        }
 
-        [8] => {
+        [tag::DATA] => {
             let cbor = d.bytes(ctx.arena)?;
 
             let data = minicbor::decode_with(&cbor, ctx)?;

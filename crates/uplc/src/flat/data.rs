@@ -1,5 +1,5 @@
 use bumpalo::collections::Vec as BumpVec;
-use minicbor::data::IanaTag;
+use minicbor::data::{IanaTag, Tag};
 use rug::ops::NegAssign;
 
 use crate::data::PlutusData;
@@ -151,5 +151,67 @@ impl<'a, 'b> minicbor::decode::Decode<'b, Ctx<'a>> for &'a PlutusData<'a> {
                 Err(e)
             }
         }
+    }
+}
+
+impl<C> minicbor::encode::Encode<C> for PlutusData<'_> {
+    fn encode<W: minicbor::encode::Write>(
+        &self,
+        e: &mut minicbor::Encoder<W>,
+        ctx: &mut C,
+    ) -> Result<(), minicbor::encode::Error<W::Error>> {
+        match self {
+            PlutusData::Constr { tag, fields } => {
+                e.tag(Tag::new(*tag))?;
+
+                match tag {
+                    102 => {
+                        todo!("tagged data")
+                    }
+                    // TODO: figure out if we need to care about def vs indef
+                    // if indef we need to call e.begin_array()?, then loop, then e.end()?;
+                    _ => {
+                        fields.encode(e, ctx)?;
+                    }
+                }
+            }
+            // stolen from pallas
+            // we use definite array to match the approach used by haskell's plutus
+            // implementation https://github.com/input-output-hk/plutus/blob/9538fc9829426b2ecb0628d352e2d7af96ec8204/plutus-core/plutus-core/src/PlutusCore/Data.hs#L152
+            PlutusData::Map(map) => {
+                let len: u64 = map
+                    .len()
+                    .try_into()
+                    .expect("setting map length should work fine");
+
+                e.map(len)?;
+
+                for (k, v) in map.iter() {
+                    k.encode(e, ctx)?;
+                    v.encode(e, ctx)?;
+                }
+            }
+            PlutusData::Integer(_) => todo!(),
+            // we match the haskell implementation by encoding bytestrings longer than 64
+            // bytes as indefinite lists of bytes
+            PlutusData::ByteString(bs) => {
+                const CHUNK_SIZE: usize = 64;
+
+                if bs.len() <= 64 {
+                    e.bytes(bs)?;
+                } else {
+                    e.begin_bytes()?;
+
+                    for b in bs.chunks(CHUNK_SIZE) {
+                        e.bytes(b)?;
+                    }
+
+                    e.end()?;
+                }
+            }
+            PlutusData::List(_) => todo!(),
+        }
+
+        Ok(())
     }
 }
