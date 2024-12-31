@@ -1,52 +1,35 @@
 // #[cfg(feature = "num-bigint")]
 // use num_bigint::{BigInt, BigUint, ToBigInt};
 
+use crate::constant::Integer;
+
 pub trait ZigZag {
     type Zag;
 
     fn zigzag(self) -> Self::Zag;
+    fn unzigzag(self) -> Self::Zag;
 }
 
-// #[cfg(feature = "num-bigint")]
-// impl ZigZag for BigInt {
-//     type Zag = BigUint;
+impl ZigZag for &Integer {
+    type Zag = Integer;
 
-//     fn zigzag(self) -> Self::Zag where {
-//         if self >= 0.into() {
-//             self << 1
-//         } else {
-//             let double: BigInt = self << 1;
-//             -double - <u8 as Into<BigInt>>::into(1)
-//         }
-//         .to_biguint()
-//         .expect("number is positive")
-//     }
-// }
+    fn zigzag(self) -> Self::Zag {
+        if *self >= 0 {
+            // For non-negative numbers, just multiply by 2 (left shift by 1)
+            self.clone() << 1
+        } else {
+            // For negative numbers: -(2 * n) - 1
+            // First multiply by 2
+            let double: Integer = self.clone() << 1;
 
-impl ZigZag for i128 {
-    type Zag = usize;
-
-    fn zigzag(self) -> Self::Zag where {
-        let bits = i128::BITS as i128;
-        let i = self;
-        ((i << 1) ^ (i >> (bits - 1))) as usize
+            // Then negate and subtract 1
+            -double - 1
+        }
     }
-}
 
-// #[cfg(feature = "num-bigint")]
-// impl ZigZag for BigUint {
-//     type Zag = BigInt;
+    fn unzigzag(self) -> Self::Zag {
+        let temp: Integer = self.clone() & 1;
 
-//     fn zigzag(self) -> Self::Zag where {
-//         let i = self.to_bigint().expect("always possible");
-//         (i.clone() >> 1) ^ -(i & <u8 as Into<BigInt>>::into(1))
-//     }
-// }
-
-impl ZigZag for usize {
-    type Zag = i128;
-
-    fn zigzag(self) -> Self::Zag where {
-        ((self >> 1) as i128) ^ -((self & 1) as i128)
+        (self.clone() >> 1) ^ -(temp)
     }
 }

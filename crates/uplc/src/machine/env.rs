@@ -25,7 +25,7 @@ where
         arena.alloc(Self(new_env))
     }
 
-    pub fn lookup(&'a self, name: usize) -> Option<&&'a Value<'a, V>> {
-        self.0.get(self.0.len() - name)
+    pub fn lookup(&'a self, name: usize) -> Option<&'a Value<'a, V>> {
+        self.0.get(self.0.len() - name).copied()
     }
 }

@@ -3,7 +3,7 @@ use bumpalo::{
     Bump,
 };
 
-use crate::flat::zigzag::ZigZag;
+use crate::{constant::Integer, flat::zigzag::ZigZag};
 
 use super::FlatDecodeError;
 
@@ -169,7 +169,7 @@ impl<'b> Decoder<'b> {
         Ok(b)
     }
 
-    /// Decode an isize integer.
+    /// Decode an integer of an arbitrary size..
     ///
     /// This is byte alignment agnostic.
     /// First we decode the next 8 bits of the buffer.
@@ -180,8 +180,44 @@ impl<'b> Decoder<'b> {
     /// so on. If the most significant bit was instead 0 we stop decoding
     /// any more bits. Finally we use zigzag to convert the unsigned integer
     /// back to a signed integer.
-    pub fn integer(&mut self) -> Result<i128, FlatDecodeError> {
-        Ok(self.word()?.zigzag())
+    pub fn integer(&mut self) -> Result<Integer, FlatDecodeError> {
+        Ok(ZigZag::unzigzag(&self.big_word()?))
+    }
+
+    /// Decode a word of 128 bits size.
+    /// This is byte alignment agnostic.
+    /// First we decode the next 8 bits of the buffer.
+    /// We take the 7 least significant bits as the 7 least significant bits of
+    /// the current unsigned integer. If the most significant bit of the 8
+    /// bits is 1 then we take the next 8 and repeat the process above,
+    /// filling in the next 7 least significant bits of the unsigned integer and
+    /// so on. If the most significant bit was instead 0 we stop decoding
+    /// any more bits.
+    pub fn big_word(&mut self) -> Result<Integer, FlatDecodeError> {
+        let mut leading_bit = 1;
+        let mut final_word = Integer::from(0);
+        let mut shift = 0_u32; // Using u32 for shift as it's more than enough for 128 bits
+
+        // Continue looping if lead bit is 1 (0x80) otherwise exit
+        while leading_bit > 0 {
+            let word8 = self.bits8(8)?;
+            let word7 = word8 & 0x7F; // 127, get 7 least significant bits
+
+            // Create temporary Integer from word7 and shift it
+            let part = Integer::from(word7);
+            let shifted_part = part << shift;
+
+            // OR it with our result
+            final_word |= shifted_part;
+
+            // Increment shift by 7 for next iteration
+            shift += 7;
+
+            // Check if we should continue (MSB set)
+            leading_bit = word8 & 0x80; // 128
+        }
+
+        Ok(final_word)
     }
 
     /// Decode a byte array.

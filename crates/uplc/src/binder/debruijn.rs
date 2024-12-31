@@ -50,7 +50,7 @@ impl<'a> Binder<'a> for DeBruijn {
     }
 }
 
-impl<'a> Eval<'a> for DeBruijn {
+impl Eval<'_> for DeBruijn {
     fn index(&self) -> usize {
         self.0
     }
