@@ -1,3 +1,5 @@
+use crate::{constant::Integer, flat::zigzag::ZigZag};
+
 use super::FlatEncodeError;
 
 #[derive(Default)]
@@ -30,6 +32,33 @@ impl Encoder {
                 break;
             }
         }
+
+        self
+    }
+
+    /// Encode a `bool` value. This is byte alignment agnostic.
+    /// Uses the next unused bit in the current byte to encode this information.
+    /// One for true and Zero for false
+    pub fn bool(&mut self, x: bool) -> &mut Self {
+        if x {
+            self.one();
+        } else {
+            self.zero();
+        }
+
+        self
+    }
+
+    /// Encode an arbitrarily sized integer.
+    ///
+    /// This is byte alignment agnostic.
+    /// First we use zigzag once to double the number and encode the negative
+    /// sign as the least significant bit. Next we encode the 7 least
+    /// significant bits of the unsigned integer. If the number is greater than
+    /// 127 we encode a leading 1 followed by repeating the encoding above for
+    /// the next 7 bits and so on.
+    pub fn integer(&mut self, i: &Integer) -> &mut Self {
+        self.big_word(i.zigzag());
 
         self
     }
@@ -112,6 +141,33 @@ impl Encoder {
         self.write_blk(arr);
 
         Ok(self)
+    }
+
+    /// Encode a unsigned integer of 128 bits size.
+    /// This is byte alignment agnostic.
+    /// We encode the 7 least significant bits of the unsigned byte. If the char
+    /// value is greater than 127 we encode a leading 1 followed by
+    /// repeating the above for the next 7 bits and so on.
+    pub fn big_word(&mut self, c: Integer) -> &mut Self {
+        let mut d = c;
+
+        loop {
+            let temp: Integer = d.clone() % 128;
+            let mut w = temp.to_u8().unwrap();
+
+            d >>= 7;
+
+            if d != 0 {
+                w |= 128;
+            }
+            self.bits(8, w);
+
+            if d == 0 {
+                break;
+            }
+        }
+
+        self
     }
 
     /// Encode a string.

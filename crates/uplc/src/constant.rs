@@ -37,7 +37,7 @@ impl<'a> Constant<'a> {
         arena.alloc(Constant::Integer(i))
     }
 
-    pub fn integer_from(arena: &'a Bump, i: i128) -> &'a Constant {
+    pub fn integer_from(arena: &'a Bump, i: i128) -> &'a Constant<'a> {
         arena.alloc(Constant::Integer(integer_from(arena, i)))
     }
 
@@ -57,7 +57,7 @@ impl<'a> Constant<'a> {
         arena.alloc(Constant::Data(d))
     }
 
-    pub fn unit(arena: &'a Bump) -> &'a Constant {
+    pub fn unit(arena: &'a Bump) -> &'a Constant<'a> {
         arena.alloc(Constant::Unit)
     }
 

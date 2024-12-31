@@ -134,9 +134,9 @@ fn decode_constant<'a>(
 
     match &tags.as_slice() {
         [0] => {
-            let v = d.integer()?;
+            let v = ctx.arena.alloc(d.integer()?);
 
-            Ok(Constant::integer_from(ctx.arena, v))
+            Ok(Constant::integer(ctx.arena, v))
         }
         [1] => {
             let b = d.bytes(ctx.arena)?;
