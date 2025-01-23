@@ -41,8 +41,6 @@ where
 
     decoder.filler()?;
 
-    // TODO: probably should add a `finish()?` method that errors if bytes remain
-
     Ok(Program::new(arena, version, term))
 }
 
@@ -66,9 +64,11 @@ where
         }
         // Lambda
         tag::LAMBDA => {
+            let param = V::parameter_decode(ctx.arena, decoder)?;
+
             let term = decode_term(ctx, decoder)?;
 
-            Ok(term.lambda(ctx.arena, V::parameter_decode(ctx.arena, decoder)?))
+            Ok(term.lambda(ctx.arena, param))
         }
         // Apply
         tag::APPLY => {
