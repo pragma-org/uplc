@@ -1,8 +1,8 @@
 [package]
-name = "uplc"
+name = "uplc-turbo"
 version = "0.1.0"
 edition = "2021"
-publish = false
+publish = true 
 
 [dependencies]
 blst = "0.3.13"

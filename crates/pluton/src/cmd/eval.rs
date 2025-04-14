@@ -14,7 +14,7 @@ pub struct Args {
 
 impl Args {
     pub fn exec(self) -> miette::Result<()> {
-        let arena = uplc::bumpalo::Bump::with_capacity(1_024_000);
+        let arena = uplc_turbo::bumpalo::Bump::with_capacity(1_024_000);
 
         let program = if let Some(file_path) = self.file {
             std::fs::read(file_path).into_diagnostic()?
@@ -29,7 +29,7 @@ impl Args {
         let mut program_string = String::new();
 
         let program = if self.flat {
-            uplc::flat::decode(&arena, &program).into_diagnostic()?
+            uplc_turbo::flat::decode(&arena, &program).into_diagnostic()?
         } else {
             {
                 let temp = String::from_utf8(program).into_diagnostic()?;
@@ -37,7 +37,8 @@ impl Args {
                 program_string.push_str(&temp);
             }
 
-            let parse_result = uplc::syn::parse_program(&arena, &program_string).into_result();
+            let parse_result =
+                uplc_turbo::syn::parse_program(&arena, &program_string).into_result();
 
             match parse_result {
                 Ok(program) => program,
@@ -56,7 +57,7 @@ impl Args {
         let mut parsed_args = vec![];
 
         for (index, arg) in self.args.iter().enumerate() {
-            let parse_result = uplc::syn::parse_term(&arena, arg).into_result();
+            let parse_result = uplc_turbo::syn::parse_term(&arena, arg).into_result();
 
             let term = match parse_result {
                 Ok(term) => term,
