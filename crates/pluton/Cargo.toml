@@ -3,7 +3,9 @@ name = "pluton"
 version = "0.1.0"
 edition = "2021"
 
+publish = false
+
 [dependencies]
 clap = { version = "4.5.18", features = ["derive"] }
 miette = { version = "7.2.0", features = ["fancy"] }
-uplc = { version = "0.1.0", path = "../uplc" }
+uplc-turbo = { version = "0.1.0", path = "../uplc" }
