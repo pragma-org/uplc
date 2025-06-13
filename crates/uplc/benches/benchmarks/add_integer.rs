@@ -1,7 +1,7 @@
 use bumpalo::Bump;
 use criterion::{criterion_group, Criterion};
 
-use uplc::term::Term;
+use uplc_turbo::term::Term;
 
 use super::utils;
 
