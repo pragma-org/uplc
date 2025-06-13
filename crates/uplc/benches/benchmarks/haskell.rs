@@ -3,7 +3,7 @@ use std::{fs, time::Duration};
 use bumpalo::Bump;
 use criterion::{criterion_group, Criterion};
 use itertools::Itertools;
-use uplc::{binder::DeBruijn, flat};
+use uplc_turbo::{binder::DeBruijn, flat};
 
 pub fn run(c: &mut Criterion) {
     let data_dir = std::path::Path::new("benches/benchmarks/data");

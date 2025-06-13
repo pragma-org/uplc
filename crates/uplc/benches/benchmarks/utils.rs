@@ -1,7 +1,7 @@
 use bumpalo::Bump;
 use ouroboros::self_referencing;
 
-use uplc::{
+use uplc_turbo::{
     binder::DeBruijn,
     program::{Program, Version},
     term::Term,

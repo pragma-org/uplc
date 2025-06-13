@@ -185,8 +185,8 @@ fn value_parser<'a>() -> impl Parser<'a, &'a str, TempConstant<'a>, Extra<'a>> {
                 .map(TempConstant::Data),
             // list
             con.clone()
+                .padded()
                 .separated_by(just(','))
-                .allow_trailing()
                 .collect()
                 .delimited_by(just('['), just(']'))
                 .map_with(|fields: Vec<TempConstant<'_>>, e: &mut MapExtra<'a, '_>| {
