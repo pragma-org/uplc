@@ -26,4 +26,10 @@ pub enum FlatDecodeError {
     UnknownTermConstructor(u8),
     #[error("Unknown constant constructor tag: {0:#?}")]
     UnknownConstantConstructor(Vec<u8>),
+    #[error("Unknown type tags: {0:#?}")]
+    UnknownTypeTags(Vec<u8>),
+    #[error("Missing type tag")]
+    MissingTypeTag,
+    #[error("BLS type not supported")]
+    BlsTypeNotSupported,
 }
