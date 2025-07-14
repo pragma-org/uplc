@@ -127,7 +127,7 @@ where
 }
 
 fn decode_type<'a>(ctx: &mut Ctx<'a>, d: &mut Decoder) -> Result<&'a Type<'a>, FlatDecodeError> {
-    let tag = dbg!(decode_constant_tags(ctx, d)?);
+    let tag = decode_constant_tags(ctx, d)?;
 
     match &tag.as_slice() {
         [tag::INTEGER] => Ok(Type::integer(ctx.arena)),
