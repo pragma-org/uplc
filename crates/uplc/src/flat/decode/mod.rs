@@ -205,9 +205,9 @@ fn decode_constant<'a>(
 
             Ok(Constant::data(ctx.arena, data))
         }
-        Type::Bls12_381G1Element => todo!(),
-        Type::Bls12_381G2Element => todo!(),
-        Type::Bls12_381MlResult => todo!(),
+        Type::Bls12_381G1Element => Err(FlatDecodeError::BlsTypeNotSupported),
+        Type::Bls12_381G2Element => Err(FlatDecodeError::BlsTypeNotSupported),
+        Type::Bls12_381MlResult => Err(FlatDecodeError::BlsTypeNotSupported),
     }
 }
 

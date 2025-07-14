@@ -30,4 +30,6 @@ pub enum FlatDecodeError {
     UnknownTypeTags(Vec<u8>),
     #[error("Missing type tag")]
     MissingTypeTag,
+    #[error("BLS type not supported")]
+    BlsTypeNotSupported,
 }
