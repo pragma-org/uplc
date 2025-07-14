@@ -11,6 +11,7 @@ use bumpalo::{
 };
 
 use crate::binder::Binder;
+use crate::typ::Type;
 use crate::{
     constant::Constant,
     program::{Program, Version},
@@ -125,56 +126,88 @@ where
     }
 }
 
+fn decode_type<'a>(ctx: &mut Ctx<'a>, d: &mut Decoder) -> Result<&'a Type<'a>, FlatDecodeError> {
+    let tag = dbg!(decode_constant_tags(ctx, d)?);
+
+    match &tag.as_slice() {
+        [tag::INTEGER] => Ok(Type::integer(ctx.arena)),
+        [tag::BYTE_STRING] => Ok(Type::byte_string(ctx.arena)),
+        [tag::STRING] => Ok(Type::string(ctx.arena)),
+        [tag::UNIT] => Ok(Type::unit(ctx.arena)),
+        [tag::BOOL] => Ok(Type::bool(ctx.arena)),
+        [tag::PROTO_LIST_ONE, tag::PROTO_LIST_TWO] => {
+            let sub_typ = decode_type(ctx, d)?;
+            Ok(Type::list(ctx.arena, sub_typ))
+        }
+        [tag::PROTO_LIST_ONE, tag::PROTO_LIST_TWO, tag::DATA] => {
+            Ok(Type::list(ctx.arena, &Type::Data))
+        }
+        [tag::PROTO_PAIR_ONE, tag::PROTO_PAIR_TWO, tag::PROTO_PAIR_THREE] => {
+            let sub_typ1 = decode_type(ctx, d)?;
+            let sub_typ2 = decode_type(ctx, d)?;
+            Ok(Type::pair(ctx.arena, sub_typ1, sub_typ2))
+        }
+        [tag::DATA] => Ok(Type::data(ctx.arena)),
+        [] => Err(FlatDecodeError::MissingTypeTag),
+        x => Err(FlatDecodeError::UnknownTypeTags(x.to_vec())),
+    }
+}
+
 // BLS literals not supported
 fn decode_constant<'a>(
     ctx: &mut Ctx<'a>,
     d: &mut Decoder,
 ) -> Result<&'a Constant<'a>, FlatDecodeError> {
-    let tags = decode_constant_tags(ctx, d)?;
+    let ty = decode_type(ctx, d)?;
 
-    match &tags.as_slice() {
-        [tag::INTEGER] => {
-            let v = ctx.arena.alloc(d.integer()?);
+    match ty {
+        Type::Integer => {
+            let v = d.integer()?;
+            let v = ctx.arena.alloc(v);
 
             Ok(Constant::integer(ctx.arena, v))
         }
-        [tag::BYTE_STRING] => {
+        Type::ByteString => {
             let b = d.bytes(ctx.arena)?;
             let b = ctx.arena.alloc(b);
 
             Ok(Constant::byte_string(ctx.arena, b))
         }
-        [tag::STRING] => {
-            let utf8_bytes = d.bytes(ctx.arena)?;
-
-            let s = BumpString::from_utf8(utf8_bytes)
-                .map_err(|e| FlatDecodeError::DecodeUtf8(e.utf8_error()))?;
-
-            let s = ctx.arena.alloc(s);
-
-            Ok(Constant::string(ctx.arena, s))
-        }
-        [tag::UNIT] => Ok(Constant::unit(ctx.arena)),
-        [tag::BOOL] => {
+        Type::Bool => {
             let v = d.bit()?;
 
             Ok(Constant::bool(ctx.arena, v))
         }
-        [tag::PROTO_LIST_ONE, tag::PROTO_LIST_TWO, rest @ ..] => todo!("list"),
+        Type::String => {
+            let s = d.utf8(ctx.arena)?;
+            let s = ctx.arena.alloc(s);
 
-        [tag::PROTO_PAIR_ONE, tag::PROTO_PAIR_TWO, tag::PROTO_PAIR_THREE, rest @ ..] => {
-            todo!("pair")
+            Ok(Constant::string(ctx.arena, s))
         }
+        Type::Unit => Ok(Constant::unit(ctx.arena)),
+        Type::List(sub_typ) => {
+            let fields = d.list_with(ctx, |ctx, d| decode_constant(ctx, d))?;
+            let fields = ctx.arena.alloc(fields);
 
-        [tag::DATA] => {
+            Ok(Constant::proto_list(ctx.arena, sub_typ, fields))
+        }
+        Type::Pair(sub_typ1, sub_typ2) => {
+            let fst = decode_constant(ctx, d)?;
+            let snd = decode_constant(ctx, d)?;
+
+            Ok(Constant::proto_pair(
+                ctx.arena, sub_typ1, sub_typ2, fst, snd,
+            ))
+        }
+        Type::Data => {
             let cbor = d.bytes(ctx.arena)?;
-
             let data = minicbor::decode_with(&cbor, ctx)?;
 
             Ok(Constant::data(ctx.arena, data))
         }
-
-        x => Err(FlatDecodeError::UnknownConstantConstructor(x.to_vec())),
+        Type::Bls12_381G1Element => todo!(),
+        Type::Bls12_381G2Element => todo!(),
+        Type::Bls12_381MlResult => todo!(),
     }
 }
 
