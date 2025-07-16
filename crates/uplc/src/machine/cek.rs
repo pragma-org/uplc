@@ -211,6 +211,8 @@ impl<'a> Machine<'a> {
                     new_values.push(*value);
                 }
 
+                new_values.push(value);
+
                 let values = self.arena.alloc(new_values);
 
                 if let Some((first, terms)) = terms.split_first() {
@@ -229,16 +231,21 @@ impl<'a> Machine<'a> {
                 }
             }
             Context::FrameCases(env, branches, context) => match value {
-                Value::Constr(tag, fields) => match branches.get(*tag) {
-                    Some(branch) => {
+                Value::Constr(tag, fields) => {
+                    if *tag > usize::MAX {
+                        return Err(MachineError::MaxConstrTagExceeded(value));
+                    }
+
+                    if let Some(branch) = branches.get(*tag) {
                         let frame = self.transfer_arg_stack(fields, context);
 
                         let state = MachineState::compute(self.arena, frame, env, branch);
 
                         Ok(state)
+                    } else {
+                        return Err(MachineError::MissingCaseBranch(branches, value));
                     }
-                    None => Err(MachineError::MissingCaseBranch(branches, value)),
-                },
+                }
                 v => Err(MachineError::NonConstrScrutinized(v)),
             },
             Context::NoFrame => {
@@ -344,13 +351,13 @@ impl<'a> Machine<'a> {
     where
         V: Eval<'a>,
     {
-        if let Some((first, rest)) = fields.split_first() {
-            let context = Context::frame_await_fun_value(self.arena, first, context);
+        let mut c = context;
 
-            self.transfer_arg_stack(rest, context)
-        } else {
-            context
+        for field in fields.iter().rev() {
+            c = Context::frame_await_fun_value(self.arena, *field, c);
         }
+
+        c
     }
 
     fn step_and_maybe_spend<V>(&mut self, step: StepKind) -> Result<(), MachineError<'a, V>>
