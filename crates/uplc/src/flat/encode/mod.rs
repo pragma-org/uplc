@@ -219,7 +219,7 @@ fn encode_constant_value<'a>(e: &mut Encoder, x: &'a &Constant<'a>) -> Result<()
 
             encode_constant_value(e, b)?;
         }
-        Constant::Data(data) => {
+        Constant::Data(_data) => {
             todo!();
         }
         Constant::Bls12_381G1Element(_)

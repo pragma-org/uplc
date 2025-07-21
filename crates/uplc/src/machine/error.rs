@@ -38,6 +38,8 @@ where
     MissingCaseBranch(&'a [&'a Term<'a, V>], &'a Value<'a, V>),
     #[error(transparent)]
     Runtime(RuntimeError<'a>),
+    #[error("Max constr tag exceeded")]
+    MaxConstrTagExceeded(&'a Value<'a, V>),
 }
 
 #[derive(thiserror::Error, Debug)]

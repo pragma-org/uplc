@@ -1957,7 +1957,7 @@ fn integer_to_bytes<'a>(
     // Get the minimum number of bytes needed
     let bits = num.significant_bits() as usize;
 
-    let byte_len = (bits + 7) / 8;
+    let byte_len = bits.div_ceil(8);
 
     // Create a vector with the required capacity
     let mut bytes = BumpVec::with_capacity_in(byte_len, arena);
