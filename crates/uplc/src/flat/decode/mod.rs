@@ -5,10 +5,7 @@ pub use decoder::Ctx;
 pub use decoder::Decoder;
 pub use error::FlatDecodeError;
 
-use bumpalo::{
-    collections::{String as BumpString, Vec as BumpVec},
-    Bump,
-};
+use bumpalo::{collections::Vec as BumpVec, Bump};
 
 use crate::binder::Binder;
 use crate::typ::Type;
