@@ -2088,16 +2088,45 @@ impl<'a> Machine<'a> {
                 let size = runtime.args[0].unwrap_integer()?;
                 let byte = runtime.args[1].unwrap_integer()?;
 
-                let budget = self.costs.builtin_costs.replicate_byte([
-                    cost_model::integer_ex_mem(size),
-                    cost_model::integer_ex_mem(byte),
-                ]);
+                if size.is_negative() {
+                    return Err(MachineError::replicate_byte_negative_size(size));
+                }
+
+                if *size > INTEGER_TO_BYTE_STRING_MAXIMUM_OUTPUT_LENGTH.into() {
+                    return Err(MachineError::replicate_byte_size_too_big(
+                        size,
+                        INTEGER_TO_BYTE_STRING_MAXIMUM_OUTPUT_LENGTH,
+                    ));
+                }
+
+                let arg0: i64 = i64::try_from(size).unwrap();
+
+                let arg0_ex_mem = if arg0 == 0 { 0 } else { ((arg0 - 1) / 8) + 1 };
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .replicate_byte([arg0_ex_mem, cost_model::integer_ex_mem(byte)]);
 
                 self.spend_budget(budget)?;
 
-                let Ok(size) = usize::try_from(size) else {
-                    return Err(MachineError::outside_usize_bounds(size));
-                };
+                if size.is_zero()
+                    && cost_model::integer_log2_x(byte)
+                        >= 8 * INTEGER_TO_BYTE_STRING_MAXIMUM_OUTPUT_LENGTH
+                {
+                    let required = cost_model::integer_log2_x(byte) / 8 + 1;
+
+                    return Err(MachineError::replicate_byte_size_too_big(
+                        constant::integer_from(self.arena, required as i128),
+                        INTEGER_TO_BYTE_STRING_MAXIMUM_OUTPUT_LENGTH,
+                    ));
+                }
+
+                if byte.is_negative() {
+                    return Err(MachineError::replicate_byte_negative_input(byte));
+                }
+
+                let size: usize = size.try_into().unwrap();
 
                 let Ok(byte) = u8::try_from(byte) else {
                     return Err(MachineError::outside_byte_bounds(byte));
