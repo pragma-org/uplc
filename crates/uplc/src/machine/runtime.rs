@@ -1893,6 +1893,40 @@ impl<'a> Machine<'a> {
 
                 Ok(value)
             }
+            DefaultFunction::AndByteString => {
+                let should_pad = runtime.args[0].unwrap_bool()?;
+                let left_bytes = runtime.args[1].unwrap_byte_string()?;
+                let right_bytes = runtime.args[2].unwrap_byte_string()?;
+
+                let budget = self.costs.builtin_costs.and_byte_string([
+                    cost_model::BOOL_EX_MEM,
+                    cost_model::byte_string_ex_mem(left_bytes),
+                    cost_model::byte_string_ex_mem(right_bytes),
+                ]);
+                println!("Budget: {:?}", budget);
+
+                self.spend_budget(budget)?;
+
+                let bytes_result: Vec<u8> = if should_pad {
+                    let max_len = left_bytes.len().max(right_bytes.len());
+                    (0..max_len)
+                        .map(|index| {
+                            let left_byte = left_bytes.get(index).copied().unwrap_or(0xFF);
+                            let right_byte = right_bytes.get(index).copied().unwrap_or(0xFF);
+                            left_byte & right_byte
+                        })
+                        .collect()
+                } else {
+                    left_bytes
+                        .iter()
+                        .zip(right_bytes)
+                        .map(|(b1, b2)| b1 & b2)
+                        .collect()
+                };
+                let result = self.arena.alloc(bytes_result);
+                let value = Value::byte_string(self.arena, result);
+                Ok(value)
+            }
         }
     }
 }
