@@ -100,6 +100,12 @@ pub enum RuntimeError<'a> {
         "Size"
     )]
     ReadBitOutOfBounds(&'a Integer, usize),
+    #[error(
+        "writeBits: an index is out of bounds\n{:>13} {0}\n{:>13} {1}",
+        "Index",
+        "Size"
+    )]
+    WriteBitsOutOfBounds(&'a Integer, usize),
 }
 
 impl<'a, V> MachineError<'a, V>
@@ -197,7 +203,12 @@ where
     pub fn empty_byte_array() -> Self {
         MachineError::runtime(RuntimeError::EmptyByteArray)
     }
+
     pub fn read_bit_out_of_bounds(index: &'a Integer, size: usize) -> Self {
         MachineError::runtime(RuntimeError::ReadBitOutOfBounds(index, size))
+    }
+
+    pub fn write_bits_out_of_bounds(index: &'a Integer, size: usize) -> Self {
+        MachineError::runtime(RuntimeError::WriteBitsOutOfBounds(index, size))
     }
 }

@@ -2008,9 +2008,8 @@ impl<'a> Machine<'a> {
                 let result = self
                     .arena
                     .alloc(bytes.iter().map(|b| b ^ 255).collect::<Vec<_>>());
-                let value = Value::byte_string(self.arena, result);
 
-                Ok(value)
+                Ok(Value::byte_string(self.arena, result))
             }
             DefaultFunction::ReadBit => {
                 let bytes = runtime.args[0].unwrap_byte_string()?;
@@ -2042,9 +2041,48 @@ impl<'a> Machine<'a> {
 
                 let bit_test = (byte >> bit_offset) & 1 == 1;
 
-                let value = Value::bool(self.arena, bit_test);
+                Ok(Value::bool(self.arena, bit_test))
+            }
+            DefaultFunction::WriteBits => {
+                let mut bytes = runtime.args[0].unwrap_byte_string()?.to_vec();
+                let indices = runtime.args[1].unwrap_int_list()?;
+                let set_bit = runtime.args[2].unwrap_bool()?;
 
-                Ok(value)
+                let budget = self.costs.builtin_costs.write_bits([
+                    cost_model::byte_string_ex_mem(bytes.as_slice()),
+                    cost_model::proto_list_ex_mem(indices),
+                    cost_model::BOOL_EX_MEM,
+                ]);
+
+                self.spend_budget(budget)?;
+
+                for index in indices {
+                    let Constant::Integer(bit_index) = index else {
+                        unreachable!("bit_index must be an integer")
+                    };
+
+                    if *bit_index < &Integer::ZERO || *bit_index >= &Integer::from(bytes.len() * 8)
+                    {
+                        return Err(MachineError::write_bits_out_of_bounds(
+                            bit_index,
+                            bytes.len() * 8,
+                        ));
+                    }
+
+                    let (byte_index, bit_offset) = bit_index.div_rem(&8.into());
+                    let bit_offset = usize::try_from(bit_offset).unwrap();
+                    let flipped_index = bytes.len() - 1 - usize::try_from(byte_index).unwrap();
+                    let bit_mask: u8 = 1 << bit_offset;
+
+                    if set_bit {
+                        bytes[flipped_index] |= bit_mask;
+                    } else {
+                        bytes[flipped_index] &= !bit_mask;
+                    }
+                }
+
+                let result = self.arena.alloc(bytes);
+                Ok(Value::byte_string(self.arena, result))
             }
         }
     }

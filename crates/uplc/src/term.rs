@@ -601,4 +601,9 @@ impl<'a, V> Term<'a, V> {
 
         Term::builtin(arena, fun)
     }
+    pub fn write_bits(arena: &'a Bump) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::WriteBits);
+
+        Term::builtin(arena, fun)
+    }
 }

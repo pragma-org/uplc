@@ -255,6 +255,7 @@ pub fn builtin_from_str<'a>(arena: &'a Bump, name: &str) -> Option<&'a Term<'a, 
         "xorByteString" => Some(Term::xor_byte_string(&arena)),
         "complementByteString" => Some(Term::complement_byte_string(&arena)),
         "readBit" => Some(Term::read_bit(&arena)),
+        "writeBits" => Some(Term::write_bits(&arena)),
         _ => None,
     }
 }

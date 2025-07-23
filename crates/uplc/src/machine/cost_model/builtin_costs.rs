@@ -98,6 +98,7 @@ pub struct BuiltinCosts {
     xor_byte_string: ThreeArgumentsCosting,
     complement_byte_string: OneArgumentCosting,
     read_bit: TwoArgumentsCosting,
+    write_bits: ThreeArgumentsCosting,
 }
 
 impl Default for BuiltinCosts {
@@ -605,6 +606,13 @@ impl BuiltinCosts {
         ExBudget::new(self.read_bit.mem.cost(args), self.read_bit.cpu.cost(args))
     }
 
+    pub fn write_bits(&self, args: [i64; 3]) -> ExBudget {
+        ExBudget::new(
+            self.write_bits.mem.cost(args),
+            self.write_bits.cpu.cost(args),
+        )
+    }
+
     pub fn v3() -> Self {
         Self {
             add_integer: TwoArgumentsCosting::new(
@@ -936,6 +944,10 @@ impl BuiltinCosts {
             read_bit: TwoArgumentsCosting::new(
                 TwoArgumentsCosting::constant_cost(1),
                 TwoArgumentsCosting::constant_cost(95336),
+            ),
+            write_bits: ThreeArgumentsCosting::new(
+                ThreeArgumentsCosting::linear_in_x(0, 1),
+                ThreeArgumentsCosting::linear_in_y(281145, 18848),
             ),
         }
     }
