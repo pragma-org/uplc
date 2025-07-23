@@ -586,4 +586,9 @@ impl<'a, V> Term<'a, V> {
 
         Term::builtin(arena, fun)
     }
+    pub fn xor_byte_string(arena: &'a Bump) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::XorByteString);
+
+        Term::builtin(arena, fun)
+    }
 }
