@@ -616,4 +616,9 @@ impl<'a, V> Term<'a, V> {
 
         Term::builtin(arena, fun)
     }
+    pub fn rotate_byte_string(arena: &'a Bump) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::RotateByteString);
+
+        Term::builtin(arena, fun)
+    }
 }

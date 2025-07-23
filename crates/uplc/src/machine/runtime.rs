@@ -2225,6 +2225,80 @@ impl<'a> Machine<'a> {
 
                 Ok(Value::byte_string(&self.arena, result))
             }
+            DefaultFunction::RotateByteString => {
+                let bytes = runtime.args[0].unwrap_byte_string()?;
+                let shift = runtime.args[1].unwrap_integer()?;
+
+                let arg1: i64 = u64::try_from(shift.abs())
+                    .unwrap()
+                    .try_into()
+                    .unwrap_or(i64::MAX);
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .rotate_byte_string([cost_model::byte_string_ex_mem(bytes), arg1]);
+                self.spend_budget(budget)?;
+
+                let length = bytes.len();
+                let result = self.arena.alloc(bytes.to_vec());
+
+                if bytes.is_empty() {
+                    return Ok(Value::byte_string(self.arena, result));
+                }
+
+                let shift = shift.mod_floor(&(length * 8).into());
+                if shift == Integer::ZERO {
+                    return Ok(Value::byte_string(self.arena, result));
+                }
+                let byte_shift = usize::try_from(&shift / 8).unwrap();
+                let bit_shift = usize::try_from(shift % 8).unwrap();
+
+                if bit_shift == 0 {
+                    // left rotation is the same as shift left
+                    // except the overflowed bits are brought to the right
+                    let copy_len = length - byte_shift;
+
+                    for i in 0..copy_len {
+                        result[i] = bytes[byte_shift + i];
+                    }
+                    for i in 0..byte_shift {
+                        result[copy_len + i] = bytes[i];
+                    }
+                } else {
+                    let complement_shift = 8 - bit_shift;
+                    let wraparound_bits = bytes[0] >> complement_shift;
+
+                    for i in 0..(length - byte_shift) {
+                        let src_idx = i + byte_shift;
+
+                        result[i] = bytes[src_idx] << bit_shift;
+
+                        if src_idx + 1 < length {
+                            result[i] |= bytes[src_idx + 1] >> complement_shift;
+                        } else if byte_shift > 0 {
+                            result[i] |= bytes[0] >> complement_shift;
+                        } else {
+                            // In the case we're doing less than a full byte shift
+                            // we still need to wrap the bit
+                            result[i] |= wraparound_bits;
+                        }
+                    }
+
+                    for i in 0..byte_shift {
+                        let dst_idx = length - byte_shift + i;
+                        result[dst_idx] = bytes[i] << bit_shift;
+
+                        if i + 1 < byte_shift {
+                            result[dst_idx] |= bytes[i + 1] >> complement_shift;
+                        } else {
+                            result[dst_idx] |= bytes[byte_shift] >> complement_shift;
+                        }
+                    }
+                }
+
+                Ok(Value::byte_string(self.arena, result))
+            }
         }
     }
 }

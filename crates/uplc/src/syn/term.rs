@@ -260,6 +260,7 @@ pub fn builtin_from_str<'a>(arena: &'a Bump, name: &str) -> Option<&'a Term<'a, 
         "writeBits" => Some(Term::write_bits(arena)),
         "replicateByte" => Some(Term::replicate_byte(arena)),
         "shiftByteString" => Some(Term::shift_byte_string(arena)),
+        "rotateByteString" => Some(Term::rotate_byte_string(arena)),
         _ => None,
     }
 }
