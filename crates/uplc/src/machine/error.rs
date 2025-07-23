@@ -92,6 +92,14 @@ pub enum RuntimeError<'a> {
     IntegerToByteStringNegativeInput(&'a Integer),
     #[error("integerToByteString encountered negative size\n{:>13} {0}", "Size")]
     IntegerToByteStringNegativeSize(&'a Integer),
+    #[error("Empty byte array")]
+    EmptyByteArray,
+    #[error(
+        "readBit: index out of bounds\n{:>13} {0}\n{:>13} {1}",
+        "Index",
+        "Size"
+    )]
+    ReadBitOutOfBounds(&'a Integer, usize),
 }
 
 impl<'a, V> MachineError<'a, V>
@@ -184,5 +192,12 @@ where
 
     pub fn integer_to_byte_string_negative_size(integer: &'a Integer) -> Self {
         MachineError::runtime(RuntimeError::IntegerToByteStringNegativeSize(integer))
+    }
+
+    pub fn empty_byte_array() -> Self {
+        MachineError::runtime(RuntimeError::EmptyByteArray)
+    }
+    pub fn read_bit_out_of_bounds(index: &'a Integer, size: usize) -> Self {
+        MachineError::runtime(RuntimeError::ReadBitOutOfBounds(index, size))
     }
 }

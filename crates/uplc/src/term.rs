@@ -596,4 +596,9 @@ impl<'a, V> Term<'a, V> {
 
         Term::builtin(arena, fun)
     }
+    pub fn read_bit(arena: &'a Bump) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::ReadBit);
+
+        Term::builtin(arena, fun)
+    }
 }
