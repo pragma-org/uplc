@@ -1,6 +1,6 @@
 use bumpalo::collections::Vec as BumpVec;
 use chumsky::prelude::*;
-use rug::ops::NegAssign;
+use num::Num;
 
 use crate::{constant::Integer, data::PlutusData};
 
@@ -36,11 +36,13 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a PlutusData<'a>, Extra<'a>> {
                 .map_with(|(maybe_negative, v), e: &mut MapExtra<'a, '_>| {
                     let state = e.state();
 
-                    let value = state.arena.alloc(Integer::from_str_radix(v, 10).unwrap());
+                    let mut i = Integer::from_str_radix(v, 10).unwrap();
 
                     if maybe_negative.is_some() {
-                        value.neg_assign();
+                        i = -i;
                     };
+
+                    let value = state.arena.alloc(i);
 
                     PlutusData::integer(state.arena, value)
                 }),

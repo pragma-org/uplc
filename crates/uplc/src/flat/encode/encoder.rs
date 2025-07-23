@@ -153,16 +153,16 @@ impl Encoder {
 
         loop {
             let temp: Integer = d.clone() % 128;
-            let mut w = temp.to_u8().unwrap();
+            let mut w: u8 = temp.try_into().unwrap();
 
             d >>= 7;
 
-            if d != 0 {
+            if d != Integer::ZERO {
                 w |= 128;
             }
             self.bits(8, w);
 
-            if d == 0 {
+            if d == Integer::ZERO {
                 break;
             }
         }
