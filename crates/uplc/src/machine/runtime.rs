@@ -2299,6 +2299,19 @@ impl<'a> Machine<'a> {
 
                 Ok(Value::byte_string(self.arena, result))
             }
+            DefaultFunction::CountSetBits => {
+                let bytes = runtime.args[0].unwrap_byte_string()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .count_set_bits([cost_model::byte_string_ex_mem(bytes)]);
+                self.spend_budget(budget)?;
+
+                let weight: Integer = hamming::weight(bytes).into();
+                let result = self.arena.alloc(weight);
+                Ok(Value::integer(self.arena, result))
+            }
         }
     }
 }

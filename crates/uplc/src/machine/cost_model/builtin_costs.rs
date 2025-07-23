@@ -102,6 +102,7 @@ pub struct BuiltinCosts {
     replicate_byte: TwoArgumentsCosting,
     shift_byte_string: TwoArgumentsCosting,
     rotate_byte_string: TwoArgumentsCosting,
+    count_set_bits: OneArgumentCosting,
 }
 
 impl Default for BuiltinCosts {
@@ -637,6 +638,13 @@ impl BuiltinCosts {
         )
     }
 
+    pub fn count_set_bits(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(
+            self.count_set_bits.mem.cost(args),
+            self.count_set_bits.cpu.cost(args),
+        )
+    }
+
     pub fn v3() -> Self {
         Self {
             add_integer: TwoArgumentsCosting::new(
@@ -984,6 +992,10 @@ impl BuiltinCosts {
             rotate_byte_string: TwoArgumentsCosting::new(
                 TwoArgumentsCosting::linear_in_x(0, 1),
                 TwoArgumentsCosting::linear_in_x(159378, 8813),
+            ),
+            count_set_bits: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(1),
+                OneArgumentCosting::linear_cost(107490, 3298),
             ),
         }
     }
