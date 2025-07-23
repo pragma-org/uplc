@@ -242,7 +242,7 @@ impl<'a> Machine<'a> {
                 self.spend_budget(budget)?;
 
                 if !arg2.is_zero() {
-                    let result = arg1 / arg2;
+                    let (result, _) = arg1.div_mod_floor(arg2);
 
                     let new = self.arena.alloc(result);
 
@@ -1386,19 +1386,13 @@ impl<'a> Machine<'a> {
 
                 let size_scalar = size_of::<blst::blst_scalar>();
 
-                let modulo_result = arg1 % &*SCALAR_PERIOD;
-                let new = self.arena.alloc(modulo_result);
-
-                let mut arg1 = integer_to_bytes(self.arena, new, true);
+                let arg1 = arg1.mod_floor(&SCALAR_PERIOD);
+                let (_, mut arg1) = arg1.to_bytes_be();
 
                 if size_scalar > arg1.len() {
                     let diff = size_scalar - arg1.len();
 
-                    let mut new_vec = BumpVec::with_capacity_in(diff, self.arena);
-
-                    unsafe {
-                        new_vec.set_len(diff);
-                    }
+                    let mut new_vec = vec![0; diff];
 
                     new_vec.append(&mut arg1);
 
