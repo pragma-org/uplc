@@ -2,8 +2,9 @@ use bumpalo::{
     collections::{String as BumpString, Vec as BumpVec},
     Bump,
 };
+
 use chumsky::prelude::*;
-use rug::ops::NegAssign;
+use num::Num;
 
 use crate::{
     bls::Compressable,
@@ -128,13 +129,11 @@ fn value_parser<'a>() -> impl Parser<'a, &'a str, TempConstant<'a>, Extra<'a>> {
                 .padded()
                 .map_with(|(maybe_negative, v), e: &mut MapExtra<'a, '_>| {
                     let state = e.state();
-
-                    let i = state.arena.alloc(Integer::from_str_radix(v, 10).unwrap());
-
+                    let mut integer = Integer::from_str_radix(v, 10).unwrap();
                     if maybe_negative.is_some() {
-                        i.neg_assign();
-                    };
-
+                        integer = -integer;
+                    }
+                    let i = state.arena.alloc(integer);
                     TempConstant::Integer(i)
                 }),
             // bls element
