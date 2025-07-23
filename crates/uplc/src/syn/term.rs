@@ -256,6 +256,7 @@ pub fn builtin_from_str<'a>(arena: &'a Bump, name: &str) -> Option<&'a Term<'a, 
         "complementByteString" => Some(Term::complement_byte_string(&arena)),
         "readBit" => Some(Term::read_bit(&arena)),
         "writeBits" => Some(Term::write_bits(&arena)),
+        "replicateByte" => Some(Term::replicate_byte(&arena)),
         _ => None,
     }
 }

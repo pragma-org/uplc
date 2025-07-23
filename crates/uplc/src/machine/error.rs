@@ -106,6 +106,10 @@ pub enum RuntimeError<'a> {
         "Size"
     )]
     WriteBitsOutOfBounds(&'a Integer, usize),
+    #[error("{0} is not within the bounds of a Byte")]
+    OutsideByteBounds(&'a Integer),
+    #[error("{0} is not within the bounds of usize")]
+    OutsideUsizeBounds(&'a Integer),
 }
 
 impl<'a, V> MachineError<'a, V>
@@ -210,5 +214,13 @@ where
 
     pub fn write_bits_out_of_bounds(index: &'a Integer, size: usize) -> Self {
         MachineError::runtime(RuntimeError::WriteBitsOutOfBounds(index, size))
+    }
+
+    pub fn outside_byte_bounds(integer: &'a Integer) -> Self {
+        MachineError::runtime(RuntimeError::OutsideByteBounds(integer))
+    }
+
+    pub fn outside_usize_bounds(integer: &'a Integer) -> Self {
+        MachineError::runtime(RuntimeError::OutsideUsizeBounds(integer))
     }
 }

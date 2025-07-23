@@ -606,4 +606,9 @@ impl<'a, V> Term<'a, V> {
 
         Term::builtin(arena, fun)
     }
+    pub fn replicate_byte(arena: &'a Bump) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::ReplicateByte);
+
+        Term::builtin(arena, fun)
+    }
 }

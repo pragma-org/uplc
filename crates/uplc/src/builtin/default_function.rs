@@ -105,6 +105,7 @@ pub enum DefaultFunction {
     ComplementByteString = 78,
     ReadBit = 79,
     WriteBits = 80,
+    ReplicateByte = 81,
 }
 
 impl DefaultFunction {
@@ -191,6 +192,7 @@ impl DefaultFunction {
             DefaultFunction::ComplementByteString => 0,
             DefaultFunction::ReadBit => 0,
             DefaultFunction::WriteBits => 0,
+            DefaultFunction::ReplicateByte => 0,
         }
     }
 
@@ -277,6 +279,7 @@ impl DefaultFunction {
             DefaultFunction::ComplementByteString => 1,
             DefaultFunction::ReadBit => 2,
             DefaultFunction::WriteBits => 3,
+            DefaultFunction::ReplicateByte => 2,
         }
     }
 }

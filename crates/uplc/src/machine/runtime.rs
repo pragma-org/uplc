@@ -2084,6 +2084,33 @@ impl<'a> Machine<'a> {
                 let result = self.arena.alloc(bytes);
                 Ok(Value::byte_string(self.arena, result))
             }
+            DefaultFunction::ReplicateByte => {
+                let size = runtime.args[0].unwrap_integer()?;
+                let byte = runtime.args[1].unwrap_integer()?;
+
+                let budget = self.costs.builtin_costs.replicate_byte([
+                    cost_model::integer_ex_mem(size),
+                    cost_model::integer_ex_mem(byte),
+                ]);
+
+                self.spend_budget(budget)?;
+
+                let Ok(size) = usize::try_from(size) else {
+                    return Err(MachineError::outside_usize_bounds(size));
+                };
+
+                let Ok(byte) = u8::try_from(byte) else {
+                    return Err(MachineError::outside_byte_bounds(byte));
+                };
+
+                let result = if size == 0 {
+                    self.arena.alloc(vec![])
+                } else {
+                    self.arena.alloc([byte].repeat(size))
+                };
+
+                Ok(Value::byte_string(self.arena, result))
+            }
         }
     }
 }
