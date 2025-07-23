@@ -98,6 +98,8 @@ pub enum DefaultFunction {
     // Bitwise
     IntegerToByteString = 73,
     ByteStringToInteger = 74,
+
+    AndByteString = 75,
 }
 
 impl DefaultFunction {
@@ -178,6 +180,7 @@ impl DefaultFunction {
             DefaultFunction::Bls12_381_FinalVerify => 0,
             DefaultFunction::IntegerToByteString => 0,
             DefaultFunction::ByteStringToInteger => 0,
+            DefaultFunction::AndByteString => 0,
         }
     }
 
@@ -258,6 +261,7 @@ impl DefaultFunction {
             DefaultFunction::Bls12_381_FinalVerify => 2,
             DefaultFunction::IntegerToByteString => 3,
             DefaultFunction::ByteStringToInteger => 2,
+            DefaultFunction::AndByteString => 3,
         }
     }
 }
