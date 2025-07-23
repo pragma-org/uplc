@@ -99,6 +99,7 @@ pub struct BuiltinCosts {
     complement_byte_string: OneArgumentCosting,
     read_bit: TwoArgumentsCosting,
     write_bits: ThreeArgumentsCosting,
+    replicate_byte: TwoArgumentsCosting,
 }
 
 impl Default for BuiltinCosts {
@@ -613,6 +614,13 @@ impl BuiltinCosts {
         )
     }
 
+    pub fn replicate_byte(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.replicate_byte.mem.cost(args),
+            self.replicate_byte.cpu.cost(args),
+        )
+    }
+
     pub fn v3() -> Self {
         Self {
             add_integer: TwoArgumentsCosting::new(
@@ -948,6 +956,10 @@ impl BuiltinCosts {
             write_bits: ThreeArgumentsCosting::new(
                 ThreeArgumentsCosting::linear_in_x(0, 1),
                 ThreeArgumentsCosting::linear_in_y(281145, 18848),
+            ),
+            replicate_byte: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::linear_in_x(1, 1),
+                TwoArgumentsCosting::linear_in_x(180194, 159),
             ),
         }
     }
