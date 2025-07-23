@@ -204,7 +204,7 @@ impl Cost<2> for TwoArguments {
 pub enum ThreeArguments {
     ConstantCost(i64),
     // AddedSizes(AddedSizes),
-    // LinearInX(LinearSize),
+    LinearInX(LinearSize),
     LinearInY(LinearSize),
     LinearInZ(LinearSize),
     QuadraticInZ(QuadraticFunction),
@@ -251,18 +251,22 @@ impl ThreeArgumentsCosting {
     pub fn linear_in_max_y_z(intercept: i64, slope: i64) -> ThreeArguments {
         ThreeArguments::LinearInMaxYZ(LinearSize { intercept, slope })
     }
+
+    pub fn linear_in_x(intercept: i64, slope: i64) -> ThreeArguments {
+        ThreeArguments::LinearInX(LinearSize { intercept, slope })
+    }
 }
 
 impl Cost<3> for ThreeArguments {
     fn cost(&self, args: [i64; 3]) -> i64 {
-        // let x = args[0];
+        let x = args[0];
         let y = args[1];
         let z = args[2];
 
         match self {
             ThreeArguments::ConstantCost(c) => *c,
             // ThreeArguments::AddedSizes(s) => (x + y + z) * s.slope + s.intercept,
-            // ThreeArguments::LinearInX(l) => x * l.slope + l.intercept,
+            ThreeArguments::LinearInX(l) => x * l.slope + l.intercept,
             ThreeArguments::LinearInY(l) => y * l.slope + l.intercept,
             ThreeArguments::LinearInZ(l) => z * l.slope + l.intercept,
             ThreeArguments::QuadraticInZ(q) => q.coeff_0 + (q.coeff_1 * z) + (q.coeff_2 * z * z),
