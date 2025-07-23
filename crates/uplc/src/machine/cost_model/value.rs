@@ -1,4 +1,4 @@
-use rug::integer::BorrowInteger;
+use num::{BigUint, Zero};
 
 use crate::{
     binder::Eval,
@@ -11,19 +11,19 @@ pub const UNIT_EX_MEM: i64 = 1;
 pub const BOOL_EX_MEM: i64 = 1;
 
 pub fn integer_ex_mem(i: &Integer) -> i64 {
-    if *i == 0 {
+    if i.is_zero() {
         1
     } else {
-        (integer_log2(i.as_abs()) / 64) + 1
+        (integer_log2(i.magnitude()) / 64) + 1
     }
 }
 
-pub fn integer_log2(i: BorrowInteger<'_>) -> i64 {
+pub fn integer_log2(i: &BigUint) -> i64 {
     if i.is_zero() {
         return 0;
     }
 
-    (i.significant_bits() - 1) as i64
+    (i.bits() - 1) as i64
 }
 
 pub fn integer_log2_x(i: &Integer) -> i64 {
@@ -31,7 +31,7 @@ pub fn integer_log2_x(i: &Integer) -> i64 {
         return 0;
     }
 
-    (i.significant_bits() - 1) as i64
+    (i.bits() - 1) as i64
 }
 
 pub fn byte_string_ex_mem(b: &[u8]) -> i64 {
@@ -129,76 +129,78 @@ pub fn ml_result_ex_mem() -> i64 {
 mod tests {
     use std::str::FromStr;
 
+    use crate::constant::Integer;
+
     use super::integer_log2;
 
     #[test]
     fn integer_log2_oracle() {
         // Values come from the Haskell implementation
-        assert_eq!(integer_log2(rug::Integer::from(0).as_abs()), 0);
-        assert_eq!(integer_log2(rug::Integer::from(1).as_abs()), 0);
-        assert_eq!(integer_log2(rug::Integer::from(42).as_abs()), 5);
+        assert_eq!(integer_log2(Integer::ZERO.magnitude()), 0);
+        assert_eq!(integer_log2(Integer::from(1).magnitude()), 0);
+        assert_eq!(integer_log2(Integer::from(42).magnitude()), 5);
 
         assert_eq!(
             integer_log2(
-                rug::Integer::from_str("18446744073709551615")
+                Integer::from_str("18446744073709551615")
                     .unwrap()
-                    .as_abs()
+                    .magnitude()
             ),
             63
         );
         assert_eq!(
             integer_log2(
-                rug::Integer::from_str("999999999999999999999999999999")
+                Integer::from_str("999999999999999999999999999999")
                     .unwrap()
-                    .as_abs()
+                    .magnitude()
             ),
             99
         );
         assert_eq!(
             integer_log2(
-                rug::Integer::from_str("170141183460469231731687303715884105726")
+                Integer::from_str("170141183460469231731687303715884105726")
                     .unwrap()
-                    .as_abs()
+                    .magnitude()
             ),
             126
         );
         assert_eq!(
             integer_log2(
-                rug::Integer::from_str("170141183460469231731687303715884105727")
+                Integer::from_str("170141183460469231731687303715884105727")
                     .unwrap()
-                    .as_abs()
+                    .magnitude()
             ),
             126
         );
         assert_eq!(
             integer_log2(
-                rug::Integer::from_str("170141183460469231731687303715884105728")
+                Integer::from_str("170141183460469231731687303715884105728")
                     .unwrap()
-                    .as_abs()
+                    .magnitude()
             ),
             127
         );
         assert_eq!(
             integer_log2(
-                rug::Integer::from_str("340282366920938463463374607431768211458")
+                Integer::from_str("340282366920938463463374607431768211458")
                     .unwrap()
-                    .as_abs()
+                    .magnitude()
             ),
             128
         );
         assert_eq!(
             integer_log2(
-                rug::Integer::from_str("999999999999999999999999999999999999999999")
+                Integer::from_str("999999999999999999999999999999999999999999")
                     .unwrap()
-                    .as_abs()
+                    .magnitude()
             ),
             139
         );
         assert_eq!(
             integer_log2(
-                rug::Integer::from_str("999999999999999999999999999999999999999999999999999999999999999999999999999999999999")
+                Integer::from_str("999999999999999999999999999999999999999999999999999999999999999999999999999999999999")
                     .unwrap()
-                    .as_abs()
+                    .magnitude()
             ),
             279
         );
