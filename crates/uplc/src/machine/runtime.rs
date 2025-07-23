@@ -2140,6 +2140,91 @@ impl<'a> Machine<'a> {
 
                 Ok(Value::byte_string(self.arena, result))
             }
+            DefaultFunction::ShiftByteString => {
+                let bytes = runtime.args[0].unwrap_byte_string()?;
+                let shift = runtime.args[1].unwrap_integer()?;
+
+                let arg1: i64 = u64::try_from(shift.abs())
+                    .unwrap()
+                    .try_into()
+                    .unwrap_or(i64::MAX);
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .shift_byte_string([cost_model::byte_string_ex_mem(bytes), arg1]);
+                self.spend_budget(budget)?;
+
+                let length = bytes.len();
+                let result = self.arena.alloc(vec![0; length]);
+
+                if Integer::from(length) * 8 <= shift.abs() {
+                    return Ok(Value::byte_string(self.arena, result));
+                }
+
+                let is_shift_left = shift >= &Integer::ZERO;
+                let byte_shift = usize::try_from(shift.abs() / 8).unwrap();
+                let bit_shift = usize::try_from(shift.abs() % 8).unwrap();
+
+                if is_shift_left {
+                    if bit_shift == 0 {
+                        // If we can shift entire bytes, that's much simpler
+                        let copy_len = length - bit_shift;
+                        // For example, consider the following byte array [1,0,1,0,1] being shifted 8 bits (1 byte)
+                        // Result: [0,1,0,1,0]
+                        result[..copy_len].copy_from_slice(&bytes[byte_shift..]);
+                    } else {
+                        // This case is a bit trickier, so let's walk through an example:
+                        // say we are shifting the following byte string by 12 bits:
+                        // [AB CD EF 12]
+                        // We know we want to skip the first byte, and shift results 4 bits
+                        // In order to shift partial bytes, we need to get the "overflow" from the next byte
+                        // That is the complement_shift (in this case 4)
+                        // i=0:
+                        // src_idx = 0 + 1 = 1
+                        // result[0] = CD << 4 = D0
+                        // result[0] |= EF >> 4 = D0 | 0E = DE
+                        // i=1
+                        // src_idx = 1 + 1 = 2
+                        // result[1] = EF << 4 = F0
+                        // reuslt[1] |= 12 >> 4 = F0 | 01 = F1
+                        // i=2
+                        // src_idx = 2 + 1 = 3
+                        // result[2] = 12 << 4 = 20
+                        // 3 + 1  < length = false
+                        // So our result is:
+                        // [DE F1 20 00]
+                        let complement_shift = 8 - bit_shift;
+                        for i in 0..(length - byte_shift) {
+                            let src_idx = i + byte_shift;
+
+                            result[i] = bytes[src_idx] << bit_shift;
+                            if src_idx + 1 < length {
+                                result[i] |= bytes[src_idx + 1] >> complement_shift;
+                            }
+                        }
+                    }
+                } else {
+                    // Right shift has the same logic as left shift with the inverse operations
+                    if bit_shift == 0 {
+                        let copy_len = length - byte_shift;
+                        result[byte_shift..].copy_from_slice(&bytes[..copy_len]);
+                    } else {
+                        // See left shift case for explanation, but invert all operations
+                        let complement_shift = 8 - bit_shift;
+                        for i in 0..(length - byte_shift) {
+                            let dst_idx = i + byte_shift;
+                            result[dst_idx] = bytes[i] >> bit_shift;
+
+                            if i > 0 {
+                                result[dst_idx] |= bytes[i - 1] << complement_shift;
+                            }
+                        }
+                    }
+                }
+
+                Ok(Value::byte_string(&self.arena, result))
+            }
         }
     }
 }

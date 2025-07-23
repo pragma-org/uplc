@@ -106,6 +106,7 @@ pub enum DefaultFunction {
     ReadBit = 79,
     WriteBits = 80,
     ReplicateByte = 81,
+    ShiftByteString = 82,
 }
 
 impl DefaultFunction {
@@ -193,6 +194,7 @@ impl DefaultFunction {
             DefaultFunction::ReadBit => 0,
             DefaultFunction::WriteBits => 0,
             DefaultFunction::ReplicateByte => 0,
+            DefaultFunction::ShiftByteString => 0,
         }
     }
 
@@ -280,6 +282,7 @@ impl DefaultFunction {
             DefaultFunction::ReadBit => 2,
             DefaultFunction::WriteBits => 3,
             DefaultFunction::ReplicateByte => 2,
+            DefaultFunction::ShiftByteString => 2,
         }
     }
 }
