@@ -2012,6 +2012,40 @@ impl<'a> Machine<'a> {
 
                 Ok(value)
             }
+            DefaultFunction::ReadBit => {
+                let bytes = runtime.args[0].unwrap_byte_string()?;
+                let bit_index = runtime.args[1].unwrap_integer()?;
+
+                let budget = self.costs.builtin_costs.read_bit([
+                    cost_model::byte_string_ex_mem(bytes),
+                    cost_model::integer_ex_mem(bit_index),
+                ]);
+
+                self.spend_budget(budget)?;
+
+                if bytes.is_empty() {
+                    return Err(MachineError::empty_byte_array());
+                }
+
+                if bit_index < &Integer::ZERO || bit_index >= &Integer::from(bytes.len() * 8) {
+                    return Err(MachineError::read_bit_out_of_bounds(
+                        bit_index,
+                        bytes.len() * 8,
+                    ));
+                }
+
+                let (byte_index, bit_offset) = bit_index.div_rem(&8.into());
+                let bit_offset = usize::try_from(bit_offset).unwrap();
+
+                let flipped_index = bytes.len() - 1 - usize::try_from(byte_index).unwrap();
+                let byte = bytes[flipped_index];
+
+                let bit_test = (byte >> bit_offset) & 1 == 1;
+
+                let value = Value::bool(self.arena, bit_test);
+
+                Ok(value)
+            }
         }
     }
 }

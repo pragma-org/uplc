@@ -97,6 +97,7 @@ pub struct BuiltinCosts {
     or_byte_string: ThreeArgumentsCosting,
     xor_byte_string: ThreeArgumentsCosting,
     complement_byte_string: OneArgumentCosting,
+    read_bit: TwoArgumentsCosting,
 }
 
 impl Default for BuiltinCosts {
@@ -581,15 +582,15 @@ impl BuiltinCosts {
 
     pub fn or_byte_string(&self, args: [i64; 3]) -> ExBudget {
         ExBudget::new(
-            self.and_byte_string.mem.cost(args),
-            self.and_byte_string.cpu.cost(args),
+            self.or_byte_string.mem.cost(args),
+            self.or_byte_string.cpu.cost(args),
         )
     }
 
     pub fn xor_byte_string(&self, args: [i64; 3]) -> ExBudget {
         ExBudget::new(
-            self.and_byte_string.mem.cost(args),
-            self.and_byte_string.cpu.cost(args),
+            self.xor_byte_string.mem.cost(args),
+            self.xor_byte_string.cpu.cost(args),
         )
     }
 
@@ -598,6 +599,10 @@ impl BuiltinCosts {
             self.complement_byte_string.mem.cost(args),
             self.complement_byte_string.cpu.cost(args),
         )
+    }
+
+    pub fn read_bit(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(self.read_bit.mem.cost(args), self.read_bit.cpu.cost(args))
     }
 
     pub fn v3() -> Self {
@@ -927,6 +932,10 @@ impl BuiltinCosts {
             complement_byte_string: OneArgumentCosting::new(
                 OneArgumentCosting::linear_cost(0, 1),
                 OneArgumentCosting::linear_cost(107878, 680),
+            ),
+            read_bit: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(1),
+                TwoArgumentsCosting::constant_cost(95336),
             ),
         }
     }

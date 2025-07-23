@@ -103,6 +103,7 @@ pub enum DefaultFunction {
     OrByteString = 76,
     XorByteString = 77,
     ComplementByteString = 78,
+    ReadBit = 79,
 }
 
 impl DefaultFunction {
@@ -187,6 +188,7 @@ impl DefaultFunction {
             DefaultFunction::OrByteString => 0,
             DefaultFunction::XorByteString => 0,
             DefaultFunction::ComplementByteString => 0,
+            DefaultFunction::ReadBit => 0,
         }
     }
 
@@ -271,6 +273,7 @@ impl DefaultFunction {
             DefaultFunction::OrByteString => 3,
             DefaultFunction::XorByteString => 3,
             DefaultFunction::ComplementByteString => 1,
+            DefaultFunction::ReadBit => 2,
         }
     }
 }
