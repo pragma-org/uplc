@@ -6,6 +6,7 @@ use crate::{binder::DeBruijn, term::Term};
 use super::{
     constant,
     types::{Extra, MapExtra},
+    utils::comments,
 };
 
 pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a, DeBruijn>, Extra<'a>> {
@@ -170,6 +171,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a, DeBruijn>, Extra<'a
                     ret
                 }),
         ))
+        .padded_by(comments())
         .boxed()
     })
 }
