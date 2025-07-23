@@ -305,7 +305,8 @@ impl<'a> Machine<'a> {
                 self.spend_budget(budget)?;
 
                 if !arg2.is_zero() {
-                    let result = self.arena.alloc(arg1 % arg2);
+                    let (_, result) = arg1.div_mod_floor(arg2);
+                    let result = self.arena.alloc(arg1 % result);
                     let value = Value::integer(self.arena, result);
 
                     Ok(value)
