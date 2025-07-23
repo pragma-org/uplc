@@ -253,6 +253,7 @@ pub fn builtin_from_str<'a>(arena: &'a Bump, name: &str) -> Option<&'a Term<'a, 
         "andByteString" => Some(Term::and_byte_string(&arena)),
         "orByteString" => Some(Term::or_byte_string(&arena)),
         "xorByteString" => Some(Term::xor_byte_string(&arena)),
+        "complementByteString" => Some(Term::complement_byte_string(&arena)),
         _ => None,
     }
 }

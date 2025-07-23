@@ -1996,6 +1996,22 @@ impl<'a> Machine<'a> {
 
                 Ok(value)
             }
+            DefaultFunction::ComplementByteString => {
+                let bytes = runtime.args[0].unwrap_byte_string()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .complement_byte_string([cost_model::byte_string_ex_mem(bytes)]);
+                self.spend_budget(budget)?;
+
+                let result = self
+                    .arena
+                    .alloc(bytes.iter().map(|b| b ^ 255).collect::<Vec<_>>());
+                let value = Value::byte_string(self.arena, result);
+
+                Ok(value)
+            }
         }
     }
 }

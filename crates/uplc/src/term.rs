@@ -591,4 +591,9 @@ impl<'a, V> Term<'a, V> {
 
         Term::builtin(arena, fun)
     }
+    pub fn complement_byte_string(arena: &'a Bump) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::ComplementByteString);
+
+        Term::builtin(arena, fun)
+    }
 }
