@@ -100,6 +100,7 @@ pub enum DefaultFunction {
     ByteStringToInteger = 74,
 
     AndByteString = 75,
+    OrByteString = 76,
 }
 
 impl DefaultFunction {
@@ -181,6 +182,7 @@ impl DefaultFunction {
             DefaultFunction::IntegerToByteString => 0,
             DefaultFunction::ByteStringToInteger => 0,
             DefaultFunction::AndByteString => 0,
+            DefaultFunction::OrByteString => 0,
         }
     }
 
@@ -262,6 +264,7 @@ impl DefaultFunction {
             DefaultFunction::IntegerToByteString => 3,
             DefaultFunction::ByteStringToInteger => 2,
             DefaultFunction::AndByteString => 3,
+            DefaultFunction::OrByteString => 3,
         }
     }
 }
