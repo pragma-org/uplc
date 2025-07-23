@@ -110,6 +110,22 @@ pub enum RuntimeError<'a> {
     OutsideByteBounds(&'a Integer),
     #[error("{0} is not within the bounds of usize")]
     OutsideUsizeBounds(&'a Integer),
+    #[error(
+        "bytes size beyond limit when replicating byte\n{:>13} {0}\n{:>13} {1}",
+        "Size",
+        "Maximum"
+    )]
+    ReplicateByteSizeTooBig(&'a Integer, i64),
+    #[error(
+        "bytes size below limit when replicating byte\n{:>13} {0}\n{:>13} {1}",
+        "Size",
+        "Minimum"
+    )]
+    ReplicateByteSizeTooSmall(&'a Integer, usize),
+    #[error("replicateByte encountered negative input\n{:>13} {0}", "Input")]
+    ReplicateByteNegativeInput(&'a Integer),
+    #[error("replicateByte encountered negative size\n{:>13} {0}", "Size")]
+    ReplicateByteNegativeSize(&'a Integer),
 }
 
 impl<'a, V> MachineError<'a, V>
@@ -222,5 +238,17 @@ where
 
     pub fn outside_usize_bounds(integer: &'a Integer) -> Self {
         MachineError::runtime(RuntimeError::OutsideUsizeBounds(integer))
+    }
+
+    pub fn replicate_byte_negative_size(integer: &'a Integer) -> Self {
+        MachineError::runtime(RuntimeError::ReplicateByteNegativeSize(integer))
+    }
+
+    pub fn replicate_byte_size_too_big(integer: &'a Integer, maximum: i64) -> Self {
+        MachineError::runtime(RuntimeError::ReplicateByteSizeTooBig(integer, maximum))
+    }
+
+    pub fn replicate_byte_negative_input(integer: &'a Integer) -> Self {
+        MachineError::runtime(RuntimeError::ReplicateByteNegativeInput(integer))
     }
 }
