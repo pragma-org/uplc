@@ -94,6 +94,7 @@ pub struct BuiltinCosts {
     integer_to_byte_string: ThreeArgumentsCosting,
     byte_string_to_integer: TwoArgumentsCosting,
     and_byte_string: ThreeArgumentsCosting,
+    or_byte_string: ThreeArgumentsCosting,
 }
 
 impl Default for BuiltinCosts {
@@ -576,6 +577,13 @@ impl BuiltinCosts {
         )
     }
 
+    pub fn or_byte_string(&self, args: [i64; 3]) -> ExBudget {
+        ExBudget::new(
+            self.and_byte_string.mem.cost(args),
+            self.and_byte_string.cpu.cost(args),
+        )
+    }
+
     pub fn v3() -> Self {
         Self {
             add_integer: TwoArgumentsCosting::new(
@@ -889,6 +897,10 @@ impl BuiltinCosts {
                 TwoArgumentsCosting::quadratic_in_y(1006041, 43623, 251),
             ),
             and_byte_string: ThreeArgumentsCosting::new(
+                ThreeArgumentsCosting::linear_in_max_y_z(0, 1),
+                ThreeArgumentsCosting::linear_in_y_and_z(100181, 726, 719),
+            ),
+            or_byte_string: ThreeArgumentsCosting::new(
                 ThreeArgumentsCosting::linear_in_max_y_z(0, 1),
                 ThreeArgumentsCosting::linear_in_y_and_z(100181, 726, 719),
             ),

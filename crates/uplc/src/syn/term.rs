@@ -251,6 +251,7 @@ pub fn builtin_from_str<'a>(arena: &'a Bump, name: &str) -> Option<&'a Term<'a, 
         "integerToByteString" => Some(Term::integer_to_byte_string(arena)),
         "byteStringToInteger" => Some(Term::byte_string_to_integer(arena)),
         "andByteString" => Some(Term::and_byte_string(&arena)),
+        "orByteString" => Some(Term::or_byte_string(&arena)),
         _ => None,
     }
 }

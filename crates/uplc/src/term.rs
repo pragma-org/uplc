@@ -576,9 +576,13 @@ impl<'a, V> Term<'a, V> {
 
         Term::builtin(arena, fun)
     }
-
     pub fn and_byte_string(arena: &'a Bump) -> &'a Term<'a, V> {
         let fun = arena.alloc(DefaultFunction::AndByteString);
+
+        Term::builtin(arena, fun)
+    }
+    pub fn or_byte_string(arena: &'a Bump) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::OrByteString);
 
         Term::builtin(arena, fun)
     }
