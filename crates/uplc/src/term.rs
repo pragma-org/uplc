@@ -626,4 +626,9 @@ impl<'a, V> Term<'a, V> {
 
         Term::builtin(arena, fun)
     }
+    pub fn find_first_set_bit(arena: &'a Bump) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::FindFirstSetBit);
+
+        Term::builtin(arena, fun)
+    }
 }

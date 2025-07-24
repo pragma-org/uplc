@@ -2312,6 +2312,33 @@ impl<'a> Machine<'a> {
                 let result = self.arena.alloc(weight);
                 Ok(Value::integer(self.arena, result))
             }
+            DefaultFunction::FindFirstSetBit => {
+                let bytes = runtime.args[0].unwrap_byte_string()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .find_first_set_bit([cost_model::byte_string_ex_mem(bytes)]);
+                self.spend_budget(budget)?;
+
+                let first_bit = bytes
+                    .iter()
+                    .rev()
+                    .enumerate()
+                    .find_map(|(byte_index, &byte)| {
+                        let reversed_byte = byte.reverse_bits();
+                        if reversed_byte == 0 {
+                            None
+                        } else {
+                            let bit_index = reversed_byte.leading_zeros() as usize;
+                            Some(isize::try_from(bit_index + byte_index * 8).unwrap())
+                        }
+                    });
+
+                let first_bit: Integer = first_bit.unwrap_or(-1).into();
+                let result = self.arena.alloc(first_bit);
+                Ok(Value::integer(self.arena, result))
+            }
         }
     }
 }
