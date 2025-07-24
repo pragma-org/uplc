@@ -262,6 +262,7 @@ pub fn builtin_from_str<'a>(arena: &'a Bump, name: &str) -> Option<&'a Term<'a, 
         "shiftByteString" => Some(Term::shift_byte_string(arena)),
         "rotateByteString" => Some(Term::rotate_byte_string(arena)),
         "countSetBits" => Some(Term::count_set_bits(arena)),
+        "findFirstSetBit" => Some(Term::find_first_set_bit(arena)),
         _ => None,
     }
 }
