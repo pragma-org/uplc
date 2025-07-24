@@ -2335,6 +2335,22 @@ impl<'a> Machine<'a> {
                 let result = self.arena.alloc(first_bit);
                 Ok(Value::integer(self.arena, result))
             }
+            DefaultFunction::Ripemd_160 => {
+                use cryptoxide::{digest::Digest, ripemd160::Ripemd160};
+                let input = runtime.args[0].unwrap_byte_string()?;
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .ripemd_160([cost_model::byte_string_ex_mem(input)]);
+                self.spend_budget(budget)?;
+
+                let mut hasher = Ripemd160::new();
+                hasher.input(input);
+                let result = self.arena.alloc(vec![0; hasher.output_bytes()]);
+                hasher.result(result);
+
+                Ok(Value::byte_string(self.arena, result))
+            }
         }
     }
 }
