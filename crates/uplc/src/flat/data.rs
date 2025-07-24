@@ -76,7 +76,7 @@ impl<'a, 'b> minicbor::decode::Decode<'b, Ctx<'a>> for &'a PlutusData<'a> {
                             if x == IanaTag::PosBignum {
                                 num_bigint::Sign::Plus
                             } else {
-                                num_bigint::Sign::Plus
+                                num_bigint::Sign::Minus
                             },
                             &bytes,
                         ));
