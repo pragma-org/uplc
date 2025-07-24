@@ -110,6 +110,7 @@ pub enum DefaultFunction {
     RotateByteString = 83,
     CountSetBits = 84,
     FindFirstSetBit = 85,
+    Ripemd_160 = 86,
 }
 
 impl DefaultFunction {
@@ -201,6 +202,7 @@ impl DefaultFunction {
             DefaultFunction::RotateByteString => 0,
             DefaultFunction::CountSetBits => 0,
             DefaultFunction::FindFirstSetBit => 0,
+            DefaultFunction::Ripemd_160 => 0,
         }
     }
 
@@ -292,6 +294,7 @@ impl DefaultFunction {
             DefaultFunction::RotateByteString => 2,
             DefaultFunction::CountSetBits => 1,
             DefaultFunction::FindFirstSetBit => 1,
+            DefaultFunction::Ripemd_160 => 1,
         }
     }
 }

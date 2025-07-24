@@ -104,6 +104,7 @@ pub struct BuiltinCosts {
     rotate_byte_string: TwoArgumentsCosting,
     count_set_bits: OneArgumentCosting,
     find_first_set_bit: OneArgumentCosting,
+    ripemd_160: OneArgumentCosting,
 }
 
 impl Default for BuiltinCosts {
@@ -653,6 +654,13 @@ impl BuiltinCosts {
         )
     }
 
+    pub fn ripemd_160(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(
+            self.ripemd_160.mem.cost(args),
+            self.ripemd_160.cpu.cost(args),
+        )
+    }
+
     pub fn v3() -> Self {
         Self {
             add_integer: TwoArgumentsCosting::new(
@@ -1008,6 +1016,10 @@ impl BuiltinCosts {
             find_first_set_bit: OneArgumentCosting::new(
                 OneArgumentCosting::constant_cost(1),
                 OneArgumentCosting::linear_cost(106057, 655),
+            ),
+            ripemd_160: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(3),
+                OneArgumentCosting::linear_cost(1964219, 24520),
             ),
         }
     }

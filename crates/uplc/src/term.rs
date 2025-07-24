@@ -631,4 +631,9 @@ impl<'a, V> Term<'a, V> {
 
         Term::builtin(arena, fun)
     }
+    pub fn ripemd_160(arena: &'a Bump) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::Ripemd_160);
+
+        Term::builtin(arena, fun)
+    }
 }
