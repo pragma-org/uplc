@@ -204,6 +204,12 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_bool()?;
                 let arg2 = runtime.args[1];
                 let arg3 = runtime.args[2];
+                let budget = self.costs.builtin_costs.if_then_else([
+                    cost_model::BOOL_EX_MEM,
+                    cost_model::value_ex_mem(arg2),
+                    cost_model::value_ex_mem(arg3),
+                ]);
+                self.spend_budget(budget)?;
 
                 if arg1 {
                     Ok(arg2)
