@@ -2259,12 +2259,8 @@ impl<'a> Machine<'a> {
                     // except the overflowed bits are brought to the right
                     let copy_len = length - byte_shift;
 
-                    for i in 0..copy_len {
-                        result[i] = bytes[byte_shift + i];
-                    }
-                    for i in 0..byte_shift {
-                        result[copy_len + i] = bytes[i];
-                    }
+                    result[..copy_len].copy_from_slice(&bytes[byte_shift..(copy_len + byte_shift)]);
+                    result[copy_len..].copy_from_slice(&bytes[..byte_shift]);
                 } else {
                     let complement_shift = 8 - bit_shift;
                     let wraparound_bits = bytes[0] >> complement_shift;
