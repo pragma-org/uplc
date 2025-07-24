@@ -1566,17 +1566,14 @@ impl<'a> Machine<'a> {
 
                 let size_scalar = size_of::<blst::blst_scalar>();
 
-                let computation = arg1 % &*SCALAR_PERIOD;
+                let arg1 = arg1.mod_floor(&SCALAR_PERIOD);
 
-                let new = self.arena.alloc(computation);
-
-                let mut arg1 = integer_to_bytes(self.arena, new, true);
+                let (_, mut arg1) = arg1.to_bytes_be();
 
                 if size_scalar > arg1.len() {
                     let diff = size_scalar - arg1.len();
 
-                    let mut new_vec = BumpVec::with_capacity_in(diff, self.arena);
-
+                    let mut new_vec = vec![0; diff];
                     unsafe {
                         new_vec.set_len(diff);
                     }
