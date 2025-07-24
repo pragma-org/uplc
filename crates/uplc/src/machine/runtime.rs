@@ -2195,6 +2195,7 @@ impl<'a> Machine<'a> {
                         // So our result is:
                         // [DE F1 20 00]
                         let complement_shift = 8 - bit_shift;
+                        #[allow(clippy::needless_range_loop)]
                         for i in 0..(length - byte_shift) {
                             let src_idx = i + byte_shift;
 
@@ -2212,6 +2213,7 @@ impl<'a> Machine<'a> {
                     } else {
                         // See left shift case for explanation, but invert all operations
                         let complement_shift = 8 - bit_shift;
+                        #[allow(clippy::needless_range_loop)]
                         for i in 0..(length - byte_shift) {
                             let dst_idx = i + byte_shift;
                             result[dst_idx] = bytes[i] >> bit_shift;
@@ -2223,7 +2225,7 @@ impl<'a> Machine<'a> {
                     }
                 }
 
-                Ok(Value::byte_string(&self.arena, result))
+                Ok(Value::byte_string(self.arena, result))
             }
             DefaultFunction::RotateByteString => {
                 let bytes = runtime.args[0].unwrap_byte_string()?;
@@ -2264,7 +2266,7 @@ impl<'a> Machine<'a> {
                 } else {
                     let complement_shift = 8 - bit_shift;
                     let wraparound_bits = bytes[0] >> complement_shift;
-
+                    #[allow(clippy::needless_range_loop)]
                     for i in 0..(length - byte_shift) {
                         let src_idx = i + byte_shift;
 
