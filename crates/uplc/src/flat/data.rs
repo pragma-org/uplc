@@ -53,8 +53,7 @@ impl<'a, 'b> minicbor::decode::Decode<'b, Ctx<'a>> for &'a PlutusData<'a> {
                         }
                         _ => {
                             let e = minicbor::decode::Error::message(format!(
-                                "unknown tag for plutus data tag: {}",
-                                tag
+                                "unknown tag for plutus data tag: {tag}",
                             ));
 
                             Err(e)
