@@ -147,7 +147,7 @@ fn value_parser<'a>() -> impl Parser<'a, &'a str, TempConstant<'a>, Extra<'a>> {
                 .map_with(|v, e: &mut MapExtra<'a, '_>| {
                     let state = e.state();
 
-                    let value = v.parse::<i128>().unwrap();
+                    let value = v.trim().parse::<i128>().unwrap();
 
                     let i = constant::integer_from(state.arena, value);
 
@@ -188,6 +188,7 @@ fn value_parser<'a>() -> impl Parser<'a, &'a str, TempConstant<'a>, Extra<'a>> {
                 .padded()
                 .separated_by(just(','))
                 .collect()
+                .padded()
                 .delimited_by(just('['), just(']'))
                 .map_with(|fields: Vec<TempConstant<'_>>, e: &mut MapExtra<'a, '_>| {
                     let state = e.state();
