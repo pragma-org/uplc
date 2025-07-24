@@ -16,7 +16,7 @@ use crate::{
 use super::{
     data, typ,
     types::{Extra, MapExtra},
-    utils::hex_bytes,
+    utils::{comments, hex_bytes},
 };
 
 pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Constant<'a>, Extra<'a>> {
@@ -157,6 +157,7 @@ fn value_parser<'a>() -> impl Parser<'a, &'a str, TempConstant<'a>, Extra<'a>> {
             just('#')
                 .ignore_then(hex_bytes())
                 .padded()
+                .padded_by(comments())
                 .map_with(|v, e: &mut MapExtra<'a, '_>| {
                     let state = e.state();
 
