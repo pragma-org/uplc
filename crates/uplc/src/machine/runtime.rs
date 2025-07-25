@@ -1893,6 +1893,466 @@ impl<'a> Machine<'a> {
 
                 Ok(value)
             }
+            DefaultFunction::AndByteString => {
+                let should_pad = runtime.args[0].unwrap_bool()?;
+                let left_bytes = runtime.args[1].unwrap_byte_string()?;
+                let right_bytes = runtime.args[2].unwrap_byte_string()?;
+
+                let budget = self.costs.builtin_costs.and_byte_string([
+                    cost_model::BOOL_EX_MEM,
+                    cost_model::byte_string_ex_mem(left_bytes),
+                    cost_model::byte_string_ex_mem(right_bytes),
+                ]);
+
+                self.spend_budget(budget)?;
+
+                let bytes_result: Vec<u8> = if should_pad {
+                    let max_len = left_bytes.len().max(right_bytes.len());
+                    (0..max_len)
+                        .map(|index| {
+                            let left_byte = left_bytes.get(index).copied().unwrap_or(0xFF);
+                            let right_byte = right_bytes.get(index).copied().unwrap_or(0xFF);
+                            left_byte & right_byte
+                        })
+                        .collect()
+                } else {
+                    left_bytes
+                        .iter()
+                        .zip(right_bytes)
+                        .map(|(b1, b2)| b1 & b2)
+                        .collect()
+                };
+                let result = self.arena.alloc(bytes_result);
+                let value = Value::byte_string(self.arena, result);
+                Ok(value)
+            }
+            DefaultFunction::OrByteString => {
+                let should_pad = runtime.args[0].unwrap_bool()?;
+                let left_bytes = runtime.args[1].unwrap_byte_string()?;
+                let right_bytes = runtime.args[2].unwrap_byte_string()?;
+
+                let budget = self.costs.builtin_costs.or_byte_string([
+                    cost_model::BOOL_EX_MEM,
+                    cost_model::byte_string_ex_mem(left_bytes),
+                    cost_model::byte_string_ex_mem(right_bytes),
+                ]);
+
+                self.spend_budget(budget)?;
+
+                let bytes_result: Vec<u8> = if should_pad {
+                    let max_len = left_bytes.len().max(right_bytes.len());
+                    (0..max_len)
+                        .map(|index| {
+                            let left_byte = left_bytes.get(index).copied().unwrap_or(0x00);
+                            let right_byte = right_bytes.get(index).copied().unwrap_or(0x00);
+                            left_byte | right_byte
+                        })
+                        .collect()
+                } else {
+                    left_bytes
+                        .iter()
+                        .zip(right_bytes)
+                        .map(|(b1, b2)| b1 | b2)
+                        .collect()
+                };
+
+                let result = self.arena.alloc(bytes_result);
+                let value = Value::byte_string(self.arena, result);
+
+                Ok(value)
+            }
+            DefaultFunction::XorByteString => {
+                let should_pad = runtime.args[0].unwrap_bool()?;
+                let left_bytes = runtime.args[1].unwrap_byte_string()?;
+                let right_bytes = runtime.args[2].unwrap_byte_string()?;
+
+                let budget = self.costs.builtin_costs.or_byte_string([
+                    cost_model::BOOL_EX_MEM,
+                    cost_model::byte_string_ex_mem(left_bytes),
+                    cost_model::byte_string_ex_mem(right_bytes),
+                ]);
+
+                self.spend_budget(budget)?;
+
+                let bytes_result: Vec<u8> = if should_pad {
+                    let max_len = left_bytes.len().max(right_bytes.len());
+                    (0..max_len)
+                        .map(|index| {
+                            let left_byte = left_bytes.get(index).copied().unwrap_or(0x00);
+                            let right_byte = right_bytes.get(index).copied().unwrap_or(0x00);
+                            left_byte ^ right_byte
+                        })
+                        .collect()
+                } else {
+                    left_bytes
+                        .iter()
+                        .zip(right_bytes)
+                        .map(|(b1, b2)| b1 ^ b2)
+                        .collect()
+                };
+
+                let result = self.arena.alloc(bytes_result);
+                let value = Value::byte_string(self.arena, result);
+
+                Ok(value)
+            }
+            DefaultFunction::ComplementByteString => {
+                let bytes = runtime.args[0].unwrap_byte_string()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .complement_byte_string([cost_model::byte_string_ex_mem(bytes)]);
+                self.spend_budget(budget)?;
+
+                let result = self
+                    .arena
+                    .alloc(bytes.iter().map(|b| b ^ 255).collect::<Vec<_>>());
+
+                Ok(Value::byte_string(self.arena, result))
+            }
+            DefaultFunction::ReadBit => {
+                let bytes = runtime.args[0].unwrap_byte_string()?;
+                let bit_index = runtime.args[1].unwrap_integer()?;
+
+                let budget = self.costs.builtin_costs.read_bit([
+                    cost_model::byte_string_ex_mem(bytes),
+                    cost_model::integer_ex_mem(bit_index),
+                ]);
+
+                self.spend_budget(budget)?;
+
+                if bytes.is_empty() {
+                    return Err(MachineError::empty_byte_array());
+                }
+
+                if bit_index < &Integer::ZERO || bit_index >= &Integer::from(bytes.len() * 8) {
+                    return Err(MachineError::read_bit_out_of_bounds(
+                        bit_index,
+                        bytes.len() * 8,
+                    ));
+                }
+
+                let (byte_index, bit_offset) = bit_index.div_rem(&8.into());
+                let bit_offset = usize::try_from(bit_offset).unwrap();
+
+                let flipped_index = bytes.len() - 1 - usize::try_from(byte_index).unwrap();
+                let byte = bytes[flipped_index];
+
+                let bit_test = (byte >> bit_offset) & 1 == 1;
+
+                Ok(Value::bool(self.arena, bit_test))
+            }
+            DefaultFunction::WriteBits => {
+                let mut bytes = runtime.args[0].unwrap_byte_string()?.to_vec();
+                let indices = runtime.args[1].unwrap_int_list()?;
+                let set_bit = runtime.args[2].unwrap_bool()?;
+
+                let budget = self.costs.builtin_costs.write_bits([
+                    cost_model::byte_string_ex_mem(bytes.as_slice()),
+                    cost_model::proto_list_ex_mem(indices),
+                    cost_model::BOOL_EX_MEM,
+                ]);
+
+                self.spend_budget(budget)?;
+
+                for index in indices {
+                    let Constant::Integer(bit_index) = index else {
+                        unreachable!("bit_index must be an integer")
+                    };
+
+                    if *bit_index < &Integer::ZERO || *bit_index >= &Integer::from(bytes.len() * 8)
+                    {
+                        return Err(MachineError::write_bits_out_of_bounds(
+                            bit_index,
+                            bytes.len() * 8,
+                        ));
+                    }
+
+                    let (byte_index, bit_offset) = bit_index.div_rem(&8.into());
+                    let bit_offset = usize::try_from(bit_offset).unwrap();
+                    let flipped_index = bytes.len() - 1 - usize::try_from(byte_index).unwrap();
+                    let bit_mask: u8 = 1 << bit_offset;
+
+                    if set_bit {
+                        bytes[flipped_index] |= bit_mask;
+                    } else {
+                        bytes[flipped_index] &= !bit_mask;
+                    }
+                }
+
+                let result = self.arena.alloc(bytes);
+                Ok(Value::byte_string(self.arena, result))
+            }
+            DefaultFunction::ReplicateByte => {
+                let size = runtime.args[0].unwrap_integer()?;
+                let byte = runtime.args[1].unwrap_integer()?;
+
+                if size.is_negative() {
+                    return Err(MachineError::replicate_byte_negative_size(size));
+                }
+
+                if *size > INTEGER_TO_BYTE_STRING_MAXIMUM_OUTPUT_LENGTH.into() {
+                    return Err(MachineError::replicate_byte_size_too_big(
+                        size,
+                        INTEGER_TO_BYTE_STRING_MAXIMUM_OUTPUT_LENGTH,
+                    ));
+                }
+
+                let arg0: i64 = i64::try_from(size).unwrap();
+
+                let arg0_ex_mem = if arg0 == 0 { 0 } else { ((arg0 - 1) / 8) + 1 };
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .replicate_byte([arg0_ex_mem, cost_model::integer_ex_mem(byte)]);
+
+                self.spend_budget(budget)?;
+
+                if size.is_zero()
+                    && cost_model::integer_log2_x(byte)
+                        >= 8 * INTEGER_TO_BYTE_STRING_MAXIMUM_OUTPUT_LENGTH
+                {
+                    let required = cost_model::integer_log2_x(byte) / 8 + 1;
+
+                    return Err(MachineError::replicate_byte_size_too_big(
+                        constant::integer_from(self.arena, required as i128),
+                        INTEGER_TO_BYTE_STRING_MAXIMUM_OUTPUT_LENGTH,
+                    ));
+                }
+
+                if byte.is_negative() {
+                    return Err(MachineError::replicate_byte_negative_input(byte));
+                }
+
+                let size: usize = size.try_into().unwrap();
+
+                let Ok(byte) = u8::try_from(byte) else {
+                    return Err(MachineError::outside_byte_bounds(byte));
+                };
+
+                let result = if size == 0 {
+                    self.arena.alloc(vec![])
+                } else {
+                    self.arena.alloc([byte].repeat(size))
+                };
+
+                Ok(Value::byte_string(self.arena, result))
+            }
+            DefaultFunction::ShiftByteString => {
+                let bytes = runtime.args[0].unwrap_byte_string()?;
+                let shift = runtime.args[1].unwrap_integer()?;
+
+                let arg1: i64 = u64::try_from(shift.abs())
+                    .unwrap()
+                    .try_into()
+                    .unwrap_or(i64::MAX);
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .shift_byte_string([cost_model::byte_string_ex_mem(bytes), arg1]);
+                self.spend_budget(budget)?;
+
+                let length = bytes.len();
+                let result = self.arena.alloc(vec![0; length]);
+
+                if Integer::from(length) * 8 <= shift.abs() {
+                    return Ok(Value::byte_string(self.arena, result));
+                }
+
+                let is_shift_left = shift >= &Integer::ZERO;
+                let byte_shift = usize::try_from(shift.abs() / 8).unwrap();
+                let bit_shift = usize::try_from(shift.abs() % 8).unwrap();
+
+                if is_shift_left {
+                    if bit_shift == 0 {
+                        // If we can shift entire bytes, that's much simpler
+                        let copy_len = length - bit_shift;
+                        // For example, consider the following byte array [1,0,1,0,1] being shifted 8 bits (1 byte)
+                        // Result: [0,1,0,1,0]
+                        result[..copy_len].copy_from_slice(&bytes[byte_shift..]);
+                    } else {
+                        // This case is a bit trickier, so let's walk through an example:
+                        // say we are shifting the following byte string by 12 bits:
+                        // [AB CD EF 12]
+                        // We know we want to skip the first byte, and shift results 4 bits
+                        // In order to shift partial bytes, we need to get the "overflow" from the next byte
+                        // That is the complement_shift (in this case 4)
+                        // i=0:
+                        // src_idx = 0 + 1 = 1
+                        // result[0] = CD << 4 = D0
+                        // result[0] |= EF >> 4 = D0 | 0E = DE
+                        // i=1
+                        // src_idx = 1 + 1 = 2
+                        // result[1] = EF << 4 = F0
+                        // reuslt[1] |= 12 >> 4 = F0 | 01 = F1
+                        // i=2
+                        // src_idx = 2 + 1 = 3
+                        // result[2] = 12 << 4 = 20
+                        // 3 + 1  < length = false
+                        // So our result is:
+                        // [DE F1 20 00]
+                        let complement_shift = 8 - bit_shift;
+                        #[allow(clippy::needless_range_loop)]
+                        for i in 0..(length - byte_shift) {
+                            let src_idx = i + byte_shift;
+
+                            result[i] = bytes[src_idx] << bit_shift;
+                            if src_idx + 1 < length {
+                                result[i] |= bytes[src_idx + 1] >> complement_shift;
+                            }
+                        }
+                    }
+                } else {
+                    // Right shift has the same logic as left shift with the inverse operations
+                    if bit_shift == 0 {
+                        let copy_len = length - byte_shift;
+                        result[byte_shift..].copy_from_slice(&bytes[..copy_len]);
+                    } else {
+                        // See left shift case for explanation, but invert all operations
+                        let complement_shift = 8 - bit_shift;
+                        #[allow(clippy::needless_range_loop)]
+                        for i in 0..(length - byte_shift) {
+                            let dst_idx = i + byte_shift;
+                            result[dst_idx] = bytes[i] >> bit_shift;
+
+                            if i > 0 {
+                                result[dst_idx] |= bytes[i - 1] << complement_shift;
+                            }
+                        }
+                    }
+                }
+
+                Ok(Value::byte_string(self.arena, result))
+            }
+            DefaultFunction::RotateByteString => {
+                let bytes = runtime.args[0].unwrap_byte_string()?;
+                let shift = runtime.args[1].unwrap_integer()?;
+
+                let arg1: i64 = u64::try_from(shift.abs())
+                    .unwrap()
+                    .try_into()
+                    .unwrap_or(i64::MAX);
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .rotate_byte_string([cost_model::byte_string_ex_mem(bytes), arg1]);
+                self.spend_budget(budget)?;
+
+                let length = bytes.len();
+                let result = self.arena.alloc(bytes.to_vec());
+
+                if bytes.is_empty() {
+                    return Ok(Value::byte_string(self.arena, result));
+                }
+
+                let shift = shift.mod_floor(&(length * 8).into());
+                if shift == Integer::ZERO {
+                    return Ok(Value::byte_string(self.arena, result));
+                }
+                let byte_shift = usize::try_from(&shift / 8).unwrap();
+                let bit_shift = usize::try_from(shift % 8).unwrap();
+
+                if bit_shift == 0 {
+                    // left rotation is the same as shift left
+                    // except the overflowed bits are brought to the right
+                    let copy_len = length - byte_shift;
+
+                    result[..copy_len].copy_from_slice(&bytes[byte_shift..(copy_len + byte_shift)]);
+                    result[copy_len..].copy_from_slice(&bytes[..byte_shift]);
+                } else {
+                    let complement_shift = 8 - bit_shift;
+                    let wraparound_bits = bytes[0] >> complement_shift;
+                    #[allow(clippy::needless_range_loop)]
+                    for i in 0..(length - byte_shift) {
+                        let src_idx = i + byte_shift;
+
+                        result[i] = bytes[src_idx] << bit_shift;
+
+                        if src_idx + 1 < length {
+                            result[i] |= bytes[src_idx + 1] >> complement_shift;
+                        } else if byte_shift > 0 {
+                            result[i] |= bytes[0] >> complement_shift;
+                        } else {
+                            // In the case we're doing less than a full byte shift
+                            // we still need to wrap the bit
+                            result[i] |= wraparound_bits;
+                        }
+                    }
+
+                    for i in 0..byte_shift {
+                        let dst_idx = length - byte_shift + i;
+                        result[dst_idx] = bytes[i] << bit_shift;
+
+                        if i + 1 < byte_shift {
+                            result[dst_idx] |= bytes[i + 1] >> complement_shift;
+                        } else {
+                            result[dst_idx] |= bytes[byte_shift] >> complement_shift;
+                        }
+                    }
+                }
+
+                Ok(Value::byte_string(self.arena, result))
+            }
+            DefaultFunction::CountSetBits => {
+                let bytes = runtime.args[0].unwrap_byte_string()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .count_set_bits([cost_model::byte_string_ex_mem(bytes)]);
+                self.spend_budget(budget)?;
+
+                let weight: Integer = hamming::weight(bytes).into();
+                let result = self.arena.alloc(weight);
+                Ok(Value::integer(self.arena, result))
+            }
+            DefaultFunction::FindFirstSetBit => {
+                let bytes = runtime.args[0].unwrap_byte_string()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .find_first_set_bit([cost_model::byte_string_ex_mem(bytes)]);
+                self.spend_budget(budget)?;
+
+                let first_bit = bytes
+                    .iter()
+                    .rev()
+                    .enumerate()
+                    .find_map(|(byte_index, &byte)| {
+                        let reversed_byte = byte.reverse_bits();
+                        if reversed_byte == 0 {
+                            None
+                        } else {
+                            let bit_index = reversed_byte.leading_zeros() as usize;
+                            Some(isize::try_from(bit_index + byte_index * 8).unwrap())
+                        }
+                    });
+
+                let first_bit: Integer = first_bit.unwrap_or(-1).into();
+                let result = self.arena.alloc(first_bit);
+                Ok(Value::integer(self.arena, result))
+            }
+            DefaultFunction::Ripemd_160 => {
+                use cryptoxide::{digest::Digest, ripemd160::Ripemd160};
+                let input = runtime.args[0].unwrap_byte_string()?;
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .ripemd_160([cost_model::byte_string_ex_mem(input)]);
+                self.spend_budget(budget)?;
+
+                let mut hasher = Ripemd160::new();
+                hasher.input(input);
+                let result = self.arena.alloc(vec![0; hasher.output_bytes()]);
+                hasher.result(result);
+
+                Ok(Value::byte_string(self.arena, result))
+            }
         }
     }
 }

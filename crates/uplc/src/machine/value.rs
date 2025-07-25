@@ -191,6 +191,19 @@ where
         Ok(())
     }
 
+    pub(super) fn unwrap_int_list(&'a self) -> Result<&'a [&'a Constant<'a>], MachineError<'a, V>> {
+        let inner = self.unwrap_constant()?;
+
+        let Constant::ProtoList(Type::Integer, list) = inner else {
+            return Err(MachineError::type_mismatch(
+                Type::List(&Type::Integer),
+                inner,
+            ));
+        };
+
+        Ok(list)
+    }
+
     pub fn unwrap_bls12_381_g1_element(&'a self) -> Result<&'a blst::blst_p1, MachineError<'a, V>> {
         let inner = self.unwrap_constant()?;
 

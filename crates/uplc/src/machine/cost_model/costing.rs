@@ -204,11 +204,13 @@ impl Cost<2> for TwoArguments {
 pub enum ThreeArguments {
     ConstantCost(i64),
     // AddedSizes(AddedSizes),
-    // LinearInX(LinearSize),
+    LinearInX(LinearSize),
     LinearInY(LinearSize),
     LinearInZ(LinearSize),
     QuadraticInZ(QuadraticFunction),
     LiteralInYorLinearInZ(LinearSize),
+    LinearInYAndZ(TwoVariableLinearSize),
+    LinearInMaxYZ(LinearSize),
 }
 
 pub type ThreeArgumentsCosting = Costing<3, ThreeArguments>;
@@ -237,18 +239,34 @@ impl ThreeArgumentsCosting {
             coeff_2,
         })
     }
+
+    pub fn linear_in_y_and_z(intercept: i64, slope1: i64, slope2: i64) -> ThreeArguments {
+        ThreeArguments::LinearInYAndZ(TwoVariableLinearSize {
+            intercept,
+            slope1,
+            slope2,
+        })
+    }
+
+    pub fn linear_in_max_y_z(intercept: i64, slope: i64) -> ThreeArguments {
+        ThreeArguments::LinearInMaxYZ(LinearSize { intercept, slope })
+    }
+
+    pub fn linear_in_x(intercept: i64, slope: i64) -> ThreeArguments {
+        ThreeArguments::LinearInX(LinearSize { intercept, slope })
+    }
 }
 
 impl Cost<3> for ThreeArguments {
     fn cost(&self, args: [i64; 3]) -> i64 {
-        // let x = args[0];
+        let x = args[0];
         let y = args[1];
         let z = args[2];
 
         match self {
             ThreeArguments::ConstantCost(c) => *c,
             // ThreeArguments::AddedSizes(s) => (x + y + z) * s.slope + s.intercept,
-            // ThreeArguments::LinearInX(l) => x * l.slope + l.intercept,
+            ThreeArguments::LinearInX(l) => x * l.slope + l.intercept,
             ThreeArguments::LinearInY(l) => y * l.slope + l.intercept,
             ThreeArguments::LinearInZ(l) => z * l.slope + l.intercept,
             ThreeArguments::QuadraticInZ(q) => q.coeff_0 + (q.coeff_1 * z) + (q.coeff_2 * z * z),
@@ -259,6 +277,8 @@ impl Cost<3> for ThreeArguments {
                     y
                 }
             }
+            ThreeArguments::LinearInYAndZ(l) => y * l.slope1 + z * l.slope2 + l.intercept,
+            ThreeArguments::LinearInMaxYZ(l) => y.max(z) * l.slope + l.intercept,
         }
     }
 }
@@ -288,6 +308,13 @@ impl Cost<6> for SixArguments {
 pub struct LinearSize {
     pub intercept: i64,
     pub slope: i64,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TwoVariableLinearSize {
+    pub intercept: i64,
+    pub slope1: i64,
+    pub slope2: i64,
 }
 
 #[derive(Debug, PartialEq)]
