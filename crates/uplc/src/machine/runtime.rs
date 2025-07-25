@@ -377,8 +377,8 @@ impl<'a> Machine<'a> {
             }
             DefaultFunction::SliceByteString => {
                 let arg1 = runtime.args[0].unwrap_integer()?;
-                let arg2: &'a num::BigInt = runtime.args[1].unwrap_integer()?;
-                let arg3: &'a [u8] = runtime.args[2].unwrap_byte_string()?;
+                let arg2 = runtime.args[1].unwrap_integer()?;
+                let arg3 = runtime.args[2].unwrap_byte_string()?;
 
                 let budget = self.costs.builtin_costs.slice_byte_string([
                     cost_model::integer_ex_mem(arg1),
@@ -390,7 +390,7 @@ impl<'a> Machine<'a> {
 
                 let skip: usize = if *arg1 < Integer::ZERO {
                     0
-                } else if *arg1 > arg3.len().into(){
+                } else if *arg1 > arg3.len().into() {
                     arg3.len()
                 } else {
                     arg1.try_into().expect("should cast to usize just fine")
@@ -398,7 +398,7 @@ impl<'a> Machine<'a> {
 
                 let take: usize = if *arg2 < Integer::ZERO {
                     0
-                } else if *arg2 > arg3.len().into(){
+                } else if *arg2 > arg3.len().into() {
                     arg3.len()
                 } else {
                     arg2.try_into().expect("should cast to usize just fine")
