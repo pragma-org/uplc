@@ -6,35 +6,33 @@ use crate::{binder::DeBruijn, term::Term};
 use super::{
     constant,
     types::{Extra, MapExtra},
-    utils::comments,
+    utils::{comments, name},
 };
 
 pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a, DeBruijn>, Extra<'a>> {
     recursive(|term| {
         choice((
             // Var
-            text::ident()
-                .padded()
-                .map_with(|v, e: &mut MapExtra<'a, '_>| {
-                    let state = e.state();
+            name().padded().map_with(|v, e: &mut MapExtra<'a, '_>| {
+                let state = e.state();
 
-                    let position = state.env.iter().rev().position(|&x| x == v);
+                let position = state.env.iter().rev().position(|&x| x == v);
 
-                    if position.is_none() {
-                        let placeholder = Term::var(state.arena, DeBruijn::zero(state.arena));
+                if position.is_none() {
+                    let placeholder = Term::var(state.arena, DeBruijn::zero(state.arena));
 
-                        // this will fail at eval time
-                        // the conformance tests don't expect this
-                        // to fail at parse time
-                        placeholder
-                    } else {
-                        let debruijn_index = state.env.len() - position.unwrap_or_default();
+                    // this will fail at eval time
+                    // the conformance tests don't expect this
+                    // to fail at parse time
+                    placeholder
+                } else {
+                    let debruijn_index = state.env.len() - position.unwrap_or_default();
 
-                        let d = DeBruijn::new(state.arena, debruijn_index);
+                    let d = DeBruijn::new(state.arena, debruijn_index);
 
-                        Term::var(state.arena, d)
-                    }
-                }),
+                    Term::var(state.arena, d)
+                }
+            }),
             // Delay
             text::keyword("delay")
                 .padded()
@@ -58,11 +56,11 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a, DeBruijn>, Extra<'a
             // Lambda
             text::keyword("lam")
                 .padded()
-                .ignore_then(text::ident().padded())
+                .ignore_then(name().padded())
                 .map_with(|v, e: &mut MapExtra<'a, '_>| {
                     let state = e.state();
 
-                    state.env.push(v);
+                    state.env.push(&v);
 
                     0
                 })
