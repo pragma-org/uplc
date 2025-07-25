@@ -181,7 +181,7 @@ fn value_parser<'a>() -> impl Parser<'a, &'a str, TempConstant<'a>, Extra<'a>> {
                 }),
             // plutus data
             data::parser()
-                .delimited_by(just('('), just(')'))
+                .delimited_by(just('(').or_not(), just(')').or_not())
                 .map(TempConstant::Data),
             // list
             con.clone()
