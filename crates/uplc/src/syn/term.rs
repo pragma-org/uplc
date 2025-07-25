@@ -6,6 +6,7 @@ use crate::{binder::DeBruijn, term::Term};
 use super::{
     constant,
     types::{Extra, MapExtra},
+    utils::comments,
 };
 
 pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a, DeBruijn>, Extra<'a>> {
@@ -170,6 +171,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a, DeBruijn>, Extra<'a
                     ret
                 }),
         ))
+        .padded_by(comments())
         .boxed()
     })
 }
@@ -250,6 +252,18 @@ pub fn builtin_from_str<'a>(arena: &'a Bump, name: &str) -> Option<&'a Term<'a, 
         "bls12_381_finalVerify" => Some(Term::bls12_381_final_verify(arena)),
         "integerToByteString" => Some(Term::integer_to_byte_string(arena)),
         "byteStringToInteger" => Some(Term::byte_string_to_integer(arena)),
+        "andByteString" => Some(Term::and_byte_string(arena)),
+        "orByteString" => Some(Term::or_byte_string(arena)),
+        "xorByteString" => Some(Term::xor_byte_string(arena)),
+        "complementByteString" => Some(Term::complement_byte_string(arena)),
+        "readBit" => Some(Term::read_bit(arena)),
+        "writeBits" => Some(Term::write_bits(arena)),
+        "replicateByte" => Some(Term::replicate_byte(arena)),
+        "shiftByteString" => Some(Term::shift_byte_string(arena)),
+        "rotateByteString" => Some(Term::rotate_byte_string(arena)),
+        "countSetBits" => Some(Term::count_set_bits(arena)),
+        "findFirstSetBit" => Some(Term::find_first_set_bit(arena)),
+        "ripemd_160" => Some(Term::ripemd_160(arena)),
         _ => None,
     }
 }

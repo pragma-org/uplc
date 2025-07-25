@@ -93,6 +93,18 @@ pub struct BuiltinCosts {
     // bitwise
     integer_to_byte_string: ThreeArgumentsCosting,
     byte_string_to_integer: TwoArgumentsCosting,
+    and_byte_string: ThreeArgumentsCosting,
+    or_byte_string: ThreeArgumentsCosting,
+    xor_byte_string: ThreeArgumentsCosting,
+    complement_byte_string: OneArgumentCosting,
+    read_bit: TwoArgumentsCosting,
+    write_bits: ThreeArgumentsCosting,
+    replicate_byte: TwoArgumentsCosting,
+    shift_byte_string: TwoArgumentsCosting,
+    rotate_byte_string: TwoArgumentsCosting,
+    count_set_bits: OneArgumentCosting,
+    find_first_set_bit: OneArgumentCosting,
+    ripemd_160: OneArgumentCosting,
 }
 
 impl Default for BuiltinCosts {
@@ -568,6 +580,87 @@ impl BuiltinCosts {
         )
     }
 
+    pub fn and_byte_string(&self, args: [i64; 3]) -> ExBudget {
+        ExBudget::new(
+            self.and_byte_string.mem.cost(args),
+            self.and_byte_string.cpu.cost(args),
+        )
+    }
+
+    pub fn or_byte_string(&self, args: [i64; 3]) -> ExBudget {
+        ExBudget::new(
+            self.or_byte_string.mem.cost(args),
+            self.or_byte_string.cpu.cost(args),
+        )
+    }
+
+    pub fn xor_byte_string(&self, args: [i64; 3]) -> ExBudget {
+        ExBudget::new(
+            self.xor_byte_string.mem.cost(args),
+            self.xor_byte_string.cpu.cost(args),
+        )
+    }
+
+    pub fn complement_byte_string(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(
+            self.complement_byte_string.mem.cost(args),
+            self.complement_byte_string.cpu.cost(args),
+        )
+    }
+
+    pub fn read_bit(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(self.read_bit.mem.cost(args), self.read_bit.cpu.cost(args))
+    }
+
+    pub fn write_bits(&self, args: [i64; 3]) -> ExBudget {
+        ExBudget::new(
+            self.write_bits.mem.cost(args),
+            self.write_bits.cpu.cost(args),
+        )
+    }
+
+    pub fn replicate_byte(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.replicate_byte.mem.cost(args),
+            self.replicate_byte.cpu.cost(args),
+        )
+    }
+
+    pub fn shift_byte_string(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.shift_byte_string.mem.cost(args),
+            self.shift_byte_string.cpu.cost(args),
+        )
+    }
+
+    pub fn rotate_byte_string(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.rotate_byte_string.mem.cost(args),
+            self.rotate_byte_string.cpu.cost(args),
+        )
+    }
+
+    pub fn count_set_bits(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(
+            self.count_set_bits.mem.cost(args),
+            self.count_set_bits.cpu.cost(args),
+        )
+    }
+
+    pub fn find_first_set_bit(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(
+            self.find_first_set_bit.mem.cost(args),
+            self.find_first_set_bit.cpu.cost(args),
+        )
+    }
+
+    pub fn ripemd_160(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(
+            self.ripemd_160.mem.cost(args),
+            self.ripemd_160.cpu.cost(args),
+        )
+    }
+
     pub fn v3() -> Self {
         Self {
             add_integer: TwoArgumentsCosting::new(
@@ -879,6 +972,54 @@ impl BuiltinCosts {
             byte_string_to_integer: TwoArgumentsCosting::new(
                 TwoArgumentsCosting::linear_in_y(0, 1),
                 TwoArgumentsCosting::quadratic_in_y(1006041, 43623, 251),
+            ),
+            and_byte_string: ThreeArgumentsCosting::new(
+                ThreeArgumentsCosting::linear_in_max_y_z(0, 1),
+                ThreeArgumentsCosting::linear_in_y_and_z(100181, 726, 719),
+            ),
+            or_byte_string: ThreeArgumentsCosting::new(
+                ThreeArgumentsCosting::linear_in_max_y_z(0, 1),
+                ThreeArgumentsCosting::linear_in_y_and_z(100181, 726, 719),
+            ),
+            xor_byte_string: ThreeArgumentsCosting::new(
+                ThreeArgumentsCosting::linear_in_max_y_z(0, 1),
+                ThreeArgumentsCosting::linear_in_y_and_z(100181, 726, 719),
+            ),
+            complement_byte_string: OneArgumentCosting::new(
+                OneArgumentCosting::linear_cost(0, 1),
+                OneArgumentCosting::linear_cost(107878, 680),
+            ),
+            read_bit: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(1),
+                TwoArgumentsCosting::constant_cost(95336),
+            ),
+            write_bits: ThreeArgumentsCosting::new(
+                ThreeArgumentsCosting::linear_in_x(0, 1),
+                ThreeArgumentsCosting::linear_in_y(281145, 18848),
+            ),
+            replicate_byte: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::linear_in_x(1, 1),
+                TwoArgumentsCosting::linear_in_x(180194, 159),
+            ),
+            shift_byte_string: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::linear_in_x(0, 1),
+                TwoArgumentsCosting::linear_in_x(158519, 8942),
+            ),
+            rotate_byte_string: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::linear_in_x(0, 1),
+                TwoArgumentsCosting::linear_in_x(159378, 8813),
+            ),
+            count_set_bits: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(1),
+                OneArgumentCosting::linear_cost(107490, 3298),
+            ),
+            find_first_set_bit: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(1),
+                OneArgumentCosting::linear_cost(106057, 655),
+            ),
+            ripemd_160: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(3),
+                OneArgumentCosting::linear_cost(1964219, 24520),
             ),
         }
     }

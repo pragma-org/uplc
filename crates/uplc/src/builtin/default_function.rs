@@ -98,6 +98,19 @@ pub enum DefaultFunction {
     // Bitwise
     IntegerToByteString = 73,
     ByteStringToInteger = 74,
+
+    AndByteString = 75,
+    OrByteString = 76,
+    XorByteString = 77,
+    ComplementByteString = 78,
+    ReadBit = 79,
+    WriteBits = 80,
+    ReplicateByte = 81,
+    ShiftByteString = 82,
+    RotateByteString = 83,
+    CountSetBits = 84,
+    FindFirstSetBit = 85,
+    Ripemd_160 = 86,
 }
 
 impl DefaultFunction {
@@ -178,6 +191,18 @@ impl DefaultFunction {
             DefaultFunction::Bls12_381_FinalVerify => 0,
             DefaultFunction::IntegerToByteString => 0,
             DefaultFunction::ByteStringToInteger => 0,
+            DefaultFunction::AndByteString => 0,
+            DefaultFunction::OrByteString => 0,
+            DefaultFunction::XorByteString => 0,
+            DefaultFunction::ComplementByteString => 0,
+            DefaultFunction::ReadBit => 0,
+            DefaultFunction::WriteBits => 0,
+            DefaultFunction::ReplicateByte => 0,
+            DefaultFunction::ShiftByteString => 0,
+            DefaultFunction::RotateByteString => 0,
+            DefaultFunction::CountSetBits => 0,
+            DefaultFunction::FindFirstSetBit => 0,
+            DefaultFunction::Ripemd_160 => 0,
         }
     }
 
@@ -258,6 +283,18 @@ impl DefaultFunction {
             DefaultFunction::Bls12_381_FinalVerify => 2,
             DefaultFunction::IntegerToByteString => 3,
             DefaultFunction::ByteStringToInteger => 2,
+            DefaultFunction::AndByteString => 3,
+            DefaultFunction::OrByteString => 3,
+            DefaultFunction::XorByteString => 3,
+            DefaultFunction::ComplementByteString => 1,
+            DefaultFunction::ReadBit => 2,
+            DefaultFunction::WriteBits => 3,
+            DefaultFunction::ReplicateByte => 2,
+            DefaultFunction::ShiftByteString => 2,
+            DefaultFunction::RotateByteString => 2,
+            DefaultFunction::CountSetBits => 1,
+            DefaultFunction::FindFirstSetBit => 1,
+            DefaultFunction::Ripemd_160 => 1,
         }
     }
 }

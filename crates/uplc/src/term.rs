@@ -576,4 +576,64 @@ impl<'a, V> Term<'a, V> {
 
         Term::builtin(arena, fun)
     }
+    pub fn and_byte_string(arena: &'a Bump) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::AndByteString);
+
+        Term::builtin(arena, fun)
+    }
+    pub fn or_byte_string(arena: &'a Bump) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::OrByteString);
+
+        Term::builtin(arena, fun)
+    }
+    pub fn xor_byte_string(arena: &'a Bump) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::XorByteString);
+
+        Term::builtin(arena, fun)
+    }
+    pub fn complement_byte_string(arena: &'a Bump) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::ComplementByteString);
+
+        Term::builtin(arena, fun)
+    }
+    pub fn read_bit(arena: &'a Bump) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::ReadBit);
+
+        Term::builtin(arena, fun)
+    }
+    pub fn write_bits(arena: &'a Bump) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::WriteBits);
+
+        Term::builtin(arena, fun)
+    }
+    pub fn replicate_byte(arena: &'a Bump) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::ReplicateByte);
+
+        Term::builtin(arena, fun)
+    }
+    pub fn shift_byte_string(arena: &'a Bump) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::ShiftByteString);
+
+        Term::builtin(arena, fun)
+    }
+    pub fn rotate_byte_string(arena: &'a Bump) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::RotateByteString);
+
+        Term::builtin(arena, fun)
+    }
+    pub fn count_set_bits(arena: &'a Bump) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::CountSetBits);
+
+        Term::builtin(arena, fun)
+    }
+    pub fn find_first_set_bit(arena: &'a Bump) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::FindFirstSetBit);
+
+        Term::builtin(arena, fun)
+    }
+    pub fn ripemd_160(arena: &'a Bump) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::Ripemd_160);
+
+        Term::builtin(arena, fun)
+    }
 }

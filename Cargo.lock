@@ -441,6 +441,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "hamming"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "65043da274378d68241eb9a8f8f8aa54e349136f7b8e12f63e3ef44043cc30e1"
+
+[[package]]
 name = "hashbrown"
 version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1231,6 +1237,7 @@ dependencies = [
  "chumsky",
  "criterion",
  "cryptoxide",
+ "hamming",
  "insta",
  "itertools 0.13.0",
  "minicbor",

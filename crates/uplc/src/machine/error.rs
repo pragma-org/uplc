@@ -92,6 +92,40 @@ pub enum RuntimeError<'a> {
     IntegerToByteStringNegativeInput(&'a Integer),
     #[error("integerToByteString encountered negative size\n{:>13} {0}", "Size")]
     IntegerToByteStringNegativeSize(&'a Integer),
+    #[error("Empty byte array")]
+    EmptyByteArray,
+    #[error(
+        "readBit: index out of bounds\n{:>13} {0}\n{:>13} {1}",
+        "Index",
+        "Size"
+    )]
+    ReadBitOutOfBounds(&'a Integer, usize),
+    #[error(
+        "writeBits: an index is out of bounds\n{:>13} {0}\n{:>13} {1}",
+        "Index",
+        "Size"
+    )]
+    WriteBitsOutOfBounds(&'a Integer, usize),
+    #[error("{0} is not within the bounds of a Byte")]
+    OutsideByteBounds(&'a Integer),
+    #[error("{0} is not within the bounds of usize")]
+    OutsideUsizeBounds(&'a Integer),
+    #[error(
+        "bytes size beyond limit when replicating byte\n{:>13} {0}\n{:>13} {1}",
+        "Size",
+        "Maximum"
+    )]
+    ReplicateByteSizeTooBig(&'a Integer, i64),
+    #[error(
+        "bytes size below limit when replicating byte\n{:>13} {0}\n{:>13} {1}",
+        "Size",
+        "Minimum"
+    )]
+    ReplicateByteSizeTooSmall(&'a Integer, usize),
+    #[error("replicateByte encountered negative input\n{:>13} {0}", "Input")]
+    ReplicateByteNegativeInput(&'a Integer),
+    #[error("replicateByte encountered negative size\n{:>13} {0}", "Size")]
+    ReplicateByteNegativeSize(&'a Integer),
 }
 
 impl<'a, V> MachineError<'a, V>
@@ -184,5 +218,37 @@ where
 
     pub fn integer_to_byte_string_negative_size(integer: &'a Integer) -> Self {
         MachineError::runtime(RuntimeError::IntegerToByteStringNegativeSize(integer))
+    }
+
+    pub fn empty_byte_array() -> Self {
+        MachineError::runtime(RuntimeError::EmptyByteArray)
+    }
+
+    pub fn read_bit_out_of_bounds(index: &'a Integer, size: usize) -> Self {
+        MachineError::runtime(RuntimeError::ReadBitOutOfBounds(index, size))
+    }
+
+    pub fn write_bits_out_of_bounds(index: &'a Integer, size: usize) -> Self {
+        MachineError::runtime(RuntimeError::WriteBitsOutOfBounds(index, size))
+    }
+
+    pub fn outside_byte_bounds(integer: &'a Integer) -> Self {
+        MachineError::runtime(RuntimeError::OutsideByteBounds(integer))
+    }
+
+    pub fn outside_usize_bounds(integer: &'a Integer) -> Self {
+        MachineError::runtime(RuntimeError::OutsideUsizeBounds(integer))
+    }
+
+    pub fn replicate_byte_negative_size(integer: &'a Integer) -> Self {
+        MachineError::runtime(RuntimeError::ReplicateByteNegativeSize(integer))
+    }
+
+    pub fn replicate_byte_size_too_big(integer: &'a Integer, maximum: i64) -> Self {
+        MachineError::runtime(RuntimeError::ReplicateByteSizeTooBig(integer, maximum))
+    }
+
+    pub fn replicate_byte_negative_input(integer: &'a Integer) -> Self {
+        MachineError::runtime(RuntimeError::ReplicateByteNegativeInput(integer))
     }
 }
