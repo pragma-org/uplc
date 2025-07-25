@@ -318,6 +318,13 @@ impl BuiltinCosts {
         )
     }
 
+    pub fn if_then_else(&self, args: [i64; 3]) -> ExBudget {
+        ExBudget::new(
+            self.if_then_else.mem.cost(args),
+            self.if_then_else.cpu.cost(args),
+        )
+    }
+
     pub fn choose_unit(&self, args: [i64; 2]) -> ExBudget {
         ExBudget::new(
             self.choose_unit.mem.cost(args),
