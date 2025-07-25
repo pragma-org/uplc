@@ -312,7 +312,7 @@ impl<'a> Machine<'a> {
 
                 if !arg2.is_zero() {
                     let (_, result) = arg1.div_mod_floor(arg2);
-                    let result = self.arena.alloc(arg1 % result);
+                    let result = self.arena.alloc(result);
                     let value = Value::integer(self.arena, result);
 
                     Ok(value)
