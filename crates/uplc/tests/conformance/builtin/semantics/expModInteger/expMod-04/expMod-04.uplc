@@ -1,1 +1,0 @@
-(program 1.0.0 [ [ [ (builtin expModInteger) (con integer 2)] (con integer -3) ] (con integer 3)])
