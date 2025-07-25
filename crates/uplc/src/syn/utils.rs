@@ -2,6 +2,8 @@ use chumsky::prelude::*;
 
 use super::types::Extra;
 
+// This is based on the grammar definition of `Name` from the Plutus Core Spec (https://plutus.cardano.intersectmbo.org/resources/plutus-core-spec.pdf 2.1.1)
+// Name 𝑛 ∶∶= [a-zA-Z][a-zA-Z0-9_']
 pub fn name<'a>() -> impl Parser<'a, &'a str, &'a str, Extra<'a>> {
     any()
         .filter(|c: &char|  c.is_ascii_alphabetic())
