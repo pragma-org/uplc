@@ -16,7 +16,7 @@ use crate::{
 use super::{
     data, typ,
     types::{Extra, MapExtra},
-    utils::hex_bytes,
+    utils::{comments, hex_bytes},
 };
 
 pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Constant<'a>, Extra<'a>> {
@@ -147,7 +147,7 @@ fn value_parser<'a>() -> impl Parser<'a, &'a str, TempConstant<'a>, Extra<'a>> {
                 .map_with(|v, e: &mut MapExtra<'a, '_>| {
                     let state = e.state();
 
-                    let value = v.parse::<i128>().unwrap();
+                    let value = v.trim().parse::<i128>().unwrap();
 
                     let i = constant::integer_from(state.arena, value);
 
@@ -157,6 +157,7 @@ fn value_parser<'a>() -> impl Parser<'a, &'a str, TempConstant<'a>, Extra<'a>> {
             just('#')
                 .ignore_then(hex_bytes())
                 .padded()
+                .padded_by(comments())
                 .map_with(|v, e: &mut MapExtra<'a, '_>| {
                     let state = e.state();
 
@@ -180,13 +181,14 @@ fn value_parser<'a>() -> impl Parser<'a, &'a str, TempConstant<'a>, Extra<'a>> {
                 }),
             // plutus data
             data::parser()
-                .delimited_by(just('('), just(')'))
+                .delimited_by(just('(').or_not(), just(')').or_not())
                 .map(TempConstant::Data),
             // list
             con.clone()
                 .padded()
                 .separated_by(just(','))
                 .collect()
+                .padded()
                 .delimited_by(just('['), just(']'))
                 .map_with(|fields: Vec<TempConstant<'_>>, e: &mut MapExtra<'a, '_>| {
                     let state = e.state();
