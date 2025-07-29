@@ -204,6 +204,12 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_bool()?;
                 let arg2 = runtime.args[1];
                 let arg3 = runtime.args[2];
+                let budget = self.costs.builtin_costs.if_then_else([
+                    cost_model::BOOL_EX_MEM,
+                    cost_model::value_ex_mem(arg2),
+                    cost_model::value_ex_mem(arg3),
+                ]);
+                self.spend_budget(budget)?;
 
                 if arg1 {
                     Ok(arg2)
@@ -306,7 +312,7 @@ impl<'a> Machine<'a> {
 
                 if !arg2.is_zero() {
                     let (_, result) = arg1.div_mod_floor(arg2);
-                    let result = self.arena.alloc(arg1 % result);
+                    let result = self.arena.alloc(result);
                     let value = Value::integer(self.arena, result);
 
                     Ok(value)
@@ -371,8 +377,8 @@ impl<'a> Machine<'a> {
             }
             DefaultFunction::SliceByteString => {
                 let arg1 = runtime.args[0].unwrap_integer()?;
-                let arg2: &'a num::BigInt = runtime.args[1].unwrap_integer()?;
-                let arg3: &'a [u8] = runtime.args[2].unwrap_byte_string()?;
+                let arg2 = runtime.args[1].unwrap_integer()?;
+                let arg3 = runtime.args[2].unwrap_byte_string()?;
 
                 let budget = self.costs.builtin_costs.slice_byte_string([
                     cost_model::integer_ex_mem(arg1),
@@ -384,7 +390,7 @@ impl<'a> Machine<'a> {
 
                 let skip: usize = if *arg1 < Integer::ZERO {
                     0
-                } else if *arg1 > arg3.len().into(){
+                } else if *arg1 > arg3.len().into() {
                     arg3.len()
                 } else {
                     arg1.try_into().expect("should cast to usize just fine")
@@ -392,7 +398,7 @@ impl<'a> Machine<'a> {
 
                 let take: usize = if *arg2 < Integer::ZERO {
                     0
-                } else if *arg2 > arg3.len().into(){
+                } else if *arg2 > arg3.len().into() {
                     arg3.len()
                 } else {
                     arg2.try_into().expect("should cast to usize just fine")
@@ -1576,17 +1582,14 @@ impl<'a> Machine<'a> {
 
                 let size_scalar = size_of::<blst::blst_scalar>();
 
-                let computation = arg1 % &*SCALAR_PERIOD;
+                let arg1 = arg1.mod_floor(&SCALAR_PERIOD);
 
-                let new = self.arena.alloc(computation);
-
-                let mut arg1 = integer_to_bytes(self.arena, new, true);
+                let (_, mut arg1) = arg1.to_bytes_be();
 
                 if size_scalar > arg1.len() {
                     let diff = size_scalar - arg1.len();
 
-                    let mut new_vec = BumpVec::with_capacity_in(diff, self.arena);
-
+                    let mut new_vec = vec![0; diff];
                     unsafe {
                         new_vec.set_len(diff);
                     }
