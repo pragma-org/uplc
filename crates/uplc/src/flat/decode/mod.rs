@@ -218,3 +218,40 @@ fn decode_constant_tags<'a>(
 fn decode_constant_tag(d: &mut Decoder) -> Result<u8, FlatDecodeError> {
     d.bits8(CONST_TAG_WIDTH)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::binder::DeBruijn;
+    use hex;
+    use num::BigInt;
+
+    #[test]
+    fn decode_program_1() {
+        // (program 1.1.0
+        //   [
+        //     [
+        //       (builtin addInteger)
+        //       (con integer 1)
+        //     ]
+        //     [ (force (force (builtin fstPair)))
+        //       [ (builtin unConstrData)
+        //         (con data (Constr 128 [I 0, I 1]))
+        //       ]
+        //     ]
+        //   ])
+        let bytes = hex::decode("0101003370090011aab9d375498109d8668218809f0001ff0001").unwrap();
+        let arena = Bump::new();
+        let program: Result<&Program<DeBruijn>, _> = decode(&arena, &bytes);
+        match program {
+            Ok(program) => {
+                let eval_result = program.eval(&arena);
+                let term = eval_result.term.unwrap();
+                assert_eq!(term, &Term::Constant(&Constant::Integer(&BigInt::from(129))));
+            },
+            Err(e) => {
+                assert!(false);
+            }
+        }
+    }
+}
