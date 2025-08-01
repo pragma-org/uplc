@@ -49,7 +49,34 @@ impl<'a, 'b> minicbor::decode::Decode<'b, Ctx<'a>> for &'a PlutusData<'a> {
                             Ok(data)
                         }
                         102 => {
-                            todo!("tagged data")
+                            let mut fields = BumpVec::new_in(ctx.arena);
+
+                            let count = decoder.array()?;
+                            if count != Some(2) {
+                                return Err(minicbor::decode::Error::message(format!(
+                                    "expected array of length 2 following plutus data tag 102",
+                                )));
+                            }
+
+                            let discriminator_i128: i128 = decoder.int()?.into();
+                            let discriminator: u64 = match u64::try_from(discriminator_i128) {
+                                Ok(n) => n,
+                                Err(e) => {
+                                    return Err(minicbor::decode::Error::message(format!(
+                                        "could not cast discriminator from plutus data tag 102 into u64: {discriminator_i128}",
+                                    )));
+                                }
+                            };
+
+                            for x in decoder.array_iter_with(ctx)? {
+                                fields.push(x?);
+                            }
+
+                            let fields = ctx.arena.alloc(fields);
+
+                            let data = PlutusData::constr(ctx.arena, discriminator, fields);
+
+                            Ok(data)
                         }
                         _ => {
                             let e = minicbor::decode::Error::message(format!(
@@ -161,17 +188,24 @@ impl<C> minicbor::encode::Encode<C> for PlutusData<'_> {
     ) -> Result<(), minicbor::encode::Error<W::Error>> {
         match self {
             PlutusData::Constr { tag, fields } => {
-                e.tag(Tag::new(*tag))?;
-
-                match tag {
-                    102 => {
-                        todo!("tagged data")
+                if *tag > 127 {
+                    e.tag(Tag::new(102))?;
+                    e.array(2)?;
+                    e.u64(*tag);
+                    e.begin_array()?;
+                    for f in fields.iter() {
+                        f.encode(e, ctx)?;
                     }
+                    e.end()?;
+                } else {
+                    e.tag(Tag::new(*tag))?;
                     // TODO: figure out if we need to care about def vs indef
                     // if indef we need to call e.begin_array()?, then loop, then e.end()?;
-                    _ => {
-                        fields.encode(e, ctx)?;
+                    e.begin_array()?;
+                    for f in fields.iter() {
+                        f.encode(e, ctx)?;
                     }
+                    e.end()?;
                 }
             }
             // stolen from pallas
