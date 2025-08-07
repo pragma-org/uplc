@@ -227,7 +227,7 @@ mod tests {
     use num::BigInt;
 
     #[test]
-    fn decode_program_1() {
+    fn decode_program_big_constr_tag() {
         // (program 1.1.0
         //   [
         //     [
@@ -254,4 +254,38 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn decode_program_bigint() {
+        // (program 1.1.0
+        //   [
+        //     [
+        //       (builtin addInteger)
+        //       (con integer 1)
+        //     ]
+        //     [ (builtin unIData)
+        //       [ (force (builtin headList))
+        //         [ (force (force (builtin sndPair)))
+        //           [ (builtin unConstrData)
+        //             (con data (Constr 0 [I 999999999999999999999999999]))
+        //           ]
+        //         ]
+        //       ]
+        //     ]
+        //   ])
+        let bytes = hex::decode("0101003370090011bad357426aae78dd526112d8799fc24c033b2e3c9fd0803ce7ffffffff0001").unwrap();
+        let arena = Bump::new();
+        let program: Result<&Program<DeBruijn>, _> = decode(&arena, &bytes);
+        match program {
+            Ok(program) => {
+                let eval_result = program.eval(&arena);
+                let term = eval_result.term.unwrap();
+                assert_eq!(term, &Term::Constant(&Constant::Integer(&BigInt::from(1_000_000_000_000_000_000_000_000_000i128))));
+            },
+            Err(e) => {
+                panic!("{}", e);
+            }
+        }
+    }
+
 }
