@@ -239,3 +239,47 @@ fn safe_encode_bits(e: &mut Encoder, num_bits: usize, byte: u8) -> Result<(), Fl
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::binder::DeBruijn;
+    use crate::flat::decode;
+    use bumpalo::Bump;
+
+    #[test]
+    fn roundtrip_program_1() {
+        // (program 1.1.0
+        //   [
+        //     [
+        //       (builtin addInteger)
+        //       (con integer 1)
+        //     ]
+        //     [ (force (force (builtin fstPair)))
+        //       [ (builtin unConstrData)
+        //         (con data (Constr 128 [B #00, B #0101]))
+        //       ]
+        //     ]
+        //   ])
+        let bytes_hex = "0101003370090011aab9d37549810cd8668218809f4100420101ff0001";
+        let bytes = hex::decode(&bytes_hex).unwrap();
+        let arena = Bump::new();
+        let program: Result<&Program<DeBruijn>, _> = decode(&arena, &bytes);
+        match program {
+            Ok(program) => {
+                let encoded = encode(program);
+                match encoded {
+                    Ok(roundtripped) => {
+                        assert_eq!(bytes_hex, hex::encode(roundtripped));
+                    }
+                    Err(e) => {
+                        assert!(false);
+                    }
+                }
+            },
+            Err(e) => {
+                assert!(false);
+            }
+        }
+    }
+}
