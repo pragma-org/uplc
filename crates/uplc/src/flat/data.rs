@@ -49,7 +49,34 @@ impl<'a, 'b> minicbor::decode::Decode<'b, Ctx<'a>> for &'a PlutusData<'a> {
                             Ok(data)
                         }
                         102 => {
-                            todo!("tagged data")
+                            let mut fields = BumpVec::new_in(ctx.arena);
+
+                            let count = decoder.array()?;
+                            if count != Some(2) {
+                                return Err(minicbor::decode::Error::message(format!(
+                                    "expected array of length 2 following plutus data tag 102",
+                                )));
+                            }
+
+                            let discriminator_i128: i128 = decoder.int()?.into();
+                            let discriminator: u64 = match u64::try_from(discriminator_i128) {
+                                Ok(n) => n,
+                                Err(e) => {
+                                    return Err(minicbor::decode::Error::message(format!(
+                                        "could not cast discriminator from plutus data tag 102 into u64: {discriminator_i128}",
+                                    )));
+                                }
+                            };
+
+                            for x in decoder.array_iter_with(ctx)? {
+                                fields.push(x?);
+                            }
+
+                            let fields = ctx.arena.alloc(fields);
+
+                            let data = PlutusData::constr(ctx.arena, discriminator, fields);
+
+                            Ok(data)
                         }
                         _ => {
                             let e = minicbor::decode::Error::message(format!(
@@ -161,17 +188,30 @@ impl<C> minicbor::encode::Encode<C> for PlutusData<'_> {
     ) -> Result<(), minicbor::encode::Error<W::Error>> {
         match self {
             PlutusData::Constr { tag, fields } => {
-                e.tag(Tag::new(*tag))?;
+                if *tag < 7 {
+                    e.tag(Tag::new(*tag + 121))?;
+                } else if *tag <= 127 {
+                    e.tag(Tag::new((*tag - 7) + 1280))?;
+                } else {
+                    e.tag(Tag::new(102))?;
+                    e.array(2)?;
+                    e.u64(*tag);
+                }
 
-                match tag {
-                    102 => {
-                        todo!("tagged data")
-                    }
+                // defaultEncodeList in Codec.Serialise emits definite in case of 0-length list
+                // https://github.com/well-typed/cborg/blob/1e9d079d382f237a1a282e268eecce2b395acb9c/serialise/src/Codec/Serialise/Class.hs#L165-L171
+                if fields.len() == 0 {
+                    e.array(0)?;
+                } else {
                     // TODO: figure out if we need to care about def vs indef
-                    // if indef we need to call e.begin_array()?, then loop, then e.end()?;
-                    _ => {
-                        fields.encode(e, ctx)?;
+                    // The encoding implementation in plutus-core uses indefinite here,
+                    // though both forms are accepted when decoding
+                    // https://github.com/IntersectMBO/plutus/blob/9538fc9829426b2ecb0628d352e2d7af96ec8204/plutus-core/plutus-core/src/PlutusCore/Data.hs#L198
+                    e.begin_array()?;
+                    for f in fields.iter() {
+                        f.encode(e, ctx)?;
                     }
+                    e.end()?;
                 }
             }
             // stolen from pallas
@@ -212,5 +252,40 @@ impl<C> minicbor::encode::Encode<C> for PlutusData<'_> {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::binder::DeBruijn;
+    use crate::flat::decode;
+    use bumpalo::Bump;
+
+    #[test]
+    fn encode_empty_record() {
+        let d = PlutusData::Constr {
+            tag: 0,
+            fields: &[],
+        };
+        let mut v = vec![];
+        minicbor::encode(d, &mut v);
+        assert_eq!(hex::encode(v), "d87980");
+    }
+
+    #[test]
+    fn encode_record() {
+        let b1 = PlutusData::ByteString(&[0x00]);
+        let b2 = PlutusData::ByteString(&[0x00, 0x01]);
+        let d = PlutusData::Constr {
+            tag: 1,
+            fields: &[
+                &b1,
+                &b2,
+            ],
+        };
+        let mut v = vec![];
+        minicbor::encode(d, &mut v);
+        assert_eq!(hex::encode(v), "d87a9f4100420001ff");
     }
 }
