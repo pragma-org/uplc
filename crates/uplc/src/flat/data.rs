@@ -280,7 +280,17 @@ impl<C> minicbor::encode::Encode<C> for PlutusData<'_> {
             PlutusData::ByteString(bs) => {
                 encode_bytestring(e, bs)?;
             }
-            PlutusData::List(_) => todo!(),
+            PlutusData::List(xs) => {
+                if xs.len() == 0 {
+                    e.array(0)?;
+                } else {
+                    e.begin_array()?;
+                    for x in xs.iter() {
+                        x.encode(e, ctx)?;
+                    }
+                    e.end()?;
+                }
+            }
         }
 
         Ok(())
@@ -354,4 +364,22 @@ mod tests {
         assert_eq!(hex::encode(v), "d8799fc24c033b2e3c9fd0803ce7ffffffff");
     }
 
+    #[test]
+    fn encode_cbor_data_list() {
+        let zero = num::BigInt::from(0);
+        let one = num::BigInt::from(1);
+        let list = [
+            &PlutusData::Integer(&zero),
+            &PlutusData::Integer(&one),
+        ];
+        let d = PlutusData::Constr {
+            tag: 0,
+            fields: &[
+                &PlutusData::List(&list),
+            ],
+        };
+        let mut v = vec![];
+        minicbor::encode(d, &mut v);
+        assert_eq!(hex::encode(v), "d8799f9f0001ffff");
+    }
 }

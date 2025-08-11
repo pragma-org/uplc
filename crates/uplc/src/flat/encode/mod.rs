@@ -323,4 +323,45 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn roundtrip_program_list() {
+        // (program 1.1.0
+        //   [
+        //     [
+        //       (builtin multiplyInteger)
+        //       (con integer 2)
+        //     ]
+        //     [ (builtin unIData)
+        //       [ (force (builtin headList))
+        //         [ (force (builtin tailList))
+        //           [ (builtin unListData)
+        //             (con data (List [I 7, I 14]))
+        //           ]
+        //         ]
+        //       ]
+        //     ]
+        //   ])
+        let bytes_hex = "0101003370490021bad357426ae88dd62601049f070eff0001";
+        let bytes = hex::decode(bytes_hex).unwrap();
+        let bytes = hex::decode(&bytes_hex).unwrap();
+        let arena = Bump::new();
+        let program: Result<&Program<DeBruijn>, _> = decode(&arena, &bytes);
+        match program {
+            Ok(program) => {
+                let encoded = encode(program);
+                match encoded {
+                    Ok(roundtripped) => {
+                        assert_eq!(bytes_hex, hex::encode(roundtripped));
+                    }
+                    Err(e) => {
+                        panic!("{}", e);
+                    }
+                }
+            },
+            Err(e) => {
+                panic!("{}", e);
+            }
+        }
+    }
 }
