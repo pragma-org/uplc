@@ -90,6 +90,7 @@ impl<'a, 'b> minicbor::decode::Decode<'b, Ctx<'a>> for &'a PlutusData<'a> {
 
                 match tag.try_into() {
                     Ok(x @ IanaTag::PosBignum | x @ IanaTag::NegBignum) => {
+                        let _ = decoder.tag()?;
                         let mut bytes = BumpVec::new_in(ctx.arena);
 
                         for chunk in decoder.bytes_iter()? {
@@ -180,6 +181,23 @@ impl<'a, 'b> minicbor::decode::Decode<'b, Ctx<'a>> for &'a PlutusData<'a> {
     }
 }
 
+fn encode_bytestring<'a, W: minicbor::encode::Write>(e: &'a mut minicbor::Encoder<W>, bs: &[u8]) -> Result<&'a mut minicbor::Encoder<W>, minicbor::encode::Error<W::Error>> {
+    const CHUNK_SIZE: usize = 64;
+
+    if bs.len() <= 64 {
+        e.bytes(bs)?;
+    } else {
+        e.begin_bytes()?;
+
+        for b in bs.chunks(CHUNK_SIZE) {
+            e.bytes(b)?;
+        }
+
+        e.end()?;
+    }
+    Ok(e)
+}
+
 impl<C> minicbor::encode::Encode<C> for PlutusData<'_> {
     fn encode<W: minicbor::encode::Write>(
         &self,
@@ -230,25 +248,49 @@ impl<C> minicbor::encode::Encode<C> for PlutusData<'_> {
                     v.encode(e, ctx)?;
                 }
             }
-            PlutusData::Integer(_) => todo!(),
+            PlutusData::Integer(n) => {
+                let (sign, digits) = n.to_u64_digits();
+                match sign {
+                    num_bigint::Sign::Plus => {
+                        if digits.len() == 1 {
+                            e.u64(digits[0])?;
+                        } else {
+                            e.tag(Tag::new(2))?;
+                            let (_sign, bytes) = n.to_bytes_be();
+                            encode_bytestring(e, &bytes)?;
+                        }
+                    }
+                    num_bigint::Sign::Minus => {
+                        if digits.len() == 1 {
+                            let integer = minicbor::data::Int::try_from(digits[0] as i128).unwrap();
+                            e.int(integer)?;
+                        } else {
+                            e.tag(Tag::new(3))?;
+                            let (_sign, bytes) = n.to_bytes_be();
+                            encode_bytestring(e, &bytes)?;
+                        }
+                    }
+                    num_bigint::Sign::NoSign => {
+                        e.u8(0)?;
+                    }
+                }
+            }
             // we match the haskell implementation by encoding bytestrings longer than 64
             // bytes as indefinite lists of bytes
             PlutusData::ByteString(bs) => {
-                const CHUNK_SIZE: usize = 64;
-
-                if bs.len() <= 64 {
-                    e.bytes(bs)?;
+                encode_bytestring(e, bs)?;
+            }
+            PlutusData::List(xs) => {
+                if xs.len() == 0 {
+                    e.array(0)?;
                 } else {
-                    e.begin_bytes()?;
-
-                    for b in bs.chunks(CHUNK_SIZE) {
-                        e.bytes(b)?;
+                    e.begin_array()?;
+                    for x in xs.iter() {
+                        x.encode(e, ctx)?;
                     }
-
                     e.end()?;
                 }
             }
-            PlutusData::List(_) => todo!(),
         }
 
         Ok(())
@@ -287,5 +329,57 @@ mod tests {
         let mut v = vec![];
         minicbor::encode(d, &mut v);
         assert_eq!(hex::encode(v), "d87a9f4100420001ff");
+    }
+
+    #[test]
+    fn encode_record_integer() {
+        let zero = num::BigInt::from(0);
+        let one = num::BigInt::from(1);
+        let d = PlutusData::Constr {
+            tag: 128,
+            fields: &[
+                &PlutusData::Integer(&zero),
+                &PlutusData::Integer(&one),
+            ],
+        };
+        let mut v = vec![];
+        minicbor::encode(d, &mut v);
+        assert_eq!(hex::encode(v), "d8668218809f0001ff");
+    }
+
+    #[test]
+    fn encode_cbor_data_bigint() {
+        let big = num::BigInt::from_bytes_be(
+            num_bigint::Sign::Plus,
+            &hex::decode("033b2e3c9fd0803ce7ffffff").unwrap()
+        );
+        let d = PlutusData::Constr {
+            tag: 0,
+            fields: &[
+                &PlutusData::Integer(&big),
+            ],
+        };
+        let mut v = vec![];
+        minicbor::encode(d, &mut v);
+        assert_eq!(hex::encode(v), "d8799fc24c033b2e3c9fd0803ce7ffffffff");
+    }
+
+    #[test]
+    fn encode_cbor_data_list() {
+        let zero = num::BigInt::from(0);
+        let one = num::BigInt::from(1);
+        let list = [
+            &PlutusData::Integer(&zero),
+            &PlutusData::Integer(&one),
+        ];
+        let d = PlutusData::Constr {
+            tag: 0,
+            fields: &[
+                &PlutusData::List(&list),
+            ],
+        };
+        let mut v = vec![];
+        minicbor::encode(d, &mut v);
+        assert_eq!(hex::encode(v), "d8799f9f0001ffff");
     }
 }
