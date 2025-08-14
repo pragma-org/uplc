@@ -1,6 +1,8 @@
 mod decoder;
 mod error;
 
+use std::collections::VecDeque;
+
 pub use decoder::Ctx;
 pub use decoder::Decoder;
 pub use error::FlatDecodeError;
@@ -126,31 +128,51 @@ where
     }
 }
 
-fn decode_type<'a>(ctx: &mut Ctx<'a>, d: &mut Decoder) -> Result<&'a Type<'a>, FlatDecodeError> {
-    let tag = decode_constant_tags(ctx, d)?;
+fn tags_to_type<'a>(
+    ctx: &mut Ctx<'a>,
+    tags: &mut VecDeque<u8>,
+) -> Result<&'a Type<'a>, FlatDecodeError> {
+    match tags.pop_front() {
+        Some(tag::INTEGER) => Ok(Type::integer(ctx.arena)),
+        Some(tag::BYTE_STRING) => Ok(Type::byte_string(ctx.arena)),
+        Some(tag::STRING) => Ok(Type::string(ctx.arena)),
+        Some(tag::UNIT) => Ok(Type::unit(ctx.arena)),
+        Some(tag::BOOL) => Ok(Type::bool(ctx.arena)),
+        Some(tag::DATA) => Ok(Type::data(ctx.arena)),
+        Some(tag::PROTO_LIST_ONE) => match tags.pop_front() {
+            Some(tag::PROTO_LIST_TWO) => {
+                let sub_typ = tags_to_type(ctx, tags)?;
+                Ok(Type::list(ctx.arena, sub_typ))
+            }
+            Some(tag::PROTO_PAIR_TWO) => match tags.pop_front() {
+                Some(tag::PROTO_PAIR_THREE) => {
+                    let type_a = tags_to_type(ctx, tags)?;
+                    let type_b = tags_to_type(ctx, tags)?;
+                    Ok(Type::pair(ctx.arena, type_a, type_b))
+                }
+                _ => {
+                    tags.push_front(tag::PROTO_LIST_ONE);
+                    tags.push_front(tag::PROTO_PAIR_TWO);
+                    Err(FlatDecodeError::UnknownTypeTags(tags.clone().into()))
+                }
+            },
+            _ => {
+                tags.push_front(tag::PROTO_LIST_ONE);
+                Err(FlatDecodeError::UnknownTypeTags(tags.clone().into()))
+            }
+        },
 
-    match &tag.as_slice() {
-        [tag::INTEGER] => Ok(Type::integer(ctx.arena)),
-        [tag::BYTE_STRING] => Ok(Type::byte_string(ctx.arena)),
-        [tag::STRING] => Ok(Type::string(ctx.arena)),
-        [tag::UNIT] => Ok(Type::unit(ctx.arena)),
-        [tag::BOOL] => Ok(Type::bool(ctx.arena)),
-        [tag::PROTO_LIST_ONE, tag::PROTO_LIST_TWO] => {
-            let sub_typ = decode_type(ctx, d)?;
-            Ok(Type::list(ctx.arena, sub_typ))
-        }
-        [tag::PROTO_LIST_ONE, tag::PROTO_LIST_TWO, tag::DATA] => {
-            Ok(Type::list(ctx.arena, &Type::Data))
-        }
-        [tag::PROTO_PAIR_ONE, tag::PROTO_PAIR_TWO, tag::PROTO_PAIR_THREE] => {
-            let sub_typ1 = decode_type(ctx, d)?;
-            let sub_typ2 = decode_type(ctx, d)?;
-            Ok(Type::pair(ctx.arena, sub_typ1, sub_typ2))
-        }
-        [tag::DATA] => Ok(Type::data(ctx.arena)),
-        [] => Err(FlatDecodeError::MissingTypeTag),
-        x => Err(FlatDecodeError::UnknownTypeTags(x.to_vec())),
+        None => Err(FlatDecodeError::MissingTypeTag),
+        Some(x) => Err(FlatDecodeError::UnknownTypeTags(vec![x])),
     }
+}
+
+fn decode_type<'a>(ctx: &mut Ctx<'a>, d: &mut Decoder) -> Result<&'a Type<'a>, FlatDecodeError> {
+    let tags = decode_constant_tags(ctx, d)?;
+
+    let mut tags = VecDeque::from(tags.iter().copied().collect::<Vec<_>>());
+
+    tags_to_type(ctx, &mut tags)
 }
 
 // BLS literals not supported
