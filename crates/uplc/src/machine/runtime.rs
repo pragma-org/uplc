@@ -5,7 +5,7 @@ use bumpalo::{
     collections::{CollectIn, String as BumpString, Vec as BumpVec},
     Bump,
 };
-use rug::Assign;
+use std::mem::size_of;
 
 use crate::{
     binder::Eval,
@@ -106,7 +106,7 @@ impl<'a> Machine<'a> {
 
                 let new = constant::integer(self.arena);
 
-                new.assign(result);
+                *new = result;
 
                 let value = Value::integer(self.arena, new);
 
@@ -127,7 +127,7 @@ impl<'a> Machine<'a> {
 
                 let new = constant::integer(self.arena);
 
-                new.assign(result);
+                *new = result;
 
                 let value = Value::integer(self.arena, new);
 
@@ -232,7 +232,7 @@ impl<'a> Machine<'a> {
 
                 let new = constant::integer(self.arena);
 
-                new.assign(result);
+                *new = result;
 
                 let value = Value::integer(self.arena, new);
 
@@ -254,7 +254,7 @@ impl<'a> Machine<'a> {
 
                     let new = constant::integer(self.arena);
 
-                    new.assign(result);
+                    *new = result;
 
                     let value = Value::integer(self.arena, new);
 
@@ -275,16 +275,12 @@ impl<'a> Machine<'a> {
                 self.spend_budget(budget)?;
 
                 if !arg2.is_zero() {
-                    let computation = arg1.div_rem_ref(arg2);
+                    let (q_res, _r_res) = arg1.div_rem(arg2);
 
                     let q = constant::integer(self.arena);
-                    let r = constant::integer(self.arena);
+                    *q = q_res;
 
-                    let mut result = (q, r);
-
-                    result.assign(computation);
-
-                    let value = Value::integer(self.arena, result.0);
+                    let value = Value::integer(self.arena, q);
 
                     Ok(value)
                 } else {
@@ -303,16 +299,12 @@ impl<'a> Machine<'a> {
                 self.spend_budget(budget)?;
 
                 if !arg2.is_zero() {
-                    let computation = arg1.div_rem_ref(arg2);
+                    let (_q_res, r_res) = arg1.div_rem(arg2);
 
-                    let q = constant::integer(self.arena);
                     let r = constant::integer(self.arena);
+                    *r = r_res;
 
-                    let mut result = (q, r);
-
-                    result.assign(computation);
-
-                    let value = Value::integer(self.arena, result.1);
+                    let value = Value::integer(self.arena, r);
 
                     Ok(value)
                 } else {
@@ -333,9 +325,9 @@ impl<'a> Machine<'a> {
                 if !arg2.is_zero() {
                     let result = constant::integer(self.arena);
 
-                    let computation = arg1.modulo_ref(arg2);
+                    let computation = arg1.mod_floor(arg2);
 
-                    result.assign(computation);
+                    *result = computation;
 
                     let value = Value::integer(self.arena, result);
 
@@ -378,7 +370,7 @@ impl<'a> Machine<'a> {
 
                         let max = constant::integer_from(self.arena, 256);
 
-                        wrap.assign(arg1.modulo_ref(max));
+                        *wrap = arg1.mod_floor(max);
 
                         (&*wrap).try_into().expect("should cast to u64 just fine")
                     }
@@ -446,7 +438,7 @@ impl<'a> Machine<'a> {
 
                 let new = constant::integer(self.arena);
 
-                new.assign(result as i64);
+                *new = Integer::from(result as i64);
 
                 let value = Value::integer(self.arena, new);
 
@@ -470,7 +462,7 @@ impl<'a> Machine<'a> {
 
                     let new = constant::integer(self.arena);
 
-                    new.assign(result as i64);
+                    *new = Integer::from(result as i64);
 
                     let value = Value::integer(self.arena, new);
 
@@ -1430,11 +1422,11 @@ impl<'a> Machine<'a> {
 
                 let new = constant::integer(self.arena);
 
-                let computation = arg1.modulo_ref(&SCALAR_PERIOD);
+                let computation = arg1.mod_floor(&SCALAR_PERIOD);
 
-                new.assign(computation);
+                *new = computation;
 
-                let mut arg1 = integer_to_bytes(self.arena, new, rug::integer::Order::MsfBe);
+                let mut arg1 = integer_to_bytes(self.arena, new, Endianness::Big);
 
                 if size_scalar > arg1.len() {
                     let diff = size_scalar - arg1.len();
@@ -1618,11 +1610,11 @@ impl<'a> Machine<'a> {
 
                 let new = constant::integer(self.arena);
 
-                let computation = arg1.modulo_ref(&SCALAR_PERIOD);
+                let computation = arg1.mod_floor(&SCALAR_PERIOD);
 
-                new.assign(computation);
+                *new = computation;
 
-                let mut arg1 = integer_to_bytes(self.arena, new, rug::integer::Order::MsfBe);
+                let mut arg1 = integer_to_bytes(self.arena, new, Endianness::Big);
 
                 if size_scalar > arg1.len() {
                     let diff = size_scalar - arg1.len();
@@ -1884,9 +1876,9 @@ impl<'a> Machine<'a> {
                 }
 
                 let mut bytes = if endianness {
-                    integer_to_bytes(self.arena, input, rug::integer::Order::MsfBe)
+                    integer_to_bytes(self.arena, input, Endianness::Big)
                 } else {
-                    integer_to_bytes(self.arena, input, rug::integer::Order::LsfLe)
+                    integer_to_bytes(self.arena, input, Endianness::Little)
                 };
 
                 if !size.is_zero() && bytes.len() > size_unwrapped {
@@ -1934,11 +1926,9 @@ impl<'a> Machine<'a> {
                 self.spend_budget(budget)?;
 
                 let number = if endianness {
-                    self.arena
-                        .alloc(Integer::from_digits(bytes, rug::integer::Order::MsfBe))
+                    self.arena.alloc(Integer::from_be_bytes(bytes))
                 } else {
-                    self.arena
-                        .alloc(Integer::from_digits(bytes, rug::integer::Order::LsfLe))
+                    self.arena.alloc(Integer::from_le_bytes(bytes))
                 };
 
                 let value = Value::integer(self.arena, number);
@@ -1949,25 +1939,20 @@ impl<'a> Machine<'a> {
     }
 }
 
+enum Endianness {
+    Big,
+    Little,
+}
+
 fn integer_to_bytes<'a>(
     arena: &'a Bump,
-    num: &'a Integer,
-    order: rug::integer::Order,
+    num: &Integer,
+    order: Endianness,
 ) -> BumpVec<'a, u8> {
-    // Get the minimum number of bytes needed
-    let bits = num.significant_bits() as usize;
+    let bytes = match order {
+        Endianness::Big => num.to_be_bytes(),
+        Endianness::Little => num.to_le_bytes(),
+    };
 
-    let byte_len = (bits + 7) / 8;
-
-    // Create a vector with the required capacity
-    let mut bytes = BumpVec::with_capacity_in(byte_len, arena);
-
-    unsafe {
-        bytes.set_len(byte_len);
-    }
-
-    // Write the number to bytes in big-endian format
-    num.write_digits(&mut bytes, order);
-
-    bytes
+    BumpVec::from_iter_in(bytes, arena)
 }

@@ -22,10 +22,10 @@ pub enum Constant<'a> {
     Bls12_381MlResult(&'a blst::blst_fp12),
 }
 
-pub type Integer = rug::Integer;
+pub type Integer = ibig::IBig;
 
 pub fn integer(arena: &Bump) -> &mut Integer {
-    arena.alloc(Integer::new())
+    arena.alloc(Integer::from(0))
 }
 
 pub fn integer_from(arena: &Bump, i: i128) -> &mut Integer {

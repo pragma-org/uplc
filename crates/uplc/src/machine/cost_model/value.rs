@@ -1,4 +1,3 @@
-use rug::integer::BorrowInteger;
 
 use crate::{
     binder::Eval,
@@ -11,19 +10,20 @@ pub const UNIT_EX_MEM: i64 = 1;
 pub const BOOL_EX_MEM: i64 = 1;
 
 pub fn integer_ex_mem(i: &Integer) -> i64 {
-    if *i == 0 {
+    let bits = i.abs().bit_len();
+    if bits == 0 {
         1
     } else {
-        (integer_log2(i.as_abs()) / 64) + 1
+        (((bits - 1) / 64) + 1) as i64
     }
 }
 
-pub fn integer_log2(i: BorrowInteger<'_>) -> i64 {
+pub fn integer_log2(i: &Integer) -> i64 {
     if i.is_zero() {
         return 0;
     }
 
-    (i.significant_bits() - 1) as i64
+    i.abs().bit_len() as i64 - 1
 }
 
 pub fn integer_log2_x(i: &Integer) -> i64 {
@@ -31,7 +31,7 @@ pub fn integer_log2_x(i: &Integer) -> i64 {
         return 0;
     }
 
-    (i.significant_bits() - 1) as i64
+    i.abs().bit_len() as i64 - 1
 }
 
 pub fn byte_string_ex_mem(b: &[u8]) -> i64 {
@@ -130,75 +130,60 @@ mod tests {
     use std::str::FromStr;
 
     use super::integer_log2;
+    use ibig::IBig;
 
     #[test]
     fn integer_log2_oracle() {
         // Values come from the Haskell implementation
-        assert_eq!(integer_log2(rug::Integer::from(0).as_abs()), 0);
-        assert_eq!(integer_log2(rug::Integer::from(1).as_abs()), 0);
-        assert_eq!(integer_log2(rug::Integer::from(42).as_abs()), 5);
+        assert_eq!(integer_log2(&IBig::from(0)), 0);
+        assert_eq!(integer_log2(&IBig::from(1)), 0);
+        assert_eq!(integer_log2(&IBig::from(42)), 5);
 
         assert_eq!(
             integer_log2(
-                rug::Integer::from_str("18446744073709551615")
-                    .unwrap()
-                    .as_abs()
+                IBig::from_str("18446744073709551615").unwrap()
             ),
             63
         );
         assert_eq!(
             integer_log2(
-                rug::Integer::from_str("999999999999999999999999999999")
-                    .unwrap()
-                    .as_abs()
+                IBig::from_str("999999999999999999999999999999").unwrap()
             ),
             99
         );
         assert_eq!(
             integer_log2(
-                rug::Integer::from_str("170141183460469231731687303715884105726")
-                    .unwrap()
-                    .as_abs()
+                IBig::from_str("170141183460469231731687303715884105726").unwrap()
             ),
             126
         );
         assert_eq!(
             integer_log2(
-                rug::Integer::from_str("170141183460469231731687303715884105727")
-                    .unwrap()
-                    .as_abs()
+                IBig::from_str("170141183460469231731687303715884105727").unwrap()
             ),
             126
         );
         assert_eq!(
             integer_log2(
-                rug::Integer::from_str("170141183460469231731687303715884105728")
-                    .unwrap()
-                    .as_abs()
+                IBig::from_str("170141183460469231731687303715884105728").unwrap()
             ),
             127
         );
         assert_eq!(
             integer_log2(
-                rug::Integer::from_str("340282366920938463463374607431768211458")
-                    .unwrap()
-                    .as_abs()
+                IBig::from_str("340282366920938463463374607431768211458").unwrap()
             ),
             128
         );
         assert_eq!(
             integer_log2(
-                rug::Integer::from_str("999999999999999999999999999999999999999999")
-                    .unwrap()
-                    .as_abs()
+                IBig::from_str("999999999999999999999999999999999999999999").unwrap()
             ),
             139
         );
         assert_eq!(
             integer_log2(
-                rug::Integer::from_str("999999999999999999999999999999999999999999999999999999999999999999999999999999999999")
-                    .unwrap()
-                    .as_abs()
+                IBig::from_str("999999999999999999999999999999999999999999999999999999999999999999999999999999999999").unwrap()
             ),
             279
         );

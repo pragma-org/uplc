@@ -10,7 +10,7 @@ pub static SCALAR_PERIOD: Lazy<Integer> = Lazy::new(|| {
         0x00, 0x01,
     ];
 
-    Integer::from_digits(&bytes, rug::integer::Order::MsfBe)
+    Integer::from_be_bytes(&bytes)
 });
 
 pub const BLST_P1_COMPRESSED_SIZE: usize = 48;

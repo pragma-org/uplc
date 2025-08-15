@@ -1,6 +1,5 @@
 use bumpalo::collections::Vec as BumpVec;
 use chumsky::prelude::*;
-use rug::ops::NegAssign;
 
 use crate::{constant::Integer, data::PlutusData};
 
@@ -39,7 +38,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a PlutusData<'a>, Extra<'a>> {
                     let value = state.arena.alloc(Integer::from_str_radix(v, 10).unwrap());
 
                     if maybe_negative.is_some() {
-                        value.neg_assign();
+                        *value = -value.clone();
                     };
 
                     PlutusData::integer(state.arena, value)

@@ -3,7 +3,6 @@ use bumpalo::{
     Bump,
 };
 use chumsky::prelude::*;
-use rug::ops::NegAssign;
 
 use crate::{
     bls::Compressable,
@@ -132,7 +131,7 @@ fn value_parser<'a>() -> impl Parser<'a, &'a str, TempConstant<'a>, Extra<'a>> {
                     let i = state.arena.alloc(Integer::from_str_radix(v, 10).unwrap());
 
                     if maybe_negative.is_some() {
-                        i.neg_assign();
+                        *i = -i.clone();
                     };
 
                     TempConstant::Integer(i)
