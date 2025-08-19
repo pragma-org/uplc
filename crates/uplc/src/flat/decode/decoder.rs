@@ -2,6 +2,7 @@ use bumpalo::{
     collections::{String as BumpString, Vec as BumpVec},
     Bump,
 };
+use ibig::{ubig, UBig};
 
 use crate::{constant::Integer, flat::zigzag::ZigZag};
 
@@ -181,7 +182,9 @@ impl<'b> Decoder<'b> {
     /// any more bits. Finally we use zigzag to convert the unsigned integer
     /// back to a signed integer.
     pub fn integer(&mut self) -> Result<Integer, FlatDecodeError> {
-        Ok(ZigZag::unzigzag(&self.big_word()?))
+        let word = self.big_word()?;
+
+        Ok(ZigZag::unzigzag(word))
     }
 
     /// Decode a word of 128 bits size.
@@ -193,9 +196,9 @@ impl<'b> Decoder<'b> {
     /// filling in the next 7 least significant bits of the unsigned integer and
     /// so on. If the most significant bit was instead 0 we stop decoding
     /// any more bits.
-    pub fn big_word(&mut self) -> Result<Integer, FlatDecodeError> {
+    pub fn big_word(&mut self) -> Result<UBig, FlatDecodeError> {
         let mut leading_bit = 1;
-        let mut final_word = Integer::from(0);
+        let mut final_word = ubig!(0);
         let mut shift = 0_u32; // Using u32 for shift as it's more than enough for 128 bits
 
         // Continue looping if lead bit is 1 (0x80) otherwise exit
@@ -204,7 +207,7 @@ impl<'b> Decoder<'b> {
             let word7 = word8 & 0x7F; // 127, get 7 least significant bits
 
             // Create temporary Integer from word7 and shift it
-            let part = Integer::from(word7);
+            let part = u32::from(word7);
             let shifted_part = part << shift;
 
             // OR it with our result

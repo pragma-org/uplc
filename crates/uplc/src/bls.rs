@@ -1,4 +1,5 @@
 use bumpalo::{collections::Vec as BumpVec, Bump};
+use ibig::{IBig, UBig};
 use once_cell::sync::Lazy;
 
 use crate::constant::Integer;
@@ -10,7 +11,7 @@ pub static SCALAR_PERIOD: Lazy<Integer> = Lazy::new(|| {
         0x00, 0x01,
     ];
 
-    Integer::from_be_bytes(&bytes)
+    Integer::from(UBig::from_be_bytes(&bytes))
 });
 
 pub const BLST_P1_COMPRESSED_SIZE: usize = 48;

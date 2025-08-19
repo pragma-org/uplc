@@ -17,9 +17,10 @@ chumsky = { version = "=1.0.0-alpha.7", features = ["pratt"] }
 cryptoxide = "0.4.4"
 minicbor = { version = "0.25.1", features = ["std"] }
 once_cell = "1.20.2"
-ibig = { version = "0.3", default-features = false, features = ["std"] }
+ibig = { version = "0.3", default-features = false, features = ["num-traits", "std"] }
 secp256k1 = "0.30.0"
 thiserror = "1.0.63"
+num-traits = "0.2.19"
 
 [dev-dependencies]
 criterion = { version = "0.5.1", features = ["html_reports"] }

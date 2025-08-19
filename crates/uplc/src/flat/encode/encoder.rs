@@ -1,4 +1,6 @@
 use crate::{constant::Integer, flat::zigzag::ZigZag};
+use ibig::{ibig, ubig, UBig};
+use num_traits::Zero as _;
 
 use super::FlatEncodeError;
 
@@ -58,7 +60,9 @@ impl Encoder {
     /// 127 we encode a leading 1 followed by repeating the encoding above for
     /// the next 7 bits and so on.
     pub fn integer(&mut self, i: &Integer) -> &mut Self {
-        self.big_word(i.zigzag());
+        let zagged = i.clone().zigzag();
+
+        self.big_word(zagged);
 
         self
     }
@@ -148,21 +152,23 @@ impl Encoder {
     /// We encode the 7 least significant bits of the unsigned byte. If the char
     /// value is greater than 127 we encode a leading 1 followed by
     /// repeating the above for the next 7 bits and so on.
-    pub fn big_word(&mut self, c: Integer) -> &mut Self {
+    pub fn big_word(&mut self, c: UBig) -> &mut Self {
         let mut d = c;
 
         loop {
-            let temp: Integer = d.clone() % 128;
-            let mut w = temp.to_u8().unwrap();
+            let temp: UBig = d.clone() % ubig!(128);
+
+            let mut w = temp.try_into().unwrap();
 
             d >>= 7;
 
-            if d != 0 {
+            if !d.is_zero() {
                 w |= 128;
             }
+
             self.bits(8, w);
 
-            if d == 0 {
+            if d.is_zero() {
                 break;
             }
         }

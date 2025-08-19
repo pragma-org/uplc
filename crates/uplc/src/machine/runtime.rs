@@ -5,6 +5,9 @@ use bumpalo::{
     collections::{CollectIn, String as BumpString, Vec as BumpVec},
     Bump,
 };
+use ibig::ops::{DivRem as _, RemEuclid as _, UnsignedAbs as _};
+use ibig::{ibig, UBig};
+use num_traits::{Signed as _, Zero as _};
 use std::mem::size_of;
 
 use crate::{
@@ -275,7 +278,7 @@ impl<'a> Machine<'a> {
                 self.spend_budget(budget)?;
 
                 if !arg2.is_zero() {
-                    let (q_res, _r_res) = arg1.div_rem(arg2);
+                    let (q_res, _r_res) = arg1.div_rem((*arg2).clone());
 
                     let q = constant::integer(self.arena);
                     *q = q_res;
@@ -325,7 +328,7 @@ impl<'a> Machine<'a> {
                 if !arg2.is_zero() {
                     let result = constant::integer(self.arena);
 
-                    let computation = arg1.mod_floor(arg2);
+                    let computation = arg1.rem_euclid((*arg2).clone());
 
                     *result = computation;
 
@@ -370,12 +373,12 @@ impl<'a> Machine<'a> {
 
                         let max = constant::integer_from(self.arena, 256);
 
-                        *wrap = arg1.mod_floor(max);
+                        *wrap = arg1.rem_euclid((*max).clone());
 
                         (&*wrap).try_into().expect("should cast to u64 just fine")
                     }
                     BuiltinSemantics::V2 => {
-                        if *arg1 > 255 || *arg1 < 0 {
+                        if arg1 > &ibig!(255) || arg1 < &ibig!(0) {
                             return Err(MachineError::byte_string_cons_not_a_byte(arg1));
                         }
 
@@ -408,13 +411,13 @@ impl<'a> Machine<'a> {
 
                 self.spend_budget(budget)?;
 
-                let skip: usize = if *arg1 < 0 {
+                let skip: usize = if arg1 < &ibig!(0) {
                     0
                 } else {
                     arg1.try_into().expect("should cast to usize just fine")
                 };
 
-                let take: usize = if *arg2 < 0 {
+                let take: usize = if arg2 < &ibig!(0) {
                     0
                 } else {
                     arg2.try_into().expect("should cast to usize just fine")
@@ -1420,13 +1423,11 @@ impl<'a> Machine<'a> {
 
                 let size_scalar = size_of::<blst::blst_scalar>();
 
-                let new = constant::integer(self.arena);
+                let computation = arg1.rem_euclid((*SCALAR_PERIOD).clone());
 
-                let computation = arg1.mod_floor(&SCALAR_PERIOD);
+                let computation: i32 = computation.try_into().unwrap();
 
-                *new = computation;
-
-                let mut arg1 = integer_to_bytes(self.arena, new, Endianness::Big);
+                let mut arg1 = i32_to_bytes(self.arena, computation, Endianness::Big);
 
                 if size_scalar > arg1.len() {
                     let diff = size_scalar - arg1.len();
@@ -1608,13 +1609,11 @@ impl<'a> Machine<'a> {
 
                 let size_scalar = size_of::<blst::blst_scalar>();
 
-                let new = constant::integer(self.arena);
+                let computation = arg1.rem_euclid((*SCALAR_PERIOD).clone());
 
-                let computation = arg1.mod_floor(&SCALAR_PERIOD);
+                let computation: i32 = computation.try_into().unwrap();
 
-                *new = computation;
-
-                let mut arg1 = integer_to_bytes(self.arena, new, Endianness::Big);
+                let mut arg1 = i32_to_bytes(self.arena, computation, Endianness::Big);
 
                 if size_scalar > arg1.len() {
                     let diff = size_scalar - arg1.len();
@@ -1815,7 +1814,7 @@ impl<'a> Machine<'a> {
                     return Err(MachineError::integer_to_byte_string_negative_size(size));
                 }
 
-                if *size > INTEGER_TO_BYTE_STRING_MAXIMUM_OUTPUT_LENGTH {
+                if size > &ibig!(INTEGER_TO_BYTE_STRING_MAXIMUM_OUTPUT_LENGTH) {
                     return Err(MachineError::integer_to_byte_string_size_too_big(
                         size,
                         INTEGER_TO_BYTE_STRING_MAXIMUM_OUTPUT_LENGTH,
@@ -1857,6 +1856,8 @@ impl<'a> Machine<'a> {
                     return Err(MachineError::integer_to_byte_string_negative_input(input));
                 }
 
+                let input = input.unsigned_abs();
+
                 let size_unwrapped: usize = size.try_into().unwrap();
 
                 if input.is_zero() {
@@ -1876,9 +1877,9 @@ impl<'a> Machine<'a> {
                 }
 
                 let mut bytes = if endianness {
-                    integer_to_bytes(self.arena, input, Endianness::Big)
+                    ubig_to_bytes(self.arena, &input, Endianness::Big)
                 } else {
-                    integer_to_bytes(self.arena, input, Endianness::Little)
+                    ubig_to_bytes(self.arena, &input, Endianness::Little)
                 };
 
                 if !size.is_zero() && bytes.len() > size_unwrapped {
@@ -1926,9 +1927,9 @@ impl<'a> Machine<'a> {
                 self.spend_budget(budget)?;
 
                 let number = if endianness {
-                    self.arena.alloc(Integer::from_be_bytes(bytes))
+                    self.arena.alloc(Integer::from(UBig::from_be_bytes(&bytes)))
                 } else {
-                    self.arena.alloc(Integer::from_le_bytes(bytes))
+                    self.arena.alloc(Integer::from(UBig::from_le_bytes(&bytes)))
                 };
 
                 let value = Value::integer(self.arena, number);
@@ -1944,11 +1945,16 @@ enum Endianness {
     Little,
 }
 
-fn integer_to_bytes<'a>(
-    arena: &'a Bump,
-    num: &Integer,
-    order: Endianness,
-) -> BumpVec<'a, u8> {
+fn ubig_to_bytes<'a>(arena: &'a Bump, num: &UBig, order: Endianness) -> BumpVec<'a, u8> {
+    let bytes = match order {
+        Endianness::Big => num.to_be_bytes(),
+        Endianness::Little => num.to_le_bytes(),
+    };
+
+    BumpVec::from_iter_in(bytes, arena)
+}
+
+fn i32_to_bytes<'a>(arena: &'a Bump, num: i32, order: Endianness) -> BumpVec<'a, u8> {
     let bytes = match order {
         Endianness::Big => num.to_be_bytes(),
         Endianness::Little => num.to_le_bytes(),
