@@ -53,15 +53,15 @@ impl<'a, 'b> minicbor::decode::Decode<'b, Ctx<'a>> for &'a PlutusData<'a> {
 
                             let count = decoder.array()?;
                             if count != Some(2) {
-                                return Err(minicbor::decode::Error::message(format!(
+                                return Err(minicbor::decode::Error::message(
                                     "expected array of length 2 following plutus data tag 102",
-                                )));
+                                ));
                             }
 
                             let discriminator_i128: i128 = decoder.int()?.into();
                             let discriminator: u64 = match u64::try_from(discriminator_i128) {
                                 Ok(n) => n,
-                                Err(e) => {
+                                Err(_) => {
                                     return Err(minicbor::decode::Error::message(format!(
                                         "could not cast discriminator from plutus data tag 102 into u64: {discriminator_i128}",
                                     )));
@@ -181,7 +181,10 @@ impl<'a, 'b> minicbor::decode::Decode<'b, Ctx<'a>> for &'a PlutusData<'a> {
     }
 }
 
-fn encode_bytestring<'a, W: minicbor::encode::Write>(e: &'a mut minicbor::Encoder<W>, bs: &[u8]) -> Result<&'a mut minicbor::Encoder<W>, minicbor::encode::Error<W::Error>> {
+fn encode_bytestring<'a, W: minicbor::encode::Write>(
+    e: &'a mut minicbor::Encoder<W>,
+    bs: &[u8],
+) -> Result<&'a mut minicbor::Encoder<W>, minicbor::encode::Error<W::Error>> {
     const CHUNK_SIZE: usize = 64;
 
     if bs.len() <= 64 {
@@ -213,12 +216,12 @@ impl<C> minicbor::encode::Encode<C> for PlutusData<'_> {
                 } else {
                     e.tag(Tag::new(102))?;
                     e.array(2)?;
-                    e.u64(*tag);
+                    e.u64(*tag)?;
                 }
 
                 // defaultEncodeList in Codec.Serialise emits definite in case of 0-length list
                 // https://github.com/well-typed/cborg/blob/1e9d079d382f237a1a282e268eecce2b395acb9c/serialise/src/Codec/Serialise/Class.hs#L165-L171
-                if fields.len() == 0 {
+                if fields.is_empty() {
                     e.array(0)?;
                 } else {
                     // TODO: figure out if we need to care about def vs indef
@@ -281,7 +284,7 @@ impl<C> minicbor::encode::Encode<C> for PlutusData<'_> {
                 encode_bytestring(e, bs)?;
             }
             PlutusData::List(xs) => {
-                if xs.len() == 0 {
+                if xs.is_empty() {
                     e.array(0)?;
                 } else {
                     e.begin_array()?;
@@ -321,10 +324,7 @@ mod tests {
         let b2 = PlutusData::ByteString(&[0x00, 0x01]);
         let d = PlutusData::Constr {
             tag: 1,
-            fields: &[
-                &b1,
-                &b2,
-            ],
+            fields: &[&b1, &b2],
         };
         let mut v = vec![];
         minicbor::encode(d, &mut v);
@@ -337,10 +337,7 @@ mod tests {
         let one = num::BigInt::from(1);
         let d = PlutusData::Constr {
             tag: 128,
-            fields: &[
-                &PlutusData::Integer(&zero),
-                &PlutusData::Integer(&one),
-            ],
+            fields: &[&PlutusData::Integer(&zero), &PlutusData::Integer(&one)],
         };
         let mut v = vec![];
         minicbor::encode(d, &mut v);
@@ -351,13 +348,11 @@ mod tests {
     fn encode_cbor_data_bigint() {
         let big = num::BigInt::from_bytes_be(
             num_bigint::Sign::Plus,
-            &hex::decode("033b2e3c9fd0803ce7ffffff").unwrap()
+            &hex::decode("033b2e3c9fd0803ce7ffffff").unwrap(),
         );
         let d = PlutusData::Constr {
             tag: 0,
-            fields: &[
-                &PlutusData::Integer(&big),
-            ],
+            fields: &[&PlutusData::Integer(&big)],
         };
         let mut v = vec![];
         minicbor::encode(d, &mut v);
@@ -368,15 +363,10 @@ mod tests {
     fn encode_cbor_data_list() {
         let zero = num::BigInt::from(0);
         let one = num::BigInt::from(1);
-        let list = [
-            &PlutusData::Integer(&zero),
-            &PlutusData::Integer(&one),
-        ];
+        let list = [&PlutusData::Integer(&zero), &PlutusData::Integer(&one)];
         let d = PlutusData::Constr {
             tag: 0,
-            fields: &[
-                &PlutusData::List(&list),
-            ],
+            fields: &[&PlutusData::List(&list)],
         };
         let mut v = vec![];
         minicbor::encode(d, &mut v);

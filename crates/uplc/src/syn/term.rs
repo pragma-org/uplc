@@ -60,7 +60,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a, DeBruijn>, Extra<'a
                 .map_with(|v, e: &mut MapExtra<'a, '_>| {
                     let state = e.state();
 
-                    state.env.push(&v);
+                    state.env.push(v);
 
                     0
                 })
@@ -150,8 +150,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a, DeBruijn>, Extra<'a
                             ret
                         }
                         Err(_) => {
-                            emitter
-                                .emit(Rich::custom(span, format!("invalid constr tag: {}", tag)));
+                            emitter.emit(Rich::custom(span, format!("invalid constr tag: {tag}")));
                             Term::error(state.arena)
                         }
                     };

@@ -45,7 +45,7 @@ impl Args {
                 Err(errs) => {
                     let errs = errs
                         .into_iter()
-                        .map(|e| format!("{}", e))
+                        .map(|e| format!("{e}"))
                         .collect::<Vec<_>>()
                         .join("\n");
 
@@ -64,7 +64,7 @@ impl Args {
                 Err(errs) => {
                     let errs = errs
                         .into_iter()
-                        .map(|e| format!("{}", e))
+                        .map(|e| format!("{e}"))
                         .collect::<Vec<_>>()
                         .join("\n");
 
@@ -81,7 +81,7 @@ impl Args {
 
         let eval_result = program.eval(&arena);
 
-        println!("{:#?}", eval_result);
+        println!("{eval_result:#?}");
 
         Ok(())
     }
