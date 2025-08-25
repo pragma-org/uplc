@@ -150,7 +150,8 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a, DeBruijn>, Extra<'a
                             ret
                         }
                         Err(_) => {
-                            emitter.emit(Rich::custom(span, format!("invalid constr tag: {}", tag)));
+                            emitter
+                                .emit(Rich::custom(span, format!("invalid constr tag: {}", tag)));
                             Term::error(state.arena)
                         }
                     };

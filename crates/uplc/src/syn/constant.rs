@@ -208,8 +208,7 @@ fn value_parser<'a>() -> impl Parser<'a, &'a str, TempConstant<'a>, Extra<'a>> {
                 .then_ignore(just(')'))
                 .map(TempConstant::Data),
             // non-parenthesized plutus data
-            data::parser()
-                .map(TempConstant::Data),
+            data::parser().map(TempConstant::Data),
             // bool
             choice((just("False"), just("True")))
                 .padded()
