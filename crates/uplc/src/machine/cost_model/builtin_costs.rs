@@ -692,7 +692,7 @@ impl BuiltinCosts {
             quotient_integer: TwoArgumentsCosting::new(
                 TwoArgumentsCosting::subtracted_sizes(0, 1, 1),
                 TwoArgumentsCosting::const_above_diagonal_into_quadratic_x_and_y(
-                      85848, 85848, 123203, 1716, 7305, 57, 549, -900,
+                    85848, 85848, 123203, 1716, 7305, 57, 549, -900,
                 ),
             ),
             remainder_integer: TwoArgumentsCosting::new(
