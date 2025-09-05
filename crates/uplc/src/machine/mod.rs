@@ -17,3 +17,4 @@ pub use error::*;
 pub use eval_result::*;
 pub use info::*;
 pub use runtime::BuiltinSemantics;
+pub use runtime::PlutusVersion;
