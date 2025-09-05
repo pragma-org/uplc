@@ -35,7 +35,11 @@ where
     }
 
     /// Evaluate with explicit Plutus version
-    pub fn eval_version(&'a self, arena: &'a Bump, plutus_version: PlutusVersion) -> EvalResult<'a, V> {
+    pub fn eval_version(
+        &'a self,
+        arena: &'a Bump,
+        plutus_version: PlutusVersion,
+    ) -> EvalResult<'a, V> {
         let mut machine = Machine::new(
             arena,
             ExBudget::default(),
