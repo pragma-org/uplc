@@ -2,7 +2,7 @@ use bumpalo::Bump;
 
 use crate::{
     binder::Eval,
-    machine::{BuiltinSemantics, CostModel, EvalResult, ExBudget, Machine},
+    machine::{BuiltinSemantics, CostModel, EvalResult, ExBudget, Machine, PlutusVersion},
     term::Term,
 };
 
@@ -31,18 +31,16 @@ where
     V: Eval<'a>,
 {
     pub fn eval(&'a self, arena: &'a Bump) -> EvalResult<'a, V> {
+        self.eval_version(arena, PlutusVersion::V3)
+    }
+
+    /// Evaluate with explicit Plutus version
+    pub fn eval_version(&'a self, arena: &'a Bump, plutus_version: PlutusVersion) -> EvalResult<'a, V> {
         let mut machine = Machine::new(
             arena,
             ExBudget::default(),
             CostModel::default(),
-            // TODO: I think we may actually need
-            // to derive this from the plutus version?
-            // maybe not though
-            if self.version.is_v1_1_0() {
-                BuiltinSemantics::V2
-            } else {
-                BuiltinSemantics::V1
-            },
+            BuiltinSemantics::from(&plutus_version),
         );
 
         let term = machine.run(self.term);
