@@ -24,6 +24,22 @@ pub enum BuiltinSemantics {
     V2,
 }
 
+pub enum PlutusVersion {
+    V1,
+    V2,
+    V3,
+}
+
+impl From<&PlutusVersion> for BuiltinSemantics {
+    fn from(version: &PlutusVersion) -> Self {
+        match version {
+            PlutusVersion::V1 => BuiltinSemantics::V1,
+            PlutusVersion::V2 => BuiltinSemantics::V1,
+            PlutusVersion::V3 => BuiltinSemantics::V2,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Runtime<'a, V>
 where

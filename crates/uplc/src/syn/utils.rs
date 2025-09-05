@@ -6,11 +6,13 @@ use super::types::Extra;
 // Name 𝑛 ∶∶= [a-zA-Z][a-zA-Z0-9_']
 pub fn name<'a>() -> impl Parser<'a, &'a str, &'a str, Extra<'a>> {
     any()
-        .filter(|c: &char|  c.is_ascii_alphabetic())
+        .filter(|c: &char| c.is_ascii_alphabetic())
         .then(
-            select! {
-                c if (c as char).is_ascii_alphanumeric() || (c as char) == '_' || (c as char) == '-' || (c as char) == '\'' => ()
-            }.repeated()
+            any()
+                .filter(|c: &char| {
+                    c.is_ascii_alphanumeric() || *c == '_' || *c == '-' || *c == '\''
+                })
+                .repeated(),
         )
         .to_slice()
 }

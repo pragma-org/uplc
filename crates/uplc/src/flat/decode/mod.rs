@@ -247,8 +247,11 @@ mod tests {
             Ok(program) => {
                 let eval_result = program.eval(&arena);
                 let term = eval_result.term.unwrap();
-                assert_eq!(term, &Term::Constant(&Constant::Integer(&BigInt::from(129))));
-            },
+                assert_eq!(
+                    term,
+                    &Term::Constant(&Constant::Integer(&BigInt::from(129)))
+                );
+            }
             Err(e) => {
                 assert!(false);
             }
@@ -273,15 +276,23 @@ mod tests {
         //       ]
         //     ]
         //   ])
-        let bytes = hex::decode("0101003370090011bad357426aae78dd526112d8799fc24c033b2e3c9fd0803ce7ffffffff0001").unwrap();
+        let bytes = hex::decode(
+            "0101003370090011bad357426aae78dd526112d8799fc24c033b2e3c9fd0803ce7ffffffff0001",
+        )
+        .unwrap();
         let arena = Bump::new();
         let program: Result<&Program<DeBruijn>, _> = decode(&arena, &bytes);
         match program {
             Ok(program) => {
                 let eval_result = program.eval(&arena);
                 let term = eval_result.term.unwrap();
-                assert_eq!(term, &Term::Constant(&Constant::Integer(&BigInt::from(1_000_000_000_000_000_000_000_000_000i128))));
-            },
+                assert_eq!(
+                    term,
+                    &Term::Constant(&Constant::Integer(&BigInt::from(
+                        1_000_000_000_000_000_000_000_000_000i128
+                    )))
+                );
+            }
             Err(e) => {
                 panic!("{}", e);
             }
@@ -314,11 +325,10 @@ mod tests {
                 let eval_result = program.eval(&arena);
                 let term = eval_result.term.unwrap();
                 assert_eq!(term, &Term::Constant(&Constant::Integer(&BigInt::from(28))));
-            },
+            }
             Err(e) => {
                 panic!("{}", e);
             }
         }
     }
-
 }

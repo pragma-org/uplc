@@ -1,4 +1,5 @@
 use uplc_macros::generate_tests;
+use uplc_turbo::machine::PlutusVersion;
 
 fn run_test(file_contents: &str, expected_output: &str, expected_budget: &str) {
     let arena = bumpalo::Bump::new();
@@ -10,7 +11,7 @@ fn run_test(file_contents: &str, expected_output: &str, expected_budget: &str) {
         return;
     };
 
-    let result = program.eval(&arena);
+    let result = program.eval_version(&arena, PlutusVersion::V3);
 
     let info = result.info;
 

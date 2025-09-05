@@ -16,7 +16,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a, DeBruijn>, Extra<'a
             name().padded().map_with(|v, e: &mut MapExtra<'a, '_>| {
                 let state = e.state();
 
-                let position = state.env.iter().rev().position(|&x| x == v);
+                let position = state.env.iter().rposition(|&x| x == v);
 
                 if position.is_none() {
                     let placeholder = Term::var(state.arena, DeBruijn::zero(state.arena));
@@ -60,7 +60,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a, DeBruijn>, Extra<'a
                 .map_with(|v, e: &mut MapExtra<'a, '_>| {
                     let state = e.state();
 
-                    state.env.push(&v);
+                    state.env.push(v);
 
                     0
                 })
@@ -129,21 +129,33 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a, DeBruijn>, Extra<'a
                 )
                 .delimited_by(just('('), just(')'))
                 .validate(|(tag, fields), e: &mut MapExtra<'a, '_>, emitter| {
+                    let span = e.span();
                     let state = e.state();
 
                     let fields = BumpVec::from_iter_in(fields, state.arena);
                     let fields = state.arena.alloc(fields);
 
-                    let ret = Term::constr(state.arena, tag.parse().unwrap(), fields);
+                    // Handle tag parsing with proper error emission
+                    let tag_parsed = match tag.parse::<usize>() {
+                        Ok(t) => {
+                            let ret = Term::constr(state.arena, t, fields);
 
-                    if state.is_less_than_1_1_0() {
-                        emitter.emit(Rich::custom(
-                            e.span(),
-                            "constr is not supported before 1.1.0",
-                        ));
-                    }
+                            if state.is_less_than_1_1_0() {
+                                emitter.emit(Rich::custom(
+                                    e.span(),
+                                    "constr is not supported before 1.1.0",
+                                ));
+                            }
 
-                    ret
+                            ret
+                        }
+                        Err(_) => {
+                            emitter.emit(Rich::custom(span, format!("invalid constr tag: {tag}")));
+                            Term::error(state.arena)
+                        }
+                    };
+
+                    tag_parsed
                 }),
             text::keyword("case")
                 .padded()

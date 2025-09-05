@@ -276,7 +276,7 @@ mod tests {
                         assert!(false);
                     }
                 }
-            },
+            }
             Err(e) => {
                 assert!(false);
             }
@@ -301,7 +301,8 @@ mod tests {
         //       ]
         //     ]
         //   ])
-        let bytes_hex = "0101003370090011bad357426aae78dd526112d8799fc24c033b2e3c9fd0803ce7ffffffff0001";
+        let bytes_hex =
+            "0101003370090011bad357426aae78dd526112d8799fc24c033b2e3c9fd0803ce7ffffffff0001";
         let bytes = hex::decode(bytes_hex).unwrap();
         let bytes = hex::decode(&bytes_hex).unwrap();
         let arena = Bump::new();
@@ -317,7 +318,7 @@ mod tests {
                         panic!("{}", e);
                     }
                 }
-            },
+            }
             Err(e) => {
                 panic!("{}", e);
             }
@@ -358,7 +359,7 @@ mod tests {
                         panic!("{}", e);
                     }
                 }
-            },
+            }
             Err(e) => {
                 panic!("{}", e);
             }

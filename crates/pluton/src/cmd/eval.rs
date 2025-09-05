@@ -1,6 +1,7 @@
 use std::io::{self, Read};
 
 use miette::IntoDiagnostic;
+use uplc_turbo::machine::PlutusVersion;
 
 #[derive(clap::Args)]
 pub struct Args {
@@ -10,6 +11,19 @@ pub struct Args {
     flat: bool,
     #[clap(short = 'A', long)]
     args: Vec<String>,
+    #[clap(short = 'v', long)]
+    plutus_version: Option<String>,
+}
+
+fn parse_plutus_version(s: &str) -> Result<PlutusVersion, String> {
+    match s.to_lowercase().as_str() {
+        "v1" => Ok(PlutusVersion::V1),
+        "v2" => Ok(PlutusVersion::V2),
+        "v3" => Ok(PlutusVersion::V3),
+        _ => Err(format!(
+            "Unknown Plutus version: '{s}'. Valid options: v1, v2, v3"
+        )),
+    }
 }
 
 impl Args {
@@ -45,7 +59,7 @@ impl Args {
                 Err(errs) => {
                     let errs = errs
                         .into_iter()
-                        .map(|e| format!("{}", e))
+                        .map(|e| format!("{e}"))
                         .collect::<Vec<_>>()
                         .join("\n");
 
@@ -64,7 +78,7 @@ impl Args {
                 Err(errs) => {
                     let errs = errs
                         .into_iter()
-                        .map(|e| format!("{}", e))
+                        .map(|e| format!("{e}"))
                         .collect::<Vec<_>>()
                         .join("\n");
 
@@ -79,9 +93,17 @@ impl Args {
             .into_iter()
             .fold(program, |program, arg| program.apply(&arena, arg));
 
-        let eval_result = program.eval(&arena);
+        if let Some(version_str) = self.plutus_version {
+            let version =
+                parse_plutus_version(&version_str).map_err(|e| miette::miette!("{}", e))?;
 
-        println!("{:#?}", eval_result);
+            let eval_result = program.eval_version(&arena, version);
+            println!("{eval_result:#?}");
+        } else {
+            let eval_result = program.eval(&arena);
+
+            println!("{eval_result:#?}");
+        }
 
         Ok(())
     }
