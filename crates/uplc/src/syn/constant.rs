@@ -179,10 +179,6 @@ fn value_parser<'a>() -> impl Parser<'a, &'a str, TempConstant<'a>, Extra<'a>> {
 
                     TempConstant::String(string)
                 }),
-            // plutus data
-            data::parser()
-                .delimited_by(just('(').or_not(), just(')').or_not())
-                .map(TempConstant::Data),
             // list
             con.clone()
                 .padded()
@@ -206,6 +202,13 @@ fn value_parser<'a>() -> impl Parser<'a, &'a str, TempConstant<'a>, Extra<'a>> {
                 .map(|(fst_value, snd_value)| {
                     TempConstant::ProtoPair(fst_value.into(), snd_value.into())
                 }),
+            // parenthesized plutus data (only for non-pair cases)
+            just('(')
+                .ignore_then(data::parser())
+                .then_ignore(just(')'))
+                .map(TempConstant::Data),
+            // non-parenthesized plutus data
+            data::parser().map(TempConstant::Data),
             // bool
             choice((just("False"), just("True")))
                 .padded()
