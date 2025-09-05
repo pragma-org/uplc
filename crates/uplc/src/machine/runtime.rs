@@ -40,7 +40,6 @@ impl From<&PlutusVersion> for BuiltinSemantics {
     }
 }
 
-
 #[derive(Debug)]
 pub struct Runtime<'a, V>
 where

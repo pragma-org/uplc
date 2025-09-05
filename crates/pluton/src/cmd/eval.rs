@@ -20,7 +20,10 @@ fn parse_plutus_version(s: &str) -> Result<PlutusVersion, String> {
         "v1" => Ok(PlutusVersion::V1),
         "v2" => Ok(PlutusVersion::V2),
         "v3" => Ok(PlutusVersion::V3),
-        _ => Err(format!("Unknown Plutus version: '{}'. Valid options: v1, v2, v3", s)),
+        _ => Err(format!(
+            "Unknown Plutus version: '{}'. Valid options: v1, v2, v3",
+            s
+        )),
     }
 }
 
@@ -92,8 +95,8 @@ impl Args {
             .fold(program, |program, arg| program.apply(&arena, arg));
 
         if let Some(version_str) = self.plutus_version {
-            let version = parse_plutus_version(&version_str)
-                .map_err(|e| miette::miette!("{}", e))?;
+            let version =
+                parse_plutus_version(&version_str).map_err(|e| miette::miette!("{}", e))?;
 
             let eval_result = program.eval_version(&arena, version);
             println!("{eval_result:#?}");
