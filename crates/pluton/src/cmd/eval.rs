@@ -21,8 +21,7 @@ fn parse_plutus_version(s: &str) -> Result<PlutusVersion, String> {
         "v2" => Ok(PlutusVersion::V2),
         "v3" => Ok(PlutusVersion::V3),
         _ => Err(format!(
-            "Unknown Plutus version: '{}'. Valid options: v1, v2, v3",
-            s
+            "Unknown Plutus version: '{s}'. Valid options: v1, v2, v3"
         )),
     }
 }
