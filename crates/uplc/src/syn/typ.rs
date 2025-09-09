@@ -53,12 +53,22 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Type<'a>, Extra<'a>> {
             // list
             text::keyword("list")
                 .padded()
-                .ignore_then(rec_typ.padded())
+                .ignore_then(rec_typ.clone().padded())
                 .delimited_by(just('('), just(')'))
                 .map_with(|typ, e: &mut MapExtra<'a, '_>| {
                     let state = e.state();
 
                     Type::list(state.arena, typ)
+                }),
+            // array
+            text::keyword("array")
+                .padded()
+                .ignore_then(rec_typ.clone().padded())
+                .delimited_by(just('('), just(')'))
+                .map_with(|typ, e: &mut MapExtra<'a, '_>| {
+                    let state = e.state();
+
+                    Type::array(state.arena, typ)
                 }),
             // data
             text::keyword("data")
