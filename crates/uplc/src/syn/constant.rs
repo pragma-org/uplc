@@ -70,6 +70,24 @@ fn check_type<'a>(
             Constant::proto_list(arena, inner, constants)
         }
 
+        (TempConstant::ProtoList(list), Type::Array(inner)) => {
+            let mut constants = BumpVec::with_capacity_in(list.len(), arena);
+
+            for con in list {
+                let (constant, is_correct) = check_type(arena, con, inner);
+
+                if !is_correct {
+                    return (Constant::unit(arena), false);
+                }
+
+                constants.push(constant);
+            }
+
+            let constants = arena.alloc(constants);
+
+            Constant::proto_array(arena, inner, constants)
+        }
+
         (TempConstant::ProtoPair(fst, snd), Type::Pair(fst_ty, snd_ty)) => {
             let (fst, fst_correct) = check_type(arena, *fst, fst_ty);
             let (snd, snd_correct) = check_type(arena, *snd, snd_ty);
