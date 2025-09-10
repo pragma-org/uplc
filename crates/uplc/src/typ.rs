@@ -8,6 +8,7 @@ pub enum Type<'a> {
     ByteString,
     Unit,
     List(&'a Type<'a>),
+    Array(&'a Type<'a>),
     Pair(&'a Type<'a>, &'a Type<'a>),
     Data,
     Bls12_381G1Element,
@@ -42,6 +43,10 @@ impl<'a> Type<'a> {
 
     pub fn list(arena: &'a Bump, inner: &'a Type<'a>) -> &'a Type<'a> {
         arena.alloc(Type::List(inner))
+    }
+
+    pub fn array(arena: &'a Bump, inner: &'a Type<'a>) -> &'a Type<'a> {
+        arena.alloc(Type::Array(inner))
     }
 
     pub fn pair(arena: &'a Bump, fst: &'a Type<'a>, snd: &'a Type<'a>) -> &'a Type<'a> {

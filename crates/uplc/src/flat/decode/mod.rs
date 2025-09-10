@@ -136,6 +136,10 @@ fn decode_type<'a>(ctx: &mut Ctx<'a>, d: &mut Decoder) -> Result<&'a Type<'a>, F
             let sub_typ = decode_type(ctx, d)?;
             Ok(Type::list(ctx.arena, sub_typ))
         }
+        [tag::PROTO_ARRAY_ONE, tag::PROTO_ARRAY_TWO] => {
+            let sub_typ = decode_type(ctx, d)?;
+            Ok(Type::array(ctx.arena, sub_typ))
+        }
         [tag::PROTO_LIST_ONE, tag::PROTO_LIST_TWO, tag::DATA] => {
             Ok(Type::list(ctx.arena, &Type::Data))
         }
@@ -187,6 +191,12 @@ fn decode_constant<'a>(
             let fields = ctx.arena.alloc(fields);
 
             Ok(Constant::proto_list(ctx.arena, sub_typ, fields))
+        }
+        Type::Array(sub_typ) => {
+            let fields = d.list_with(ctx, |ctx, d| decode_constant(ctx, d))?;
+            let fields = ctx.arena.alloc(fields);
+
+            Ok(Constant::proto_array(ctx.arena, sub_typ, fields))
         }
         Type::Pair(sub_typ1, sub_typ2) => {
             let fst = decode_constant(ctx, d)?;

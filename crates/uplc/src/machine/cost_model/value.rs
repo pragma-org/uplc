@@ -77,6 +77,7 @@ pub fn constant_ex_mem(c: &Constant) -> i64 {
         Constant::Unit => UNIT_EX_MEM,
         Constant::Boolean(_) => BOOL_EX_MEM,
         Constant::ProtoList(_, items) => proto_list_ex_mem(items),
+        Constant::ProtoArray(_, items) => proto_list_ex_mem(items),
         Constant::ProtoPair(_, _, l, r) => pair_ex_mem(l, r),
         Constant::Data(d) => data_ex_mem(d),
         Constant::Bls12_381G1Element(_) => g1_element_ex_mem(),

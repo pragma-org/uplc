@@ -10,6 +10,7 @@ pub enum Constant<'a> {
     Boolean(bool),
     Data(&'a PlutusData<'a>),
     ProtoList(&'a Type<'a>, &'a [&'a Constant<'a>]),
+    ProtoArray(&'a Type<'a>, &'a [&'a Constant<'a>]),
     ProtoPair(
         &'a Type<'a>,
         &'a Type<'a>,
@@ -69,6 +70,14 @@ impl<'a> Constant<'a> {
         arena.alloc(Constant::ProtoList(inner, values))
     }
 
+    pub fn proto_array(
+        arena: &'a Bump,
+        inner: &'a Type<'a>,
+        values: &'a [&'a Constant<'a>],
+    ) -> &'a Constant<'a> {
+        arena.alloc(Constant::ProtoArray(inner, values))
+    }
+
     pub fn proto_pair(
         arena: &'a Bump,
         first_type: &'a Type<'a>,
@@ -114,6 +123,7 @@ impl<'a> Constant<'a> {
             Constant::Boolean(_) => Type::bool(arena),
             Constant::Data(_) => Type::data(arena),
             Constant::ProtoList(t, _) => Type::list(arena, t),
+            Constant::ProtoArray(t, _) => Type::array(arena, t),
             Constant::ProtoPair(t1, t2, _, _) => Type::pair(arena, t1, t2),
             Constant::Unit => Type::unit(arena),
             Constant::Bls12_381G1Element(_) => Type::g1(arena),
