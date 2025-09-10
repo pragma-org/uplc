@@ -133,6 +133,15 @@ fn encode_constant<'a>(e: &mut Encoder, constant: &'a Constant<'a>) -> Result<()
 
             e.list_with(list, encode_constant_value)?;
         }
+        Constant::ProtoArray(typ, array) => {
+            let mut type_encodings = vec![tag::PROTO_ARRAY_ONE, tag::PROTO_ARRAY_TWO];
+
+            encode_type(typ, &mut type_encodings)?;
+
+            e.list_with(&type_encodings, encode_constant_tag)?;
+
+            e.list_with(array, encode_constant_value)?;
+        }
         Constant::ProtoPair(fst_type, snd_type, fst, snd) => {
             let mut type_encodings = vec![
                 tag::PROTO_PAIR_ONE,
@@ -177,6 +186,11 @@ fn encode_type(typ: &Type, bytes: &mut Vec<u8>) -> Result<(), FlatEncodeError> {
 
             encode_type(sub_typ, bytes)?;
         }
+        Type::Array(sub_typ) => {
+            bytes.extend(vec![tag::PROTO_ARRAY_ONE, tag::PROTO_ARRAY_TWO]);
+
+            encode_type(sub_typ, bytes)?;
+        }
         Type::Pair(type1, type2) => {
             bytes.extend(vec![
                 tag::PROTO_PAIR_ONE,
@@ -213,6 +227,9 @@ fn encode_constant_value<'a>(e: &mut Encoder, x: &'a &Constant<'a>) -> Result<()
         }
         Constant::ProtoList(_, list) => {
             e.list_with(list, encode_constant_value)?;
+        }
+        Constant::ProtoArray(_, array) => {
+            e.list_with(array, encode_constant_value)?;
         }
         Constant::ProtoPair(_, _, a, b) => {
             encode_constant_value(e, a)?;
