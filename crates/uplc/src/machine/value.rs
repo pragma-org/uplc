@@ -161,6 +161,18 @@ where
         Ok((t1, list))
     }
 
+    pub fn unwrap_array(
+        &'a self,
+    ) -> Result<(&'a Type<'a>, &'a [&'a Constant<'a>]), MachineError<'a, V>> {
+        let inner = self.unwrap_constant()?;
+
+        let Constant::ProtoArray(t1, array) = inner else {
+            return Err(MachineError::expected_array(inner));
+        };
+
+        Ok((t1, array))
+    }
+
     pub fn unwrap_map(
         &'a self,
     ) -> Result<(&'a Type<'a>, &'a [&'a Constant<'a>]), MachineError<'a, V>> {
