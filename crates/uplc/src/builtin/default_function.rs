@@ -111,6 +111,12 @@ pub enum DefaultFunction {
     CountSetBits = 84,
     FindFirstSetBit = 85,
     Ripemd_160 = 86,
+
+    ExpModInteger = 87,
+    DropList = 88,
+    LengthOfArray = 89,
+    ListToArray = 90,
+    IndexArray = 91,
 }
 
 impl DefaultFunction {
@@ -203,6 +209,11 @@ impl DefaultFunction {
             DefaultFunction::CountSetBits => 0,
             DefaultFunction::FindFirstSetBit => 0,
             DefaultFunction::Ripemd_160 => 0,
+            DefaultFunction::ExpModInteger => 0,
+            DefaultFunction::DropList => 1,
+            DefaultFunction::LengthOfArray => 1,
+            DefaultFunction::ListToArray => 1,
+            DefaultFunction::IndexArray => 1,
         }
     }
 
@@ -295,6 +306,11 @@ impl DefaultFunction {
             DefaultFunction::CountSetBits => 1,
             DefaultFunction::FindFirstSetBit => 1,
             DefaultFunction::Ripemd_160 => 1,
+            DefaultFunction::ExpModInteger => 3,
+            DefaultFunction::DropList => 2,
+            DefaultFunction::LengthOfArray => 1,
+            DefaultFunction::ListToArray => 1,
+            DefaultFunction::IndexArray => 2,
         }
     }
 }
