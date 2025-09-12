@@ -211,6 +211,7 @@ pub enum ThreeArguments {
     LiteralInYorLinearInZ(LinearSize),
     LinearInYAndZ(TwoVariableLinearSize),
     LinearInMaxYZ(LinearSize),
+    ExpModCost(ExpModCost),
 }
 
 pub type ThreeArgumentsCosting = Costing<3, ThreeArguments>;
@@ -255,6 +256,14 @@ impl ThreeArgumentsCosting {
     pub fn linear_in_x(intercept: i64, slope: i64) -> ThreeArguments {
         ThreeArguments::LinearInX(LinearSize { intercept, slope })
     }
+
+    pub fn exp_mod_cost(coeff_00: i64, coeff_11: i64, coeff_12: i64) -> ThreeArguments {
+        ThreeArguments::ExpModCost(ExpModCost {
+            coeff_00,
+            coeff_11,
+            coeff_12,
+        })
+    }
 }
 
 impl Cost<3> for ThreeArguments {
@@ -279,6 +288,14 @@ impl Cost<3> for ThreeArguments {
             }
             ThreeArguments::LinearInYAndZ(l) => y * l.slope1 + z * l.slope2 + l.intercept,
             ThreeArguments::LinearInMaxYZ(l) => y.max(z) * l.slope + l.intercept,
+            ThreeArguments::ExpModCost(c) => {
+                let cost = c.coeff_00 + c.coeff_11 * y * z + c.coeff_12 * y * z * z;
+                if x <= z {
+                    cost
+                } else {
+                    cost + (cost / 2)
+                }
+            }
         }
     }
 }
@@ -377,4 +394,11 @@ pub struct TwoArgumentsQuadraticFunction {
     coeff_20: i64,
     coeff_11: i64,
     coeff_02: i64,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct ExpModCost {
+    coeff_00: i64,
+    coeff_11: i64,
+    coeff_12: i64,
 }
