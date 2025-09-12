@@ -240,6 +240,7 @@ fn value_parser<'a>() -> impl Parser<'a, &'a str, TempConstant<'a>, Extra<'a>> {
 
 fn string_content<'a>() -> impl Parser<'a, &'a str, String, Extra<'a>> {
     let escape_sequence = just('\\').ignore_then(choice((
+        just("DEL").to('\u{7F}'),
         just('a').to('\u{07}'),
         just('b').to('\u{08}'),
         just('f').to('\u{0C}'),
