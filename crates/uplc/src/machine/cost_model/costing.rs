@@ -58,8 +58,6 @@ pub enum TwoArguments {
     MinSize(MinSize),
     MaxSize(MaxSize),
     LinearOnDiagonal(ConstantOrLinear),
-    // ConstAboveDiagonal(ConstantOrTwoArguments),
-    // ConstBelowDiagonal(ConstantOrTwoArguments),
     QuadraticInY(QuadraticFunction),
     ConstAboveDiagonalIntoQuadraticXAndY(i64, TwoArgumentsQuadraticFunction),
 }
@@ -108,22 +106,22 @@ impl TwoArgumentsCosting {
         constant: i64,
         minimum: i64,
         coeff_00: i64,
-        coeff_10: i64,
         coeff_01: i64,
-        coeff_20: i64,
-        coeff_11: i64,
         coeff_02: i64,
+        coeff_10: i64,
+        coeff_11: i64,
+        coeff_20: i64,
     ) -> TwoArguments {
         TwoArguments::ConstAboveDiagonalIntoQuadraticXAndY(
             constant,
             TwoArgumentsQuadraticFunction {
                 minimum,
                 coeff_00,
-                coeff_10,
                 coeff_01,
-                coeff_20,
-                coeff_11,
                 coeff_02,
+                coeff_10,
+                coeff_11,
+                coeff_20,
             },
         )
     }
@@ -166,20 +164,6 @@ impl Cost<2> for TwoArguments {
                     l.constant
                 }
             }
-            // TwoArguments::ConstAboveDiagonal(l) => {
-            //     if x < y {
-            //         l.constant
-            //     } else {
-            //         l.model.cost(args)
-            //     }
-            // }
-            // TwoArguments::ConstBelowDiagonal(l) => {
-            //     if x > y {
-            //         l.constant
-            //     } else {
-            //         l.model.cost(args)
-            //     }
-            // }
             TwoArguments::QuadraticInY(q) => q.coeff_0 + (q.coeff_1 * y) + (q.coeff_2 * y * y),
             TwoArguments::ConstAboveDiagonalIntoQuadraticXAndY(constant, q) => {
                 if x < y {
@@ -389,11 +373,11 @@ pub struct QuadraticFunction {
 pub struct TwoArgumentsQuadraticFunction {
     minimum: i64,
     coeff_00: i64,
-    coeff_10: i64,
     coeff_01: i64,
-    coeff_20: i64,
-    coeff_11: i64,
     coeff_02: i64,
+    coeff_10: i64,
+    coeff_11: i64,
+    coeff_20: i64,
 }
 
 #[derive(Debug, PartialEq)]
