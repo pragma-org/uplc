@@ -2382,6 +2382,125 @@ impl<'a> Machine<'a> {
 
                 Ok(Value::byte_string(self.arena, result))
             }
+            DefaultFunction::ExpModInteger => {
+                let base = runtime.args[0].unwrap_integer()?;
+                let exponent = runtime.args[1].unwrap_integer()?;
+                let modulus = runtime.args[2].unwrap_integer()?;
+
+                let budget = self.costs.builtin_costs.exp_mod_integer([
+                    cost_model::integer_ex_mem(base),
+                    cost_model::integer_ex_mem(exponent),
+                    cost_model::integer_ex_mem(modulus),
+                ]);
+                self.spend_budget(budget)?;
+
+                if modulus <= &Integer::ZERO {
+                    return Err(MachineError::division_by_zero(base, modulus));
+                }
+
+                let result = if exponent.is_negative() {
+                    match base.modinv(modulus) {
+                        Some(inv) => inv.modpow(&exponent.abs(), modulus),
+                        None => return Err(MachineError::ExplicitErrorTerm),
+                    }
+                } else {
+                    base.modpow(exponent, modulus)
+                };
+
+                let value = Value::integer(self.arena, self.arena.alloc(result));
+                Ok(value)
+            }
+            DefaultFunction::DropList => {
+                let elements_to_drop = runtime.args[0].unwrap_integer()?;
+                let (list_type, list) = runtime.args[1].unwrap_list()?;
+
+                let arg0: i64 = u64::try_from(elements_to_drop.abs())
+                    .unwrap()
+                    .try_into()
+                    .unwrap_or(i64::MAX);
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .drop_list([arg0, cost_model::proto_list_ex_mem(list)]);
+
+                self.spend_budget(budget)?;
+
+                if elements_to_drop.is_negative() {
+                    let constant = Constant::proto_list(self.arena, list_type, list);
+                    let value = Value::con(self.arena, constant);
+                    return Ok(value);
+                }
+
+                let elements_to_drop_usize = if *elements_to_drop > (usize::MAX as i128).into() {
+                    list.len()
+                } else {
+                    usize::try_from(elements_to_drop).unwrap_or(0)
+                };
+
+                let remaining_list = if elements_to_drop_usize >= list.len() {
+                    &[]
+                } else {
+                    &list[elements_to_drop_usize..]
+                };
+
+                let constant = Constant::proto_list(self.arena, list_type, remaining_list);
+                let value = Value::con(self.arena, constant);
+
+                Ok(value)
+            }
+            DefaultFunction::LengthOfArray => {
+                let (_, array) = runtime.args[0].unwrap_array()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .length_of_array([cost_model::proto_list_ex_mem(array)]);
+
+                self.spend_budget(budget)?;
+
+                let result: Integer = array.len().into();
+                let new = self.arena.alloc(result);
+                let value = Value::integer(self.arena, new);
+
+                Ok(value)
+            }
+            DefaultFunction::ListToArray => {
+                let (list_type, list) = runtime.args[0].unwrap_list()?;
+
+                let budget = self.costs.builtin_costs.list_to_array([
+                    cost_model::proto_list_ex_mem(list),
+                    cost_model::proto_list_ex_mem(list),
+                ]);
+
+                self.spend_budget(budget)?;
+
+                let constant = Constant::proto_array(self.arena, list_type, list);
+
+                let value = Value::con(self.arena, constant);
+
+                Ok(value)
+            }
+            DefaultFunction::IndexArray => {
+                let (_, array) = runtime.args[0].unwrap_array()?;
+                let arg1 = runtime.args[1].unwrap_integer()?;
+
+                let budget = self.costs.builtin_costs.index_array([
+                    cost_model::proto_list_ex_mem(array),
+                    cost_model::integer_ex_mem(arg1),
+                ]);
+                self.spend_budget(budget)?;
+
+                let index: i128 = arg1.try_into().unwrap();
+
+                if 0 <= index && (index as usize) < array.len() {
+                    let element = array[index as usize];
+                    let value = Value::con(self.arena, element);
+                    Ok(value)
+                } else {
+                    return Err(MachineError::index_array_out_of_bounds(arg1, array.len()));
+                }
+            }
         }
     }
 }
