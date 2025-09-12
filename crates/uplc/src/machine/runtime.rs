@@ -2498,7 +2498,7 @@ impl<'a> Machine<'a> {
                     let value = Value::con(self.arena, element);
                     Ok(value)
                 } else {
-                    return Err(MachineError::index_array_out_of_bounds(arg1, array.len()));
+                    Err(MachineError::index_array_out_of_bounds(arg1, array.len()))
                 }
             }
         }
