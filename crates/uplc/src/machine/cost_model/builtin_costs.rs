@@ -742,7 +742,7 @@ impl BuiltinCosts {
             mod_integer: TwoArgumentsCosting::new(
                 TwoArgumentsCosting::linear_in_y(0, 1),
                 TwoArgumentsCosting::const_above_diagonal_into_quadratic_x_and_y(
-                    85848, 85848, 123203, 7305,  -900, 1716, 549, 57,
+                    85848, 85848, 123203, 7305, -900, 1716, 549, 57,
                 ),
             ),
             equals_integer: TwoArgumentsCosting::new(
