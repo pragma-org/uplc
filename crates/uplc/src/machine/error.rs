@@ -52,6 +52,8 @@ pub enum RuntimeError<'a> {
     ExpectedPair(&'a Constant<'a>),
     #[error("Expected list")]
     ExpectedList(&'a Constant<'a>),
+    #[error("Expected array")]
+    ExpectedArray(&'a Constant<'a>),
     #[error("Not data")]
     NotData(&'a Constant<'a>),
     #[error("Malformed data")]
@@ -126,6 +128,12 @@ pub enum RuntimeError<'a> {
     ReplicateByteNegativeInput(&'a Integer),
     #[error("replicateByte encountered negative size\n{:>13} {0}", "Size")]
     ReplicateByteNegativeSize(&'a Integer),
+    #[error(
+        "indexArray: index out of bounds\n{:>13} {0}\n{:>13} {1}",
+        "Index",
+        "Size"
+    )]
+    IndexArrayOutOfBounds(&'a Integer, usize),
 }
 
 impl<'a, V> MachineError<'a, V>
@@ -150,6 +158,10 @@ where
 
     pub fn expected_list(constant: &'a Constant<'a>) -> Self {
         MachineError::runtime(RuntimeError::ExpectedList(constant))
+    }
+
+    pub fn expected_array(constant: &'a Constant<'a>) -> Self {
+        MachineError::runtime(RuntimeError::ExpectedArray(constant))
     }
 
     pub fn empty_list(constant: &'a [&'a Constant<'a>]) -> Self {
@@ -250,5 +262,9 @@ where
 
     pub fn replicate_byte_negative_input(integer: &'a Integer) -> Self {
         MachineError::runtime(RuntimeError::ReplicateByteNegativeInput(integer))
+    }
+
+    pub fn index_array_out_of_bounds(index: &'a Integer, size: usize) -> Self {
+        MachineError::runtime(RuntimeError::IndexArrayOutOfBounds(index, size))
     }
 }
