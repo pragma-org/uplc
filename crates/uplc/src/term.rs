@@ -636,4 +636,34 @@ impl<'a, V> Term<'a, V> {
 
         Term::builtin(arena, fun)
     }
+
+    pub fn exp_mod_integer(arena: &'a Bump) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::ExpModInteger);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn drop_list(arena: &'a Bump) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::DropList);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn length_of_array(arena: &'a Bump) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::LengthOfArray);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn list_to_array(arena: &'a Bump) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::ListToArray);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn index_array(arena: &'a Bump) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::IndexArray);
+
+        Term::builtin(arena, fun)
+    }
 }
