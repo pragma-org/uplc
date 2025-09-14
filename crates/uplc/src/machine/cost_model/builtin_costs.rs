@@ -105,6 +105,12 @@ pub struct BuiltinCosts {
     count_set_bits: OneArgumentCosting,
     find_first_set_bit: OneArgumentCosting,
     ripemd_160: OneArgumentCosting,
+
+    exp_mod_integer: ThreeArgumentsCosting,
+    drop_list: TwoArgumentsCosting,
+    length_of_array: OneArgumentCosting,
+    list_to_array: TwoArgumentsCosting,
+    index_array: TwoArgumentsCosting,
 }
 
 impl Default for BuiltinCosts {
@@ -668,6 +674,38 @@ impl BuiltinCosts {
         )
     }
 
+    pub fn exp_mod_integer(&self, args: [i64; 3]) -> ExBudget {
+        ExBudget::new(
+            self.exp_mod_integer.mem.cost(args),
+            self.exp_mod_integer.cpu.cost(args),
+        )
+    }
+
+    pub fn drop_list(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(self.drop_list.mem.cost(args), self.drop_list.cpu.cost(args))
+    }
+
+    pub fn length_of_array(&self, args: [i64; 1]) -> ExBudget {
+        ExBudget::new(
+            self.length_of_array.mem.cost(args),
+            self.length_of_array.cpu.cost(args),
+        )
+    }
+
+    pub fn list_to_array(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.list_to_array.mem.cost(args),
+            self.list_to_array.cpu.cost(args),
+        )
+    }
+
+    pub fn index_array(&self, args: [i64; 2]) -> ExBudget {
+        ExBudget::new(
+            self.index_array.mem.cost(args),
+            self.index_array.cpu.cost(args),
+        )
+    }
+
     pub fn v3() -> Self {
         Self {
             add_integer: TwoArgumentsCosting::new(
@@ -692,7 +730,7 @@ impl BuiltinCosts {
             quotient_integer: TwoArgumentsCosting::new(
                 TwoArgumentsCosting::subtracted_sizes(0, 1, 1),
                 TwoArgumentsCosting::const_above_diagonal_into_quadratic_x_and_y(
-                    85848, 85848, 123203, 1716, 7305, 57, 549, -900,
+                    85848, 85848, 123203, 7305, -900, 1716, 549, 57,
                 ),
             ),
             remainder_integer: TwoArgumentsCosting::new(
@@ -1027,6 +1065,26 @@ impl BuiltinCosts {
             ripemd_160: OneArgumentCosting::new(
                 OneArgumentCosting::constant_cost(3),
                 OneArgumentCosting::linear_cost(1964219, 24520),
+            ),
+            exp_mod_integer: ThreeArgumentsCosting::new(
+                ThreeArgumentsCosting::linear_in_z(0, 1),
+                ThreeArgumentsCosting::exp_mod_cost(607153, 231697, 53144),
+            ),
+            drop_list: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(4),
+                TwoArgumentsCosting::linear_in_x(116711, 1957),
+            ),
+            length_of_array: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(10),
+                OneArgumentCosting::constant_cost(198994),
+            ),
+            list_to_array: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::linear_in_x(7, 1),
+                TwoArgumentsCosting::linear_in_x(307802, 8496),
+            ),
+            index_array: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(32),
+                TwoArgumentsCosting::constant_cost(194922),
             ),
         }
     }
