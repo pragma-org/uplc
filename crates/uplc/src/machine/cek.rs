@@ -2,6 +2,7 @@ use bumpalo::{collections::Vec as BumpVec, Bump};
 
 use crate::{
     binder::Eval,
+    constant::Constant,
     machine::{context::Context, env::Env, state::MachineState},
     term::Term,
 };
@@ -14,6 +15,9 @@ use super::{
     value::Value,
     CostModel, ExBudget, MachineError,
 };
+
+pub const CONS_BRANCH: usize = 0;
+pub const NILS_BRANCH: usize = 1;
 
 pub struct Machine<'a> {
     pub(super) arena: &'a Bump,
@@ -248,6 +252,106 @@ impl<'a> Machine<'a> {
                         Err(MachineError::MissingCaseBranch(branches, value))
                     }
                 }
+                Value::Con(constant) => match constant {
+                    Constant::Integer(scrutinee) => match usize::try_from(*scrutinee) {
+                        Ok(scrutinee_usize) => branches
+                            .get(scrutinee_usize)
+                            .map(|branch| MachineState::compute(self.arena, context, env, branch))
+                            .ok_or(MachineError::MissingCaseBranch(branches, value)),
+                        Err(_) => Err(MachineError::ExplicitErrorTerm),
+                    },
+                    Constant::Boolean(scrutinee) => {
+                        if branches.len() > 2 {
+                            return Err(MachineError::TooManyCaseBranches(branches, value));
+                        }
+                        branches
+                            .get(*scrutinee as usize)
+                            .map(|branch| MachineState::compute(self.arena, context, env, branch))
+                            .ok_or(MachineError::MissingCaseBranch(branches, value))
+                    }
+                    Constant::Unit => {
+                        if branches.len() > 1 {
+                            return Err(MachineError::TooManyCaseBranches(branches, value));
+                        }
+                        branches
+                            .get(CONS_BRANCH)
+                            .map(|branch| MachineState::compute(self.arena, context, env, branch))
+                            .ok_or(MachineError::MissingCaseBranch(branches, value))
+                    }
+                    // Caseing on pairs expects a single branch that takes two arguments for each values of the pair.
+                    Constant::ProtoPair(_, _, left_constant, right_constant) => {
+                        if branches.len() > 1 {
+                            return Err(MachineError::TooManyCaseBranches(branches, value));
+                        }
+                        branches
+                            .get(CONS_BRANCH)
+                            .map(|branch| {
+                                let right_value: &Value<'_, V> =
+                                    Value::con(self.arena, right_constant);
+                                let right_frame: &Context<'_, V> = Context::frame_await_fun_value(
+                                    self.arena,
+                                    right_value,
+                                    context,
+                                );
+                                let left_value = Value::con(self.arena, left_constant);
+                                let left_frame = Context::frame_await_fun_value(
+                                    self.arena,
+                                    left_value,
+                                    right_frame,
+                                );
+                                MachineState::compute(self.arena, left_frame, env, branch)
+                            })
+                            .ok_or(MachineError::MissingCaseBranch(branches, value))
+                    }
+                    // When matching (case-ing) on a builtin list, exactly one or two branches are allowed:
+                    // - With a single branch, it is assumed the list is non-empty; the branch receives the head and tail as arguments.
+                    //   If the list is actually empty, script evaluation will fail.
+                    // - With two branches, the nils branch is selected for the empty list (receiving no arguments),
+                    //   and the cons branch is selected for a non-empty list (receiving the head and tail as arguments).
+                    //
+                    // Note: In the Haskell implementation, when a list contains only a single element,
+                    // the tail argument passed to the branch is an empty list.
+                    Constant::ProtoList(list_type, list) => {
+                        if branches.len() > 2 {
+                            return Err(MachineError::TooManyCaseBranches(branches, value));
+                        }
+                        if list.is_empty() {
+                            branches
+                                .get(NILS_BRANCH)
+                                .map(|branch| {
+                                    let frame = self.transfer_arg_stack(&[], context);
+                                    MachineState::compute(self.arena, frame, env, branch)
+                                })
+                                .ok_or(MachineError::MissingCaseBranch(branches, value))
+                        } else if let Some((head, tail)) = list.split_first() {
+                            branches
+                                .get(CONS_BRANCH)
+                                .map(|branch| {
+                                    let tail_value = if tail.is_empty() {
+                                        let empty_list_const =
+                                            Constant::proto_list(self.arena, list_type, &[]);
+                                        Value::con(self.arena, empty_list_const)
+                                    } else {
+                                        Value::con(self.arena, tail.last().unwrap())
+                                    };
+
+                                    let tail_frame = Context::frame_await_fun_value(
+                                        self.arena, tail_value, context,
+                                    );
+                                    let head_value = Value::con(self.arena, head);
+                                    let head_frame = Context::frame_await_fun_value(
+                                        self.arena, head_value, tail_frame,
+                                    );
+
+                                    MachineState::compute(self.arena, head_frame, env, branch)
+                                })
+                                .ok_or(MachineError::MissingCaseBranch(branches, value))
+                        } else {
+                            Err(MachineError::ExplicitErrorTerm)
+                        }
+                    }
+                    _ => Err(MachineError::ExplicitErrorTerm),
+                },
                 v => Err(MachineError::NonConstrScrutinized(v)),
             },
             Context::NoFrame => {

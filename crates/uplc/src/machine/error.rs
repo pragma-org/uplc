@@ -34,8 +34,10 @@ where
     BuiltinTermArgumentExpected(&'a Term<'a, V>),
     #[error("Non-constructor scrutinized")]
     NonConstrScrutinized(&'a Value<'a, V>),
-    #[error("Non-integer index")]
+    #[error("Missing case branch")]
     MissingCaseBranch(&'a [&'a Term<'a, V>], &'a Value<'a, V>),
+    #[error("Too many case branches")]
+    TooManyCaseBranches(&'a [&'a Term<'a, V>], &'a Value<'a, V>),
     #[error(transparent)]
     Runtime(RuntimeError<'a>),
     #[error("Max constr tag exceeded")]
