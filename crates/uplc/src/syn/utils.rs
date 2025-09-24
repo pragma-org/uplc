@@ -9,9 +9,7 @@ pub fn name<'a>() -> impl Parser<'a, &'a str, &'a str, Extra<'a>> {
         .filter(|c: &char| c.is_ascii_alphabetic())
         .then(
             any()
-                .filter(|c: &char| {
-                    c.is_ascii_alphanumeric() || *c == '_' || *c == '-' || *c == '\''
-                })
+                .filter(|c: &char| c.is_ascii_alphanumeric() || *c == '_' || *c == '\'')
                 .repeated(),
         )
         .to_slice()
