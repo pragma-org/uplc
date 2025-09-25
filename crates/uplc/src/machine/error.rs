@@ -32,12 +32,12 @@ where
     NonPolymorphicInstantiation(&'a Value<'a, V>),
     #[error("Builtin term argument expected")]
     BuiltinTermArgumentExpected(&'a Term<'a, V>),
-    #[error("Non-constructor scrutinized")]
+    #[error("Non-constructor/Non-builtin  scrutinized")]
     NonConstrScrutinized(&'a Value<'a, V>),
     #[error("Missing case branch")]
     MissingCaseBranch(&'a [&'a Term<'a, V>], &'a Value<'a, V>),
-    #[error("Too many case branches")]
-    TooManyCaseBranches(&'a [&'a Term<'a, V>], &'a Value<'a, V>),
+    #[error("Cek case builtin error: {2}")]
+    CekCaseBuiltinError(&'a [&'a Term<'a, V>], &'a Value<'a, V>, String),
     #[error(transparent)]
     Runtime(RuntimeError<'a>),
     #[error("Max constr tag exceeded")]
