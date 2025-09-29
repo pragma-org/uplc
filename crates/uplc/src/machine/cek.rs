@@ -257,31 +257,31 @@ impl<'a> Machine<'a> {
                         Ok(scrutinee_usize) => branches
                             .get(scrutinee_usize)
                             .map(|branch| MachineState::compute(self.arena, context, env, branch))
-                            .ok_or(MachineError::CekCaseBuiltinError(branches, value, format!("case {:?} is out of bounds for the given number of branches: {:?}", value, branches.len()))),
-                        Err(_) => Err(MachineError::CekCaseBuiltinError(branches, value, format!("case {:?} is out of bounds for the given number of branches: {:?}", value, branches.len())))
+                            .ok_or(MachineError::CekCaseBuiltinError(branches, value, format!("out of bounds for the given number of branches: {:?}", branches.len()))),
+                        Err(_) => Err(MachineError::CekCaseBuiltinError(branches, value, format!("out of bounds for the given number of branches: {:?}", branches.len())))
                     },
                     Constant::Boolean(scrutinee) => {
                         if branches.len() > 2 {
-                            return Err(MachineError::CekCaseBuiltinError(branches, value, "Casing on bool requires exactly one branch or two branches".to_string()));
+                            return Err(MachineError::CekCaseBuiltinError(branches, value, "caseing on bool requires exactly one branch or two branches".to_string()));
                         }
                         branches
                             .get(*scrutinee as usize)
                             .map(|branch| MachineState::compute(self.arena, context, env, branch))
-                            .ok_or(MachineError::CekCaseBuiltinError(branches, value, format!("case {:?} is out of bounds for the given number of branches: {:?}", value, branches.len())))
+                            .ok_or(MachineError::CekCaseBuiltinError(branches, value, format!("out of bounds for the given number of branches: {:?}", branches.len())))
                     }
                     Constant::Unit => {
                         if branches.len() > 1 {
-                            return Err(MachineError::CekCaseBuiltinError(branches, value, "Casing on unit only allows exactly one branch".to_string()));
+                            return Err(MachineError::CekCaseBuiltinError(branches, value, "caseing on unit only allows exactly one branch".to_string()));
                         }
                         branches
                             .get(CONS_BRANCH)
                             .map(|branch| MachineState::compute(self.arena, context, env, branch))
-                            .ok_or(MachineError::CekCaseBuiltinError(branches, value, format!("case {:?} is out of bounds for the given number of branches: {:?}", value, branches.len())))
+                            .ok_or(MachineError::CekCaseBuiltinError(branches, value, format!("out of bounds for the given number of branches: {:?}", branches.len())))
                     }
                     // Caseing on pairs expects a single branch that takes two arguments for each values of the pair.
                     Constant::ProtoPair(_, _, left_constant, right_constant) => {
                         if branches.len() > 1 {
-                            return Err(MachineError::CekCaseBuiltinError(branches, value, "Casing on pair requires exactly one branch".to_string()));
+                            return Err(MachineError::CekCaseBuiltinError(branches, value, "caseing on pair requires exactly one branch".to_string()));
                         }
                         branches
                             .get(CONS_BRANCH)
@@ -301,7 +301,7 @@ impl<'a> Machine<'a> {
                                 );
                                 MachineState::compute(self.arena, left_frame, env, branch)
                             })
-                            .ok_or(MachineError::CekCaseBuiltinError(branches, value, format!("case {:?} is out of bounds for the given number of branches: {:?}", value, branches.len())))
+                            .ok_or(MachineError::CekCaseBuiltinError(branches, value, format!("out of bounds for the given number of branches: {:?}", branches.len())))
                     }
                     // When matching (case-ing) on a builtin list, exactly one or two branches are allowed:
                     // - With a single branch, it is assumed the list is non-empty; the branch receives the head and tail as arguments.
@@ -313,7 +313,7 @@ impl<'a> Machine<'a> {
                     // the tail argument passed to the branch is an empty list.
                     Constant::ProtoList(list_type, list) => {
                         if branches.len() > 2 {
-                            return Err(MachineError::CekCaseBuiltinError(branches, value, "Casing on list requires exactly one branch or two branches".to_string()));
+                            return Err(MachineError::CekCaseBuiltinError(branches, value, "casing on list requires exactly one branch or two branches".to_string()));
                         }
 
                         match list.split_first() {
@@ -324,7 +324,7 @@ impl<'a> Machine<'a> {
                                     let frame = self.transfer_arg_stack(&[], context);
                                     MachineState::compute(self.arena, frame, env, branch)
                                 })
-                                .ok_or(MachineError::CekCaseBuiltinError(branches, value, format!("case {:?} is out of bounds for the given number of branches: {:?}", value, branches.len())))
+                                .ok_or(MachineError::CekCaseBuiltinError(branches, value, format!("out of bounds for the given number of branches: {:?}", branches.len())))
                             }
                             Some((head, tail)) => {
                                 branches
@@ -348,11 +348,11 @@ impl<'a> Machine<'a> {
 
                                     MachineState::compute(self.arena, head_frame, env, branch)
                                 })
-                                .ok_or(MachineError::CekCaseBuiltinError(branches, value, format!("case {:?} is out of bounds for the given number of branches: {:?}", value, branches.len())))
+                                .ok_or(MachineError::CekCaseBuiltinError(branches, value, format!("out of bounds for the given number of branches: {:?}", branches.len())))
                             }
                         }
                     }
-                    _ => Err(MachineError::CekCaseBuiltinError(branches, value, format!("Cannot case on constant of type {constant:?}"))),
+                    _ => Err(MachineError::CekCaseBuiltinError(branches, value, format!("cannot case on constant of type {constant:?}"))),
                 },
                 v => Err(MachineError::NonConstrScrutinized(v)),
             },
