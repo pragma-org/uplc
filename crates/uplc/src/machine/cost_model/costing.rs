@@ -60,6 +60,7 @@ pub enum TwoArguments {
     LinearOnDiagonal(ConstantOrLinear),
     QuadraticInY(QuadraticFunction),
     ConstAboveDiagonalIntoQuadraticXAndY(i64, TwoArgumentsQuadraticFunction),
+    ConstAboveDiagonalIntoMultipliedSizes(i64, MultipliedSizes),
 }
 
 pub type TwoArgumentsCosting = Costing<2, TwoArguments>;
@@ -141,6 +142,17 @@ impl TwoArgumentsCosting {
             coeff_2,
         })
     }
+
+    pub fn const_above_diagonal_into_multiplied_sizes(
+        constant: i64,
+        intercept: i64,
+        slope: i64,
+    ) -> TwoArguments {
+        TwoArguments::ConstAboveDiagonalIntoMultipliedSizes(
+            constant,
+            MultipliedSizes { intercept, slope },
+        )
+    }
 }
 
 impl Cost<2> for TwoArguments {
@@ -178,6 +190,13 @@ impl Cost<2> for TwoArguments {
                             + q.coeff_11 * x * y
                             + q.coeff_02 * y * y,
                     )
+                }
+            }
+            TwoArguments::ConstAboveDiagonalIntoMultipliedSizes(constant, s) => {
+                if x < y {
+                    *constant
+                } else {
+                    s.slope * (x * y) + s.intercept
                 }
             }
         }
