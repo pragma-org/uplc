@@ -376,12 +376,6 @@ pub struct ConstantOrLinear {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct ConstantOrTwoArguments {
-    pub constant: i64,
-    pub model: Box<TwoArguments>,
-}
-
-#[derive(Debug, PartialEq)]
 pub struct QuadraticFunction {
     coeff_0: i64,
     coeff_1: i64,
