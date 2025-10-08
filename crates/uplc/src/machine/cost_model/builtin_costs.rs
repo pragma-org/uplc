@@ -1107,15 +1107,11 @@ impl BuiltinCosts {
             ),
             quotient_integer: TwoArgumentsCosting::new(
                 TwoArgumentsCosting::subtracted_sizes(0, 1, 1),
-                TwoArgumentsCosting::const_above_diagonal_into_multiplied_sizes(
-                    85848, 228465, 122
-                ),
+                TwoArgumentsCosting::const_above_diagonal_into_multiplied_sizes(85848, 228465, 122),
             ),
             remainder_integer: TwoArgumentsCosting::new(
                 TwoArgumentsCosting::subtracted_sizes(0, 1, 1),
-                TwoArgumentsCosting::const_above_diagonal_into_multiplied_sizes(
-                    85848, 228465, 122,
-                ),
+                TwoArgumentsCosting::const_above_diagonal_into_multiplied_sizes(85848, 228465, 122),
             ),
             mod_integer: TwoArgumentsCosting::new(
                 TwoArgumentsCosting::subtracted_sizes(0, 1, 1),
