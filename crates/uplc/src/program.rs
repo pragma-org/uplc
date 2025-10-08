@@ -43,7 +43,7 @@ where
         let mut machine = Machine::new(
             arena,
             ExBudget::default(),
-            CostModel::default(),
+            CostModel::from(&plutus_version),
             BuiltinSemantics::from(&plutus_version),
         );
 
