@@ -26,6 +26,7 @@ where
     }
 
     pub fn lookup(&'a self, name: usize) -> Option<&'a Value<'a, V>> {
+        debug_assert!(self.0.len() >= name, "size={}, name={name}", self.0.len());
         self.0.get(self.0.len() - name).copied()
     }
 }
