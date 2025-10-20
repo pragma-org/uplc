@@ -54,7 +54,7 @@ impl<'a> Machine<'a> {
     where
         V: Eval<'a>,
     {
-        self.spend_budget(ExBudget::start_up())?;
+        self.spend_budget(self.costs.machine_startup)?;
 
         let initial_context = Context::no_frame(self.arena);
 

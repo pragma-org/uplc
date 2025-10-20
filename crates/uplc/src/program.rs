@@ -54,6 +54,27 @@ where
 
         EvalResult { term, info }
     }
+
+    pub fn eval_version_with_model(
+        &'a self,
+        arena: &'a Bump,
+        plutus_version: PlutusVersion,
+        cost_model: &[i64],
+    ) -> EvalResult<'a, V> {
+        let mut machine = Machine::new(
+            arena,
+            ExBudget::default(),
+            CostModel::initialize_cost_model(&plutus_version, cost_model),
+            BuiltinSemantics::from(&plutus_version),
+        );
+
+        let term = machine.run(self.term);
+        let mut info = machine.info();
+
+        info.consumed_budget = ExBudget::default() - info.consumed_budget;
+
+        EvalResult { term, info }
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
