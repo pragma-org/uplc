@@ -36,9 +36,9 @@ impl CostModel {
 impl From<&PlutusVersion> for CostModel {
     fn from(version: &PlutusVersion) -> Self {
         let builtin_costs = match version {
-            crate::machine::PlutusVersion::V1 => builtin_costs::BuiltinCosts::v1(),
-            crate::machine::PlutusVersion::V2 => builtin_costs::BuiltinCosts::v2(),
-            crate::machine::PlutusVersion::V3 => builtin_costs::BuiltinCosts::v3(),
+            crate::machine::PlutusVersion::V1 => BuiltinCosts::v1(),
+            crate::machine::PlutusVersion::V2 => BuiltinCosts::v2(),
+            crate::machine::PlutusVersion::V3 => BuiltinCosts::v3(),
         };
         Self {
             machine_startup: ExBudget::start_up(),
