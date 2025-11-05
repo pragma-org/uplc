@@ -1,0 +1,900 @@
+use crate::machine::{
+    cost_model::{
+        cost_map::CostMap,
+        costing::{
+            Cost, OneArgumentCosting, SixArgumentsCosting, ThreeArgumentsCosting,
+            TwoArgumentsCosting,
+        },
+    },
+    ExBudget,
+};
+
+#[derive(Debug, PartialEq)]
+pub struct BuiltinCostsV2 {
+    add_integer: TwoArgumentsCosting,
+    subtract_integer: TwoArgumentsCosting,
+    multiply_integer: TwoArgumentsCosting,
+    divide_integer: TwoArgumentsCosting,
+    quotient_integer: TwoArgumentsCosting,
+    remainder_integer: TwoArgumentsCosting,
+    mod_integer: TwoArgumentsCosting,
+    equals_integer: TwoArgumentsCosting,
+    less_than_integer: TwoArgumentsCosting,
+    less_than_equals_integer: TwoArgumentsCosting,
+    // Bytestrings
+    append_byte_string: TwoArgumentsCosting,
+    cons_byte_string: TwoArgumentsCosting,
+    slice_byte_string: ThreeArgumentsCosting,
+    length_of_byte_string: OneArgumentCosting,
+    index_byte_string: TwoArgumentsCosting,
+    equals_byte_string: TwoArgumentsCosting,
+    less_than_byte_string: TwoArgumentsCosting,
+    less_than_equals_byte_string: TwoArgumentsCosting,
+    // Cryptography and hashes
+    sha2_256: OneArgumentCosting,
+    sha3_256: OneArgumentCosting,
+    blake2b_256: OneArgumentCosting,
+    verify_ed25519_signature: ThreeArgumentsCosting,
+    verify_ecdsa_secp256k1_signature: ThreeArgumentsCosting,
+    verify_schnorr_secp256k1_signature: ThreeArgumentsCosting,
+    // Strings
+    append_string: TwoArgumentsCosting,
+    equals_string: TwoArgumentsCosting,
+    encode_utf8: OneArgumentCosting,
+    decode_utf8: OneArgumentCosting,
+    // Bool
+    if_then_else: ThreeArgumentsCosting,
+    // Unit
+    choose_unit: TwoArgumentsCosting,
+    // Tracing
+    trace: TwoArgumentsCosting,
+    // Pairs
+    fst_pair: OneArgumentCosting,
+    snd_pair: OneArgumentCosting,
+    // Lists
+    choose_list: ThreeArgumentsCosting,
+    mk_cons: TwoArgumentsCosting,
+    head_list: OneArgumentCosting,
+    tail_list: OneArgumentCosting,
+    null_list: OneArgumentCosting,
+    // Data
+    choose_data: SixArgumentsCosting,
+    constr_data: TwoArgumentsCosting,
+    map_data: OneArgumentCosting,
+    list_data: OneArgumentCosting,
+    i_data: OneArgumentCosting,
+    b_data: OneArgumentCosting,
+    un_constr_data: OneArgumentCosting,
+    un_map_data: OneArgumentCosting,
+    un_list_data: OneArgumentCosting,
+    un_i_data: OneArgumentCosting,
+    un_b_data: OneArgumentCosting,
+    equals_data: TwoArgumentsCosting,
+    // Misc constructors
+    mk_pair_data: TwoArgumentsCosting,
+    mk_nil_data: OneArgumentCosting,
+    mk_nil_pair_data: OneArgumentCosting,
+    serialise_data: OneArgumentCosting,
+}
+
+impl BuiltinCostsV2 {
+    pub fn default() -> Self {
+        Self {
+            add_integer: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::max_size(1, 1),
+                TwoArgumentsCosting::max_size(100788, 420),
+            ),
+            subtract_integer: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::max_size(1, 1),
+                TwoArgumentsCosting::max_size(100788, 420),
+            ),
+            multiply_integer: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::added_sizes(0, 1),
+                TwoArgumentsCosting::multiplied_sizes(90434, 519),
+            ),
+            divide_integer: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::subtracted_sizes(0, 1, 1),
+                TwoArgumentsCosting::const_above_diagonal_into_multiplied_sizes(85848, 228465, 122),
+            ),
+            quotient_integer: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::subtracted_sizes(0, 1, 1),
+                TwoArgumentsCosting::const_above_diagonal_into_multiplied_sizes(85848, 228465, 122),
+            ),
+            remainder_integer: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::subtracted_sizes(0, 1, 1),
+                TwoArgumentsCosting::const_above_diagonal_into_multiplied_sizes(85848, 228465, 122),
+            ),
+            mod_integer: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::subtracted_sizes(0, 1, 1),
+                TwoArgumentsCosting::const_above_diagonal_into_multiplied_sizes(85848, 228465, 122),
+            ),
+            equals_integer: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(1),
+                TwoArgumentsCosting::min_size(51775, 558),
+            ),
+            less_than_integer: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(1),
+                TwoArgumentsCosting::min_size(44749, 541),
+            ),
+            less_than_equals_integer: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(1),
+                TwoArgumentsCosting::min_size(43285, 552),
+            ),
+            append_byte_string: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::added_sizes(0, 1),
+                TwoArgumentsCosting::added_sizes(1000, 173),
+            ),
+            cons_byte_string: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::added_sizes(0, 1),
+                TwoArgumentsCosting::linear_in_y(72010, 178),
+            ),
+            slice_byte_string: ThreeArgumentsCosting::new(
+                ThreeArgumentsCosting::linear_in_z(4, 0),
+                ThreeArgumentsCosting::linear_in_z(20467, 1),
+            ),
+            length_of_byte_string: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(10),
+                OneArgumentCosting::constant_cost(22100),
+            ),
+            index_byte_string: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(4),
+                TwoArgumentsCosting::constant_cost(13169),
+            ),
+            equals_byte_string: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(1),
+                TwoArgumentsCosting::linear_on_diagonal(24548, 29498, 38),
+            ),
+            less_than_byte_string: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(1),
+                TwoArgumentsCosting::min_size(28999, 74),
+            ),
+            less_than_equals_byte_string: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(1),
+                TwoArgumentsCosting::min_size(28999, 74),
+            ),
+            sha2_256: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(4),
+                OneArgumentCosting::linear_cost(270652, 22588),
+            ),
+            sha3_256: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(4),
+                OneArgumentCosting::linear_cost(1457325, 64566),
+            ),
+            blake2b_256: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(4),
+                OneArgumentCosting::linear_cost(201305, 8356),
+            ),
+            verify_ed25519_signature: ThreeArgumentsCosting::new(
+                ThreeArgumentsCosting::constant_cost(10),
+                ThreeArgumentsCosting::linear_in_y(53384111, 14333),
+            ),
+            verify_ecdsa_secp256k1_signature: ThreeArgumentsCosting::new(
+                ThreeArgumentsCosting::constant_cost(10),
+                ThreeArgumentsCosting::constant_cost(43053543),
+            ),
+            verify_schnorr_secp256k1_signature: ThreeArgumentsCosting::new(
+                ThreeArgumentsCosting::constant_cost(10),
+                ThreeArgumentsCosting::linear_in_y(43574283, 26308),
+            ),
+            append_string: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::added_sizes(4, 1),
+                TwoArgumentsCosting::added_sizes(1000, 59957),
+            ),
+            equals_string: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(1),
+                TwoArgumentsCosting::linear_on_diagonal(39184, 1000, 60594),
+            ),
+            encode_utf8: OneArgumentCosting::new(
+                OneArgumentCosting::linear_cost(4, 2),
+                OneArgumentCosting::linear_cost(1000, 42921),
+            ),
+            decode_utf8: OneArgumentCosting::new(
+                OneArgumentCosting::linear_cost(4, 2),
+                OneArgumentCosting::linear_cost(91189, 769),
+            ),
+            if_then_else: ThreeArgumentsCosting::new(
+                ThreeArgumentsCosting::constant_cost(1),
+                ThreeArgumentsCosting::constant_cost(76049),
+            ),
+            choose_unit: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(4),
+                TwoArgumentsCosting::constant_cost(61462),
+            ),
+            trace: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(32),
+                TwoArgumentsCosting::constant_cost(59498),
+            ),
+            fst_pair: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(32),
+                OneArgumentCosting::constant_cost(141895),
+            ),
+            snd_pair: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(32),
+                OneArgumentCosting::constant_cost(141992),
+            ),
+            choose_list: ThreeArgumentsCosting::new(
+                ThreeArgumentsCosting::constant_cost(32),
+                ThreeArgumentsCosting::constant_cost(132994),
+            ),
+            mk_cons: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(32),
+                TwoArgumentsCosting::constant_cost(72362),
+            ),
+            head_list: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(32),
+                OneArgumentCosting::constant_cost(83150),
+            ),
+            tail_list: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(32),
+                OneArgumentCosting::constant_cost(81663),
+            ),
+            null_list: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(32),
+                OneArgumentCosting::constant_cost(74433),
+            ),
+            choose_data: SixArgumentsCosting::new(
+                SixArgumentsCosting::constant_cost(32),
+                SixArgumentsCosting::constant_cost(94375),
+            ),
+            constr_data: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(32),
+                TwoArgumentsCosting::constant_cost(22151),
+            ),
+            map_data: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(32),
+                OneArgumentCosting::constant_cost(68246),
+            ),
+            list_data: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(32),
+                OneArgumentCosting::constant_cost(33852),
+            ),
+            i_data: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(32),
+                OneArgumentCosting::constant_cost(15299),
+            ),
+            b_data: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(32),
+                OneArgumentCosting::constant_cost(11183),
+            ),
+            un_constr_data: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(32),
+                OneArgumentCosting::constant_cost(24588),
+            ),
+            un_map_data: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(32),
+                OneArgumentCosting::constant_cost(24623),
+            ),
+            un_list_data: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(32),
+                OneArgumentCosting::constant_cost(25933),
+            ),
+            un_i_data: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(32),
+                OneArgumentCosting::constant_cost(20744),
+            ),
+            un_b_data: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(32),
+                OneArgumentCosting::constant_cost(20142),
+            ),
+            equals_data: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(1),
+                TwoArgumentsCosting::min_size(898148, 27279),
+            ),
+            mk_pair_data: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(32),
+                TwoArgumentsCosting::constant_cost(11546),
+            ),
+            mk_nil_data: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(32),
+                OneArgumentCosting::constant_cost(7243),
+            ),
+            mk_nil_pair_data: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(32),
+                OneArgumentCosting::constant_cost(7391),
+            ),
+            serialise_data: OneArgumentCosting::new(
+                OneArgumentCosting::linear_cost(0, 2),
+                OneArgumentCosting::linear_cost(955506, 213312),
+            ),
+        }
+    }
+
+    pub fn initialize_builtin_costs(cost_map: &CostMap) -> Self {
+        Self {
+            add_integer: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::max_size(
+                    cost_map["add_integer-mem-arguments-intercept"],
+                    cost_map["add_integer-mem-arguments-slope"],
+                ),
+                TwoArgumentsCosting::max_size(
+                    cost_map["add_integer-cpu-arguments-intercept"],
+                    cost_map["add_integer-cpu-arguments-slope"],
+                ),
+            ),
+
+            append_byte_string: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::added_sizes(
+                    cost_map["append_byte_string-mem-arguments-intercept"],
+                    cost_map["append_byte_string-mem-arguments-slope"],
+                ),
+                TwoArgumentsCosting::added_sizes(
+                    cost_map["append_byte_string-cpu-arguments-intercept"],
+                    cost_map["append_byte_string-cpu-arguments-slope"],
+                ),
+            ),
+
+            append_string: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::added_sizes(
+                    cost_map["append_string-mem-arguments-intercept"],
+                    cost_map["append_string-mem-arguments-slope"],
+                ),
+                TwoArgumentsCosting::added_sizes(
+                    cost_map["append_string-cpu-arguments-intercept"],
+                    cost_map["append_string-cpu-arguments-slope"],
+                ),
+            ),
+
+            b_data: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(cost_map["b_data-mem-arguments"]),
+                OneArgumentCosting::constant_cost(cost_map["b_data-cpu-arguments"]),
+            ),
+
+            blake2b_256: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(cost_map["blake2b_256-mem-arguments"]),
+                OneArgumentCosting::linear_cost(
+                    cost_map["blake2b_256-cpu-arguments-intercept"],
+                    cost_map["blake2b_256-cpu-arguments-slope"],
+                ),
+            ),
+            choose_data: SixArgumentsCosting::new(
+                SixArgumentsCosting::constant_cost(cost_map["choose_data-mem-arguments"]),
+                SixArgumentsCosting::constant_cost(cost_map["choose_data-cpu-arguments"]),
+            ),
+            choose_list: ThreeArgumentsCosting::new(
+                ThreeArgumentsCosting::constant_cost(cost_map["choose_list-mem-arguments"]),
+                ThreeArgumentsCosting::constant_cost(cost_map["choose_list-cpu-arguments"]),
+            ),
+            choose_unit: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(cost_map["choose_unit-mem-arguments"]),
+                TwoArgumentsCosting::constant_cost(cost_map["choose_unit-cpu-arguments"]),
+            ),
+            cons_byte_string: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::added_sizes(
+                    cost_map["cons_byte_string-mem-arguments-intercept"],
+                    cost_map["cons_byte_string-mem-arguments-slope"],
+                ),
+                TwoArgumentsCosting::linear_in_y(
+                    cost_map["cons_byte_string-cpu-arguments-intercept"],
+                    cost_map["cons_byte_string-cpu-arguments-slope"],
+                ),
+            ),
+            constr_data: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(cost_map["constr_data-mem-arguments"]),
+                TwoArgumentsCosting::constant_cost(cost_map["constr_data-cpu-arguments"]),
+            ),
+            decode_utf8: OneArgumentCosting::new(
+                OneArgumentCosting::linear_cost(
+                    cost_map["decode_utf8-mem-arguments-intercept"],
+                    cost_map["decode_utf8-mem-arguments-slope"],
+                ),
+                OneArgumentCosting::linear_cost(
+                    cost_map["decode_utf8-cpu-arguments-intercept"],
+                    cost_map["decode_utf8-cpu-arguments-slope"],
+                ),
+            ),
+            divide_integer: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::subtracted_sizes(
+                    cost_map["divide_integer-mem-arguments-intercept"],
+                    cost_map["divide_integer-mem-arguments-minimum"],
+                    cost_map["divide_integer-mem-arguments-slope"],
+                ),
+                TwoArgumentsCosting::const_above_diagonal_into_multiplied_sizes(
+                    cost_map["divide_integer-cpu-arguments-constant"],
+                    cost_map["divide_integer-cpu-arguments-model-arguments-intercept"],
+                    cost_map["divide_integer-cpu-arguments-model-arguments-slope"],
+                ),
+            ),
+            encode_utf8: OneArgumentCosting::new(
+                OneArgumentCosting::linear_cost(
+                    cost_map["encode_utf8-mem-arguments-intercept"],
+                    cost_map["encode_utf8-mem-arguments-slope"],
+                ),
+                OneArgumentCosting::linear_cost(
+                    cost_map["encode_utf8-cpu-arguments-intercept"],
+                    cost_map["encode_utf8-cpu-arguments-slope"],
+                ),
+            ),
+            equals_byte_string: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(cost_map["equals_byte_string-mem-arguments"]),
+                TwoArgumentsCosting::linear_on_diagonal(
+                    cost_map["equals_byte_string-cpu-arguments-constant"],
+                    cost_map["equals_byte_string-cpu-arguments-intercept"],
+                    cost_map["equals_byte_string-cpu-arguments-slope"],
+                ),
+            ),
+            equals_data: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(cost_map["equals_data-mem-arguments"]),
+                TwoArgumentsCosting::min_size(
+                    cost_map["equals_data-cpu-arguments-intercept"],
+                    cost_map["equals_data-cpu-arguments-slope"],
+                ),
+            ),
+            equals_integer: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(cost_map["equals_integer-mem-arguments"]),
+                TwoArgumentsCosting::min_size(
+                    cost_map["equals_integer-cpu-arguments-intercept"],
+                    cost_map["equals_integer-cpu-arguments-slope"],
+                ),
+            ),
+            equals_string: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(cost_map["equals_string-mem-arguments"]),
+                TwoArgumentsCosting::linear_on_diagonal(
+                    cost_map["equals_string-cpu-arguments-constant"],
+                    cost_map["equals_string-cpu-arguments-intercept"],
+                    cost_map["equals_string-cpu-arguments-slope"],
+                ),
+            ),
+            fst_pair: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(cost_map["fst_pair-mem-arguments"]),
+                OneArgumentCosting::constant_cost(cost_map["fst_pair-cpu-arguments"]),
+            ),
+            head_list: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(cost_map["head_list-mem-arguments"]),
+                OneArgumentCosting::constant_cost(cost_map["head_list-cpu-arguments"]),
+            ),
+            i_data: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(cost_map["i_data-mem-arguments"]),
+                OneArgumentCosting::constant_cost(cost_map["i_data-cpu-arguments"]),
+            ),
+            if_then_else: ThreeArgumentsCosting::new(
+                ThreeArgumentsCosting::constant_cost(cost_map["if_then_else-mem-arguments"]),
+                ThreeArgumentsCosting::constant_cost(cost_map["if_then_else-cpu-arguments"]),
+            ),
+            index_byte_string: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(cost_map["index_byte_string-mem-arguments"]),
+                TwoArgumentsCosting::constant_cost(cost_map["index_byte_string-cpu-arguments"]),
+            ),
+            length_of_byte_string: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(cost_map["length_of_byte_string-mem-arguments"]),
+                OneArgumentCosting::constant_cost(cost_map["length_of_byte_string-cpu-arguments"]),
+            ),
+            less_than_byte_string: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(cost_map["less_than_byte_string-mem-arguments"]),
+                TwoArgumentsCosting::min_size(
+                    cost_map["less_than_byte_string-cpu-arguments-intercept"],
+                    cost_map["less_than_byte_string-cpu-arguments-slope"],
+                ),
+            ),
+            less_than_equals_byte_string: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(
+                    cost_map["less_than_equals_byte_string-mem-arguments"],
+                ),
+                TwoArgumentsCosting::min_size(
+                    cost_map["less_than_equals_byte_string-cpu-arguments-intercept"],
+                    cost_map["less_than_equals_byte_string-cpu-arguments-slope"],
+                ),
+            ),
+            less_than_equals_integer: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(
+                    cost_map["less_than_equals_integer-mem-arguments"],
+                ),
+                TwoArgumentsCosting::min_size(
+                    cost_map["less_than_equals_integer-cpu-arguments-intercept"],
+                    cost_map["less_than_equals_integer-cpu-arguments-slope"],
+                ),
+            ),
+            less_than_integer: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(cost_map["less_than_integer-mem-arguments"]),
+                TwoArgumentsCosting::min_size(
+                    cost_map["less_than_integer-cpu-arguments-intercept"],
+                    cost_map["less_than_integer-cpu-arguments-slope"],
+                ),
+            ),
+            list_data: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(cost_map["list_data-mem-arguments"]),
+                OneArgumentCosting::constant_cost(cost_map["list_data-cpu-arguments"]),
+            ),
+            map_data: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(cost_map["map_data-mem-arguments"]),
+                OneArgumentCosting::constant_cost(cost_map["map_data-cpu-arguments"]),
+            ),
+            mk_cons: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(cost_map["mk_cons-mem-arguments"]),
+                TwoArgumentsCosting::constant_cost(cost_map["mk_cons-cpu-arguments"]),
+            ),
+            mk_nil_data: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(cost_map["mk_nil_data-mem-arguments"]),
+                OneArgumentCosting::constant_cost(cost_map["mk_nil_data-cpu-arguments"]),
+            ),
+            mk_nil_pair_data: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(cost_map["mk_nil_pair_data-mem-arguments"]),
+                OneArgumentCosting::constant_cost(cost_map["mk_nil_pair_data-cpu-arguments"]),
+            ),
+            mk_pair_data: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(cost_map["mk_pair_data-mem-arguments"]),
+                TwoArgumentsCosting::constant_cost(cost_map["mk_pair_data-cpu-arguments"]),
+            ),
+            mod_integer: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::subtracted_sizes(
+                    cost_map["mod_integer-mem-arguments-intercept"],
+                    cost_map["mod_integer-mem-arguments-slope"],
+                    cost_map["mod_integer-mem-arguments-minimum"],
+                ),
+                TwoArgumentsCosting::const_above_diagonal_into_multiplied_sizes(
+                    cost_map["mod_integer-cpu-arguments-constant"],
+                    cost_map["mod_integer-cpu-arguments-model-arguments-intercept"],
+                    cost_map["mod_integer-cpu-arguments-model-arguments-slope"],
+                ),
+            ),
+            multiply_integer: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::added_sizes(
+                    cost_map["multiply_integer-mem-arguments-intercept"],
+                    cost_map["multiply_integer-mem-arguments-slope"],
+                ),
+                TwoArgumentsCosting::multiplied_sizes(
+                    cost_map["multiply_integer-cpu-arguments-intercept"],
+                    cost_map["multiply_integer-cpu-arguments-slope"],
+                ),
+            ),
+            null_list: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(cost_map["null_list-mem-arguments"]),
+                OneArgumentCosting::constant_cost(cost_map["null_list-cpu-arguments"]),
+            ),
+            quotient_integer: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::subtracted_sizes(
+                    cost_map["quotient_integer-mem-arguments-intercept"],
+                    cost_map["quotient_integer-mem-arguments-slope"],
+                    cost_map["quotient_integer-mem-arguments-minimum"],
+                ),
+                TwoArgumentsCosting::const_above_diagonal_into_multiplied_sizes(
+                    cost_map["quotient_integer-cpu-arguments-constant"],
+                    cost_map["quotient_integer-cpu-arguments-model-arguments-intercept"],
+                    cost_map["quotient_integer-cpu-arguments-model-arguments-slope"],
+                ),
+            ),
+            remainder_integer: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::subtracted_sizes(
+                    cost_map["remainder_integer-mem-arguments-intercept"],
+                    cost_map["remainder_integer-mem-arguments-slope"],
+                    cost_map["remainder_integer-mem-arguments-minimum"],
+                ),
+                TwoArgumentsCosting::const_above_diagonal_into_multiplied_sizes(
+                    cost_map["remainder_integer-cpu-arguments-constant"],
+                    cost_map["remainder_integer-cpu-arguments-model-arguments-intercept"],
+                    cost_map["remainder_integer-cpu-arguments-model-arguments-slope"],
+                ),
+            ),
+            serialise_data: OneArgumentCosting::new(
+                OneArgumentCosting::linear_cost(
+                    cost_map["serialise_data-mem-arguments-intercept"],
+                    cost_map["serialise_data-mem-arguments-slope"],
+                ),
+                OneArgumentCosting::linear_cost(
+                    cost_map["serialise_data-cpu-arguments-intercept"],
+                    cost_map["serialise_data-cpu-arguments-slope"],
+                ),
+            ),
+            sha2_256: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(cost_map["sha2_256-mem-arguments"]),
+                OneArgumentCosting::linear_cost(
+                    cost_map["sha2_256-cpu-arguments-intercept"],
+                    cost_map["sha2_256-cpu-arguments-slope"],
+                ),
+            ),
+            sha3_256: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(cost_map["sha3_256-mem-arguments"]),
+                OneArgumentCosting::linear_cost(
+                    cost_map["sha3_256-cpu-arguments-intercept"],
+                    cost_map["sha3_256-cpu-arguments-slope"],
+                ),
+            ),
+            slice_byte_string: ThreeArgumentsCosting::new(
+                ThreeArgumentsCosting::linear_in_z(
+                    cost_map["slice_byte_string-mem-arguments-intercept"],
+                    cost_map["slice_byte_string-mem-arguments-slope"],
+                ),
+                ThreeArgumentsCosting::linear_in_z(
+                    cost_map["slice_byte_string-cpu-arguments-intercept"],
+                    cost_map["slice_byte_string-cpu-arguments-slope"],
+                ),
+            ),
+            snd_pair: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(cost_map["snd_pair-mem-arguments"]),
+                OneArgumentCosting::constant_cost(cost_map["snd_pair-cpu-arguments"]),
+            ),
+            subtract_integer: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::max_size(
+                    cost_map["subtract_integer-mem-arguments-intercept"],
+                    cost_map["subtract_integer-mem-arguments-slope"],
+                ),
+                TwoArgumentsCosting::max_size(
+                    cost_map["subtract_integer-cpu-arguments-intercept"],
+                    cost_map["subtract_integer-cpu-arguments-slope"],
+                ),
+            ),
+            tail_list: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(cost_map["tail_list-mem-arguments"]),
+                OneArgumentCosting::constant_cost(cost_map["tail_list-cpu-arguments"]),
+            ),
+            trace: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(cost_map["trace-mem-arguments"]),
+                TwoArgumentsCosting::constant_cost(cost_map["trace-cpu-arguments"]),
+            ),
+            un_b_data: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(cost_map["un_b_data-mem-arguments"]),
+                OneArgumentCosting::constant_cost(cost_map["un_b_data-cpu-arguments"]),
+            ),
+            un_constr_data: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(cost_map["un_constr_data-mem-arguments"]),
+                OneArgumentCosting::constant_cost(cost_map["un_constr_data-cpu-arguments"]),
+            ),
+            un_i_data: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(cost_map["un_i_data-mem-arguments"]),
+                OneArgumentCosting::constant_cost(cost_map["un_i_data-cpu-arguments"]),
+            ),
+            un_list_data: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(cost_map["un_list_data-mem-arguments"]),
+                OneArgumentCosting::constant_cost(cost_map["un_list_data-cpu-arguments"]),
+            ),
+            un_map_data: OneArgumentCosting::new(
+                OneArgumentCosting::constant_cost(cost_map["un_map_data-mem-arguments"]),
+                OneArgumentCosting::constant_cost(cost_map["un_map_data-cpu-arguments"]),
+            ),
+            verify_ecdsa_secp256k1_signature: ThreeArgumentsCosting::new(
+                ThreeArgumentsCosting::constant_cost(
+                    cost_map["verify_ecdsa_secp256k1_signature-mem-arguments"],
+                ),
+                ThreeArgumentsCosting::constant_cost(
+                    cost_map["verify_ecdsa_secp256k1_signature-cpu-arguments"],
+                ),
+            ),
+
+            verify_ed25519_signature: ThreeArgumentsCosting::new(
+                ThreeArgumentsCosting::constant_cost(
+                    cost_map["verify_ed25519_signature-mem-arguments"],
+                ),
+                ThreeArgumentsCosting::linear_in_y(
+                    cost_map["verify_ed25519_signature-cpu-arguments-intercept"],
+                    cost_map["verify_ed25519_signature-cpu-arguments-slope"],
+                ),
+            ),
+            verify_schnorr_secp256k1_signature: ThreeArgumentsCosting::new(
+                ThreeArgumentsCosting::constant_cost(
+                    cost_map["verify_schnorr_secp256k1_signature-mem-arguments"],
+                ),
+                ThreeArgumentsCosting::linear_in_y(
+                    cost_map["verify_schnorr_secp256k1_signature-cpu-arguments-intercept"],
+                    cost_map["verify_schnorr_secp256k1_signature-cpu-arguments-slope"],
+                ),
+            ),
+        }
+    }
+}
+
+impl BuiltinCostsV2 {
+    pub fn get_cost(&self, builtin: &str, args: &[i64]) -> Option<ExBudget> {
+        match builtin {
+            "add_integer" => Some(ExBudget::new(
+                self.add_integer.mem.cost([args[0], args[1]]),
+                self.add_integer.cpu.cost([args[0], args[1]]),
+            )),
+            "subtract_integer" => Some(ExBudget::new(
+                self.subtract_integer.mem.cost([args[0], args[1]]),
+                self.subtract_integer.cpu.cost([args[0], args[1]]),
+            )),
+            "multiply_integer" => Some(ExBudget::new(
+                self.multiply_integer.mem.cost([args[0], args[1]]),
+                self.multiply_integer.cpu.cost([args[0], args[1]]),
+            )),
+            "divide_integer" => Some(ExBudget::new(
+                self.divide_integer.mem.cost([args[0], args[1]]),
+                self.divide_integer.cpu.cost([args[0], args[1]]),
+            )),
+            "quotient_integer" => Some(ExBudget::new(
+                self.quotient_integer.mem.cost([args[0], args[1]]),
+                self.quotient_integer.cpu.cost([args[0], args[1]]),
+            )),
+            "remainder_integer" => Some(ExBudget::new(
+                self.remainder_integer.mem.cost([args[0], args[1]]),
+                self.remainder_integer.cpu.cost([args[0], args[1]]),
+            )),
+            "mod_integer" => Some(ExBudget::new(
+                self.mod_integer.mem.cost([args[0], args[1]]),
+                self.mod_integer.cpu.cost([args[0], args[1]]),
+            )),
+            "equals_integer" => Some(ExBudget::new(
+                self.equals_integer.mem.cost([args[0], args[1]]),
+                self.equals_integer.cpu.cost([args[0], args[1]]),
+            )),
+            "less_than_integer" => Some(ExBudget::new(
+                self.less_than_integer.mem.cost([args[0], args[1]]),
+                self.less_than_integer.cpu.cost([args[0], args[1]]),
+            )),
+            "less_than_equals_integer" => Some(ExBudget::new(
+                self.less_than_equals_integer.mem.cost([args[0], args[1]]),
+                self.less_than_equals_integer.cpu.cost([args[0], args[1]]),
+            )),
+            "append_byte_string" => Some(ExBudget::new(
+                self.append_byte_string.mem.cost([args[0], args[1]]),
+                self.append_byte_string.cpu.cost([args[0], args[1]]),
+            )),
+            "cons_byte_string" => Some(ExBudget::new(
+                self.cons_byte_string.mem.cost([args[0], args[1]]),
+                self.cons_byte_string.cpu.cost([args[0], args[1]]),
+            )),
+            "slice_byte_string" => Some(ExBudget::new(
+                self.slice_byte_string.mem.cost([args[0], args[1], args[2]]),
+                self.slice_byte_string.cpu.cost([args[0], args[1], args[2]]),
+            )),
+            "length_of_byte_string" => Some(ExBudget::new(
+                self.length_of_byte_string.mem.cost([args[0]]),
+                self.length_of_byte_string.cpu.cost([args[0]]),
+            )),
+            "index_byte_string" => Some(ExBudget::new(
+                self.index_byte_string.mem.cost([args[0], args[1]]),
+                self.index_byte_string.cpu.cost([args[0], args[1]]),
+            )),
+            "equals_byte_string" => Some(ExBudget::new(
+                self.equals_byte_string.mem.cost([args[0], args[1]]),
+                self.equals_byte_string.cpu.cost([args[0], args[1]]),
+            )),
+            "less_than_byte_string" => Some(ExBudget::new(
+                self.less_than_byte_string.mem.cost([args[0], args[1]]),
+                self.less_than_byte_string.cpu.cost([args[0], args[1]]),
+            )),
+            "less_than_equals_byte_string" => Some(ExBudget::new(
+                self.less_than_equals_byte_string
+                    .mem
+                    .cost([args[0], args[1]]),
+                self.less_than_equals_byte_string
+                    .cpu
+                    .cost([args[0], args[1]]),
+            )),
+            "sha2_256" => Some(ExBudget::new(
+                self.sha2_256.mem.cost([args[0]]),
+                self.sha2_256.cpu.cost([args[0]]),
+            )),
+            "sha3_256" => Some(ExBudget::new(
+                self.sha3_256.mem.cost([args[0]]),
+                self.sha3_256.cpu.cost([args[0]]),
+            )),
+            "blake2b_256" => Some(ExBudget::new(
+                self.blake2b_256.mem.cost([args[0]]),
+                self.blake2b_256.cpu.cost([args[0]]),
+            )),
+            "verify_ed25519_signature" => Some(ExBudget::new(
+                self.verify_ed25519_signature
+                    .mem
+                    .cost([args[0], args[1], args[2]]),
+                self.verify_ed25519_signature
+                    .cpu
+                    .cost([args[0], args[1], args[2]]),
+            )),
+            "append_string" => Some(ExBudget::new(
+                self.append_string.mem.cost([args[0], args[1]]),
+                self.append_string.cpu.cost([args[0], args[1]]),
+            )),
+            "equals_string" => Some(ExBudget::new(
+                self.equals_string.mem.cost([args[0], args[1]]),
+                self.equals_string.cpu.cost([args[0], args[1]]),
+            )),
+            "encode_utf8" => Some(ExBudget::new(
+                self.encode_utf8.mem.cost([args[0]]),
+                self.encode_utf8.cpu.cost([args[0]]),
+            )),
+            "decode_utf8" => Some(ExBudget::new(
+                self.decode_utf8.mem.cost([args[0]]),
+                self.decode_utf8.cpu.cost([args[0]]),
+            )),
+            "if_then_else" => Some(ExBudget::new(
+                self.if_then_else.mem.cost([args[0], args[1], args[2]]),
+                self.if_then_else.cpu.cost([args[0], args[1], args[2]]),
+            )),
+            "choose_unit" => Some(ExBudget::new(
+                self.choose_unit.mem.cost([args[0], args[1]]),
+                self.choose_unit.cpu.cost([args[0], args[1]]),
+            )),
+            "trace" => Some(ExBudget::new(
+                self.trace.mem.cost([args[0], args[1]]),
+                self.trace.cpu.cost([args[0], args[1]]),
+            )),
+            "fst_pair" => Some(ExBudget::new(
+                self.fst_pair.mem.cost([args[0]]),
+                self.fst_pair.cpu.cost([args[0]]),
+            )),
+            "snd_pair" => Some(ExBudget::new(
+                self.snd_pair.mem.cost([args[0]]),
+                self.snd_pair.cpu.cost([args[0]]),
+            )),
+            "choose_list" => Some(ExBudget::new(
+                self.choose_list.mem.cost([args[0], args[1], args[2]]),
+                self.choose_list.cpu.cost([args[0], args[1], args[2]]),
+            )),
+            "mk_cons" => Some(ExBudget::new(
+                self.mk_cons.mem.cost([args[0], args[1]]),
+                self.mk_cons.cpu.cost([args[0], args[1]]),
+            )),
+            "head_list" => Some(ExBudget::new(
+                self.head_list.mem.cost([args[0]]),
+                self.head_list.cpu.cost([args[0]]),
+            )),
+            "tail_list" => Some(ExBudget::new(
+                self.tail_list.mem.cost([args[0]]),
+                self.tail_list.cpu.cost([args[0]]),
+            )),
+            "null_list" => Some(ExBudget::new(
+                self.null_list.mem.cost([args[0]]),
+                self.null_list.cpu.cost([args[0]]),
+            )),
+            "choose_data" => Some(ExBudget::new(
+                self.choose_data
+                    .mem
+                    .cost([args[0], args[1], args[2], args[3], args[4], args[5]]),
+                self.choose_data
+                    .cpu
+                    .cost([args[0], args[1], args[2], args[3], args[4], args[5]]),
+            )),
+            "constr_data" => Some(ExBudget::new(
+                self.constr_data.mem.cost([args[0], args[1]]),
+                self.constr_data.cpu.cost([args[0], args[1]]),
+            )),
+            "map_data" => Some(ExBudget::new(
+                self.map_data.mem.cost([args[0]]),
+                self.map_data.cpu.cost([args[0]]),
+            )),
+            "list_data" => Some(ExBudget::new(
+                self.list_data.mem.cost([args[0]]),
+                self.list_data.cpu.cost([args[0]]),
+            )),
+            "i_data" => Some(ExBudget::new(
+                self.i_data.mem.cost([args[0]]),
+                self.i_data.cpu.cost([args[0]]),
+            )),
+            "b_data" => Some(ExBudget::new(
+                self.b_data.mem.cost([args[0]]),
+                self.b_data.cpu.cost([args[0]]),
+            )),
+            "un_constr_data" => Some(ExBudget::new(
+                self.un_constr_data.mem.cost([args[0]]),
+                self.un_constr_data.cpu.cost([args[0]]),
+            )),
+            "un_map_data" => Some(ExBudget::new(
+                self.un_map_data.mem.cost([args[0]]),
+                self.un_map_data.cpu.cost([args[0]]),
+            )),
+            "un_list_data" => Some(ExBudget::new(
+                self.un_list_data.mem.cost([args[0]]),
+                self.un_list_data.cpu.cost([args[0]]),
+            )),
+            "un_i_data" => Some(ExBudget::new(
+                self.un_i_data.mem.cost([args[0]]),
+                self.un_i_data.cpu.cost([args[0]]),
+            )),
+            "un_b_data" => Some(ExBudget::new(
+                self.un_b_data.mem.cost([args[0]]),
+                self.un_b_data.cpu.cost([args[0]]),
+            )),
+            "equals_data" => Some(ExBudget::new(
+                self.equals_data.mem.cost([args[0], args[1]]),
+                self.equals_data.cpu.cost([args[0], args[1]]),
+            )),
+            "mk_pair_data" => Some(ExBudget::new(
+                self.mk_pair_data.mem.cost([args[0], args[1]]),
+                self.mk_pair_data.cpu.cost([args[0], args[1]]),
+            )),
+            "mk_nil_data" => Some(ExBudget::new(
+                self.mk_nil_data.mem.cost([args[0]]),
+                self.mk_nil_data.cpu.cost([args[0]]),
+            )),
+            "mk_nil_pair_data" => Some(ExBudget::new(
+                self.mk_nil_pair_data.mem.cost([args[0]]),
+                self.mk_nil_pair_data.cpu.cost([args[0]]),
+            )),
+            "serialise_data" => Some(ExBudget::new(
+                self.serialise_data.mem.cost([args[0]]),
+                self.serialise_data.cpu.cost([args[0]]),
+            )),
+            _ => None,
+        }
+    }
+}
