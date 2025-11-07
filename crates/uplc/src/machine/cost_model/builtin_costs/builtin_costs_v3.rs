@@ -1,12 +1,16 @@
-use crate::machine::{
-    cost_model::{
-        cost_map::CostMap,
-        costing::{
-            Cost, OneArgumentCosting, SixArgumentsCosting, ThreeArgumentsCosting,
-            TwoArgumentsCosting,
+use crate::{
+    builtin::DefaultFunction,
+    machine::{
+        cost_model::{
+            builtin_costs::BuiltinCostModel,
+            cost_map::CostMap,
+            costing::{
+                Cost, OneArgumentCosting, SixArgumentsCosting, ThreeArgumentsCosting,
+                TwoArgumentsCosting,
+            },
         },
+        ExBudget,
     },
-    ExBudget,
 };
 
 #[derive(Debug, PartialEq)]
@@ -118,8 +122,8 @@ pub struct BuiltinCostsV3 {
     index_array: TwoArgumentsCosting,
 }
 
-impl BuiltinCostsV3 {
-    pub fn default() -> Self {
+impl BuiltinCostModel for BuiltinCostsV3 {
+    fn default() -> Self {
         Self {
             add_integer: TwoArgumentsCosting::new(
                 TwoArgumentsCosting::max_size(1, 1),
@@ -502,7 +506,7 @@ impl BuiltinCostsV3 {
         }
     }
 
-    pub fn initialize_builtin_costs(cost_map: &CostMap) -> Self {
+    fn initialize(cost_map: &CostMap) -> Self {
         Self {
             add_integer: TwoArgumentsCosting::new(
                 TwoArgumentsCosting::max_size(
@@ -1185,80 +1189,78 @@ impl BuiltinCostsV3 {
             ),
         }
     }
-}
 
-impl BuiltinCostsV3 {
-    pub fn get_cost(&self, builtin: &str, args: &[i64]) -> Option<ExBudget> {
+    fn get_cost(&self, builtin: DefaultFunction, args: &[i64]) -> Option<ExBudget> {
         match builtin {
-            "add_integer" => Some(ExBudget::new(
+            DefaultFunction::AddInteger => Some(ExBudget::new(
                 self.add_integer.mem.cost([args[0], args[1]]),
                 self.add_integer.cpu.cost([args[0], args[1]]),
             )),
-            "subtract_integer" => Some(ExBudget::new(
+            DefaultFunction::SubtractInteger => Some(ExBudget::new(
                 self.subtract_integer.mem.cost([args[0], args[1]]),
                 self.subtract_integer.cpu.cost([args[0], args[1]]),
             )),
-            "multiply_integer" => Some(ExBudget::new(
+            DefaultFunction::MultiplyInteger => Some(ExBudget::new(
                 self.multiply_integer.mem.cost([args[0], args[1]]),
                 self.multiply_integer.cpu.cost([args[0], args[1]]),
             )),
-            "divide_integer" => Some(ExBudget::new(
+            DefaultFunction::DivideInteger => Some(ExBudget::new(
                 self.divide_integer.mem.cost([args[0], args[1]]),
                 self.divide_integer.cpu.cost([args[0], args[1]]),
             )),
-            "quotient_integer" => Some(ExBudget::new(
+            DefaultFunction::QuotientInteger => Some(ExBudget::new(
                 self.quotient_integer.mem.cost([args[0], args[1]]),
                 self.quotient_integer.cpu.cost([args[0], args[1]]),
             )),
-            "remainder_integer" => Some(ExBudget::new(
+            DefaultFunction::RemainderInteger => Some(ExBudget::new(
                 self.remainder_integer.mem.cost([args[0], args[1]]),
                 self.remainder_integer.cpu.cost([args[0], args[1]]),
             )),
-            "mod_integer" => Some(ExBudget::new(
+            DefaultFunction::ModInteger => Some(ExBudget::new(
                 self.mod_integer.mem.cost([args[0], args[1]]),
                 self.mod_integer.cpu.cost([args[0], args[1]]),
             )),
-            "equals_integer" => Some(ExBudget::new(
+            DefaultFunction::EqualsInteger => Some(ExBudget::new(
                 self.equals_integer.mem.cost([args[0], args[1]]),
                 self.equals_integer.cpu.cost([args[0], args[1]]),
             )),
-            "less_than_integer" => Some(ExBudget::new(
+            DefaultFunction::LessThanInteger => Some(ExBudget::new(
                 self.less_than_integer.mem.cost([args[0], args[1]]),
                 self.less_than_integer.cpu.cost([args[0], args[1]]),
             )),
-            "less_than_equals_integer" => Some(ExBudget::new(
+            DefaultFunction::LessThanEqualsInteger => Some(ExBudget::new(
                 self.less_than_equals_integer.mem.cost([args[0], args[1]]),
                 self.less_than_equals_integer.cpu.cost([args[0], args[1]]),
             )),
-            "append_byte_string" => Some(ExBudget::new(
+            DefaultFunction::AppendByteString => Some(ExBudget::new(
                 self.append_byte_string.mem.cost([args[0], args[1]]),
                 self.append_byte_string.cpu.cost([args[0], args[1]]),
             )),
-            "cons_byte_string" => Some(ExBudget::new(
+            DefaultFunction::ConsByteString => Some(ExBudget::new(
                 self.cons_byte_string.mem.cost([args[0], args[1]]),
                 self.cons_byte_string.cpu.cost([args[0], args[1]]),
             )),
-            "slice_byte_string" => Some(ExBudget::new(
+            DefaultFunction::SliceByteString => Some(ExBudget::new(
                 self.slice_byte_string.mem.cost([args[0], args[1], args[2]]),
                 self.slice_byte_string.cpu.cost([args[0], args[1], args[2]]),
             )),
-            "length_of_byte_string" => Some(ExBudget::new(
+            DefaultFunction::LengthOfByteString => Some(ExBudget::new(
                 self.length_of_byte_string.mem.cost([args[0]]),
                 self.length_of_byte_string.cpu.cost([args[0]]),
             )),
-            "index_byte_string" => Some(ExBudget::new(
+            DefaultFunction::IndexByteString => Some(ExBudget::new(
                 self.index_byte_string.mem.cost([args[0], args[1]]),
                 self.index_byte_string.cpu.cost([args[0], args[1]]),
             )),
-            "equals_byte_string" => Some(ExBudget::new(
+            DefaultFunction::EqualsByteString => Some(ExBudget::new(
                 self.equals_byte_string.mem.cost([args[0], args[1]]),
                 self.equals_byte_string.cpu.cost([args[0], args[1]]),
             )),
-            "less_than_byte_string" => Some(ExBudget::new(
+            DefaultFunction::LessThanByteString => Some(ExBudget::new(
                 self.less_than_byte_string.mem.cost([args[0], args[1]]),
                 self.less_than_byte_string.cpu.cost([args[0], args[1]]),
             )),
-            "less_than_equals_byte_string" => Some(ExBudget::new(
+            DefaultFunction::LessThanEqualsByteString => Some(ExBudget::new(
                 self.less_than_equals_byte_string
                     .mem
                     .cost([args[0], args[1]]),
@@ -1266,27 +1268,27 @@ impl BuiltinCostsV3 {
                     .cpu
                     .cost([args[0], args[1]]),
             )),
-            "sha2_256" => Some(ExBudget::new(
+            DefaultFunction::Sha2_256 => Some(ExBudget::new(
                 self.sha2_256.mem.cost([args[0]]),
                 self.sha2_256.cpu.cost([args[0]]),
             )),
-            "sha3_256" => Some(ExBudget::new(
+            DefaultFunction::Sha3_256 => Some(ExBudget::new(
                 self.sha3_256.mem.cost([args[0]]),
                 self.sha3_256.cpu.cost([args[0]]),
             )),
-            "blake2b_224" => Some(ExBudget::new(
+            DefaultFunction::Blake2b_224 => Some(ExBudget::new(
                 self.blake2b_224.mem.cost([args[0]]),
                 self.blake2b_224.cpu.cost([args[0]]),
             )),
-            "blake2b_256" => Some(ExBudget::new(
+            DefaultFunction::Blake2b_256 => Some(ExBudget::new(
                 self.blake2b_256.mem.cost([args[0]]),
                 self.blake2b_256.cpu.cost([args[0]]),
             )),
-            "keccak_256" => Some(ExBudget::new(
+            DefaultFunction::Keccak_256 => Some(ExBudget::new(
                 self.keccak_256.mem.cost([args[0]]),
                 self.keccak_256.cpu.cost([args[0]]),
             )),
-            "verify_ed25519_signature" => Some(ExBudget::new(
+            DefaultFunction::VerifyEd25519Signature => Some(ExBudget::new(
                 self.verify_ed25519_signature
                     .mem
                     .cost([args[0], args[1], args[2]]),
@@ -1294,7 +1296,7 @@ impl BuiltinCostsV3 {
                     .cpu
                     .cost([args[0], args[1], args[2]]),
             )),
-            "verify_ecdsa_secp256k1_signature" => Some(ExBudget::new(
+            DefaultFunction::VerifyEcdsaSecp256k1Signature => Some(ExBudget::new(
                 self.verify_ecdsa_secp256k1_signature
                     .mem
                     .cost([args[0], args[1], args[2]]),
@@ -1302,7 +1304,7 @@ impl BuiltinCostsV3 {
                     .cpu
                     .cost([args[0], args[1], args[2]]),
             )),
-            "verify_schnorr_secp256k1_signature" => Some(ExBudget::new(
+            DefaultFunction::VerifySchnorrSecp256k1Signature => Some(ExBudget::new(
                 self.verify_schnorr_secp256k1_signature
                     .mem
                     .cost([args[0], args[1], args[2]]),
@@ -1310,64 +1312,63 @@ impl BuiltinCostsV3 {
                     .cpu
                     .cost([args[0], args[1], args[2]]),
             )),
-
-            "append_string" => Some(ExBudget::new(
+            DefaultFunction::AppendString => Some(ExBudget::new(
                 self.append_string.mem.cost([args[0], args[1]]),
                 self.append_string.cpu.cost([args[0], args[1]]),
             )),
-            "equals_string" => Some(ExBudget::new(
+            DefaultFunction::EqualsString => Some(ExBudget::new(
                 self.equals_string.mem.cost([args[0], args[1]]),
                 self.equals_string.cpu.cost([args[0], args[1]]),
             )),
-            "encode_utf8" => Some(ExBudget::new(
+            DefaultFunction::EncodeUtf8 => Some(ExBudget::new(
                 self.encode_utf8.mem.cost([args[0]]),
                 self.encode_utf8.cpu.cost([args[0]]),
             )),
-            "decode_utf8" => Some(ExBudget::new(
+            DefaultFunction::DecodeUtf8 => Some(ExBudget::new(
                 self.decode_utf8.mem.cost([args[0]]),
                 self.decode_utf8.cpu.cost([args[0]]),
             )),
-            "if_then_else" => Some(ExBudget::new(
+            DefaultFunction::IfThenElse => Some(ExBudget::new(
                 self.if_then_else.mem.cost([args[0], args[1], args[2]]),
                 self.if_then_else.cpu.cost([args[0], args[1], args[2]]),
             )),
-            "choose_unit" => Some(ExBudget::new(
+            DefaultFunction::ChooseUnit => Some(ExBudget::new(
                 self.choose_unit.mem.cost([args[0], args[1]]),
                 self.choose_unit.cpu.cost([args[0], args[1]]),
             )),
-            "trace" => Some(ExBudget::new(
+            DefaultFunction::Trace => Some(ExBudget::new(
                 self.trace.mem.cost([args[0], args[1]]),
                 self.trace.cpu.cost([args[0], args[1]]),
             )),
-            "fst_pair" => Some(ExBudget::new(
+            DefaultFunction::FstPair => Some(ExBudget::new(
                 self.fst_pair.mem.cost([args[0]]),
                 self.fst_pair.cpu.cost([args[0]]),
             )),
-            "snd_pair" => Some(ExBudget::new(
+            DefaultFunction::SndPair => Some(ExBudget::new(
                 self.snd_pair.mem.cost([args[0]]),
                 self.snd_pair.cpu.cost([args[0]]),
             )),
-            "choose_list" => Some(ExBudget::new(
+            DefaultFunction::ChooseList => Some(ExBudget::new(
                 self.choose_list.mem.cost([args[0], args[1], args[2]]),
                 self.choose_list.cpu.cost([args[0], args[1], args[2]]),
             )),
-            "mk_cons" => Some(ExBudget::new(
+            DefaultFunction::MkCons => Some(ExBudget::new(
                 self.mk_cons.mem.cost([args[0], args[1]]),
                 self.mk_cons.cpu.cost([args[0], args[1]]),
             )),
-            "head_list" => Some(ExBudget::new(
+            DefaultFunction::HeadList => Some(ExBudget::new(
                 self.head_list.mem.cost([args[0]]),
                 self.head_list.cpu.cost([args[0]]),
             )),
-            "tail_list" => Some(ExBudget::new(
+            DefaultFunction::TailList => Some(ExBudget::new(
                 self.tail_list.mem.cost([args[0]]),
                 self.tail_list.cpu.cost([args[0]]),
             )),
-            "null_list" => Some(ExBudget::new(
+            DefaultFunction::NullList => Some(ExBudget::new(
                 self.null_list.mem.cost([args[0]]),
                 self.null_list.cpu.cost([args[0]]),
             )),
-            "choose_data" => Some(ExBudget::new(
+            DefaultFunction::ChooseData => Some(ExBudget::new(
                 self.choose_data
                     .mem
                     .cost([args[0], args[1], args[2], args[3], args[4], args[5]]),
@@ -1375,135 +1376,135 @@ impl BuiltinCostsV3 {
                     .cpu
                     .cost([args[0], args[1], args[2], args[3], args[4], args[5]]),
             )),
-            "constr_data" => Some(ExBudget::new(
+            DefaultFunction::ConstrData => Some(ExBudget::new(
                 self.constr_data.mem.cost([args[0], args[1]]),
                 self.constr_data.cpu.cost([args[0], args[1]]),
             )),
-            "map_data" => Some(ExBudget::new(
+            DefaultFunction::MapData => Some(ExBudget::new(
                 self.map_data.mem.cost([args[0]]),
                 self.map_data.cpu.cost([args[0]]),
             )),
-            "list_data" => Some(ExBudget::new(
+            DefaultFunction::ListData => Some(ExBudget::new(
                 self.list_data.mem.cost([args[0]]),
                 self.list_data.cpu.cost([args[0]]),
             )),
-            "i_data" => Some(ExBudget::new(
+            DefaultFunction::IData => Some(ExBudget::new(
                 self.i_data.mem.cost([args[0]]),
                 self.i_data.cpu.cost([args[0]]),
             )),
-            "b_data" => Some(ExBudget::new(
+            DefaultFunction::BData => Some(ExBudget::new(
                 self.b_data.mem.cost([args[0]]),
                 self.b_data.cpu.cost([args[0]]),
             )),
-            "un_constr_data" => Some(ExBudget::new(
+            DefaultFunction::UnConstrData => Some(ExBudget::new(
                 self.un_constr_data.mem.cost([args[0]]),
                 self.un_constr_data.cpu.cost([args[0]]),
             )),
-            "un_map_data" => Some(ExBudget::new(
+            DefaultFunction::UnMapData => Some(ExBudget::new(
                 self.un_map_data.mem.cost([args[0]]),
                 self.un_map_data.cpu.cost([args[0]]),
             )),
-            "un_list_data" => Some(ExBudget::new(
+            DefaultFunction::UnListData => Some(ExBudget::new(
                 self.un_list_data.mem.cost([args[0]]),
                 self.un_list_data.cpu.cost([args[0]]),
             )),
-            "un_i_data" => Some(ExBudget::new(
+            DefaultFunction::UnIData => Some(ExBudget::new(
                 self.un_i_data.mem.cost([args[0]]),
                 self.un_i_data.cpu.cost([args[0]]),
             )),
-            "un_b_data" => Some(ExBudget::new(
+            DefaultFunction::UnBData => Some(ExBudget::new(
                 self.un_b_data.mem.cost([args[0]]),
                 self.un_b_data.cpu.cost([args[0]]),
             )),
-            "equals_data" => Some(ExBudget::new(
+            DefaultFunction::EqualsData => Some(ExBudget::new(
                 self.equals_data.mem.cost([args[0], args[1]]),
                 self.equals_data.cpu.cost([args[0], args[1]]),
             )),
-            "mk_pair_data" => Some(ExBudget::new(
+            DefaultFunction::MkPairData => Some(ExBudget::new(
                 self.mk_pair_data.mem.cost([args[0], args[1]]),
                 self.mk_pair_data.cpu.cost([args[0], args[1]]),
             )),
-            "mk_nil_data" => Some(ExBudget::new(
+            DefaultFunction::MkNilData => Some(ExBudget::new(
                 self.mk_nil_data.mem.cost([args[0]]),
                 self.mk_nil_data.cpu.cost([args[0]]),
             )),
-            "mk_nil_pair_data" => Some(ExBudget::new(
+            DefaultFunction::MkNilPairData => Some(ExBudget::new(
                 self.mk_nil_pair_data.mem.cost([args[0]]),
                 self.mk_nil_pair_data.cpu.cost([args[0]]),
             )),
-            "serialise_data" => Some(ExBudget::new(
+            DefaultFunction::SerialiseData => Some(ExBudget::new(
                 self.serialise_data.mem.cost([args[0]]),
                 self.serialise_data.cpu.cost([args[0]]),
             )),
-            "bls12_381_g1_add" => Some(ExBudget::new(
+            DefaultFunction::Bls12_381_G1_Add => Some(ExBudget::new(
                 self.bls12_381_g1_add.mem.cost([args[0], args[1]]),
                 self.bls12_381_g1_add.cpu.cost([args[0], args[1]]),
             )),
-            "bls12_381_g1_neg" => Some(ExBudget::new(
+            DefaultFunction::Bls12_381_G1_Neg => Some(ExBudget::new(
                 self.bls12_381_g1_neg.mem.cost([args[0]]),
                 self.bls12_381_g1_neg.cpu.cost([args[0]]),
             )),
-            "bls12_381_g1_scalar_mul" => Some(ExBudget::new(
+            DefaultFunction::Bls12_381_G1_ScalarMul => Some(ExBudget::new(
                 self.bls12_381_g1_scalar_mul.mem.cost([args[0], args[1]]),
                 self.bls12_381_g1_scalar_mul.cpu.cost([args[0], args[1]]),
             )),
-            "bls12_381_g1_equal" => Some(ExBudget::new(
+            DefaultFunction::Bls12_381_G1_Equal => Some(ExBudget::new(
                 self.bls12_381_g1_equal.mem.cost([args[0], args[1]]),
                 self.bls12_381_g1_equal.cpu.cost([args[0], args[1]]),
             )),
-            "bls12_381_g1_compress" => Some(ExBudget::new(
+            DefaultFunction::Bls12_381_G1_Compress => Some(ExBudget::new(
                 self.bls12_381_g1_compress.mem.cost([args[0]]),
                 self.bls12_381_g1_compress.cpu.cost([args[0]]),
             )),
-            "bls12_381_g1_uncompress" => Some(ExBudget::new(
+            DefaultFunction::Bls12_381_G1_Uncompress => Some(ExBudget::new(
                 self.bls12_381_g1_uncompress.mem.cost([args[0]]),
                 self.bls12_381_g1_uncompress.cpu.cost([args[0]]),
             )),
-            "bls12_381_g1_hash_to_group" => Some(ExBudget::new(
+            DefaultFunction::Bls12_381_G1_HashToGroup => Some(ExBudget::new(
                 self.bls12_381_g1_hash_to_group.mem.cost([args[0], args[1]]),
                 self.bls12_381_g1_hash_to_group.cpu.cost([args[0], args[1]]),
             )),
-            "bls12_381_g2_add" => Some(ExBudget::new(
+            DefaultFunction::Bls12_381_G2_Add => Some(ExBudget::new(
                 self.bls12_381_g2_add.mem.cost([args[0], args[1]]),
                 self.bls12_381_g2_add.cpu.cost([args[0], args[1]]),
             )),
-            "bls12_381_g2_neg" => Some(ExBudget::new(
+            DefaultFunction::Bls12_381_G2_Neg => Some(ExBudget::new(
                 self.bls12_381_g2_neg.mem.cost([args[0]]),
                 self.bls12_381_g2_neg.cpu.cost([args[0]]),
             )),
-            "bls12_381_g2_scalar_mul" => Some(ExBudget::new(
+            DefaultFunction::Bls12_381_G2_ScalarMul => Some(ExBudget::new(
                 self.bls12_381_g2_scalar_mul.mem.cost([args[0], args[1]]),
                 self.bls12_381_g2_scalar_mul.cpu.cost([args[0], args[1]]),
             )),
-            "bls12_381_g2_equal" => Some(ExBudget::new(
+            DefaultFunction::Bls12_381_G2_Equal => Some(ExBudget::new(
                 self.bls12_381_g2_equal.mem.cost([args[0], args[1]]),
                 self.bls12_381_g2_equal.cpu.cost([args[0], args[1]]),
             )),
-            "bls12_381_g2_compress" => Some(ExBudget::new(
+            DefaultFunction::Bls12_381_G2_Compress => Some(ExBudget::new(
                 self.bls12_381_g2_compress.mem.cost([args[0]]),
                 self.bls12_381_g2_compress.cpu.cost([args[0]]),
             )),
-            "bls12_381_g2_uncompress" => Some(ExBudget::new(
+            DefaultFunction::Bls12_381_G2_Uncompress => Some(ExBudget::new(
                 self.bls12_381_g2_uncompress.mem.cost([args[0]]),
                 self.bls12_381_g2_uncompress.cpu.cost([args[0]]),
             )),
-            "bls12_381_g2_hash_to_group" => Some(ExBudget::new(
+            DefaultFunction::Bls12_381_G2_HashToGroup => Some(ExBudget::new(
                 self.bls12_381_g2_hash_to_group.mem.cost([args[0], args[1]]),
                 self.bls12_381_g2_hash_to_group.cpu.cost([args[0], args[1]]),
             )),
-            "bls12_381_miller_loop" => Some(ExBudget::new(
+            DefaultFunction::Bls12_381_MillerLoop => Some(ExBudget::new(
                 self.bls12_381_miller_loop.mem.cost([args[0], args[1]]),
                 self.bls12_381_miller_loop.cpu.cost([args[0], args[1]]),
             )),
-            "bls12_381_mul_ml_result" => Some(ExBudget::new(
+            DefaultFunction::Bls12_381_MulMlResult => Some(ExBudget::new(
                 self.bls12_381_mul_ml_result.mem.cost([args[0], args[1]]),
                 self.bls12_381_mul_ml_result.cpu.cost([args[0], args[1]]),
             )),
-            "bls12_381_final_verify" => Some(ExBudget::new(
+            DefaultFunction::Bls12_381_FinalVerify => Some(ExBudget::new(
                 self.bls12_381_final_verify.mem.cost([args[0], args[1]]),
                 self.bls12_381_final_verify.cpu.cost([args[0], args[1]]),
             )),
-            "integer_to_byte_string" => Some(ExBudget::new(
+            DefaultFunction::IntegerToByteString => Some(ExBudget::new(
                 self.integer_to_byte_string
                     .mem
                     .cost([args[0], args[1], args[2]]),
@@ -1511,79 +1512,78 @@ impl BuiltinCostsV3 {
                     .cpu
                     .cost([args[0], args[1], args[2]]),
             )),
-            "byte_string_to_integer" => Some(ExBudget::new(
+            DefaultFunction::ByteStringToInteger => Some(ExBudget::new(
                 self.byte_string_to_integer.mem.cost([args[0], args[1]]),
                 self.byte_string_to_integer.cpu.cost([args[0], args[1]]),
             )),
-            "and_byte_string" => Some(ExBudget::new(
+            DefaultFunction::AndByteString => Some(ExBudget::new(
                 self.and_byte_string.mem.cost([args[0], args[1], args[2]]),
                 self.and_byte_string.cpu.cost([args[0], args[1], args[2]]),
             )),
-            "or_byte_string" => Some(ExBudget::new(
+            DefaultFunction::OrByteString => Some(ExBudget::new(
                 self.or_byte_string.mem.cost([args[0], args[1], args[2]]),
                 self.or_byte_string.cpu.cost([args[0], args[1], args[2]]),
             )),
-            "xor_byte_string" => Some(ExBudget::new(
+            DefaultFunction::XorByteString => Some(ExBudget::new(
                 self.xor_byte_string.mem.cost([args[0], args[1], args[2]]),
                 self.xor_byte_string.cpu.cost([args[0], args[1], args[2]]),
             )),
-            "complement_byte_string" => Some(ExBudget::new(
+            DefaultFunction::ComplementByteString => Some(ExBudget::new(
                 self.complement_byte_string.mem.cost([args[0]]),
                 self.complement_byte_string.cpu.cost([args[0]]),
             )),
-            "read_bit" => Some(ExBudget::new(
+            DefaultFunction::ReadBit => Some(ExBudget::new(
                 self.read_bit.mem.cost([args[0], args[1]]),
                 self.read_bit.cpu.cost([args[0], args[1]]),
             )),
-            "write_bits" => Some(ExBudget::new(
+            DefaultFunction::WriteBits => Some(ExBudget::new(
                 self.write_bits.mem.cost([args[0], args[1], args[2]]),
                 self.write_bits.cpu.cost([args[0], args[1], args[2]]),
             )),
-            "replicate_byte" => Some(ExBudget::new(
+            DefaultFunction::ReplicateByte => Some(ExBudget::new(
                 self.replicate_byte.mem.cost([args[0], args[1]]),
                 self.replicate_byte.cpu.cost([args[0], args[1]]),
             )),
-            "shift_byte_string" => Some(ExBudget::new(
+            DefaultFunction::ShiftByteString => Some(ExBudget::new(
                 self.shift_byte_string.mem.cost([args[0], args[1]]),
                 self.shift_byte_string.cpu.cost([args[0], args[1]]),
             )),
-            "rotate_byte_string" => Some(ExBudget::new(
+            DefaultFunction::RotateByteString => Some(ExBudget::new(
                 self.rotate_byte_string.mem.cost([args[0], args[1]]),
                 self.rotate_byte_string.cpu.cost([args[0], args[1]]),
             )),
-            "count_set_bits" => Some(ExBudget::new(
+            DefaultFunction::CountSetBits => Some(ExBudget::new(
                 self.count_set_bits.mem.cost([args[0]]),
                 self.count_set_bits.cpu.cost([args[0]]),
             )),
-            "find_first_set_bit" => Some(ExBudget::new(
+            DefaultFunction::FindFirstSetBit => Some(ExBudget::new(
                 self.find_first_set_bit.mem.cost([args[0]]),
                 self.find_first_set_bit.cpu.cost([args[0]]),
             )),
-            "ripemd_160" => Some(ExBudget::new(
+            DefaultFunction::Ripemd_160 => Some(ExBudget::new(
                 self.ripemd_160.mem.cost([args[0]]),
                 self.ripemd_160.cpu.cost([args[0]]),
             )),
-            "exp_mod_integer" => Some(ExBudget::new(
+            DefaultFunction::ExpModInteger => Some(ExBudget::new(
                 self.exp_mod_integer.mem.cost([args[0], args[1], args[2]]),
                 self.exp_mod_integer.cpu.cost([args[0], args[1], args[2]]),
             )),
-            "drop_list" => Some(ExBudget::new(
+            DefaultFunction::DropList => Some(ExBudget::new(
                 self.drop_list.mem.cost([args[0], args[1]]),
                 self.drop_list.cpu.cost([args[0], args[1]]),
             )),
-            "length_of_array" => Some(ExBudget::new(
+            DefaultFunction::LengthOfArray => Some(ExBudget::new(
                 self.length_of_array.mem.cost([args[0]]),
                 self.length_of_array.cpu.cost([args[0]]),
             )),
-            "list_to_array" => Some(ExBudget::new(
+            DefaultFunction::ListToArray => Some(ExBudget::new(
                 self.list_to_array.mem.cost([args[0], args[1]]),
                 self.list_to_array.cpu.cost([args[0], args[1]]),
             )),
-            "index_array" => Some(ExBudget::new(
+            DefaultFunction::IndexArray => Some(ExBudget::new(
                 self.index_array.mem.cost([args[0], args[1]]),
                 self.index_array.cpu.cost([args[0], args[1]]),
             )),
-            _ => None,
         }
     }
 }
