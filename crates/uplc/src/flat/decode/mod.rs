@@ -262,7 +262,7 @@ mod tests {
                     &Term::Constant(&Constant::Integer(&BigInt::from(129)))
                 );
             }
-            Err(e) => {
+            Err(_) => {
                 assert!(false);
             }
         }
