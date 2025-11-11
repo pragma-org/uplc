@@ -7,6 +7,7 @@ use crate::{
     builtin::DefaultFunction,
     constant::{self, Constant, Integer},
     data::PlutusData,
+    machine::cost_model::builtin_costs::BuiltinCostModel,
     typ::Type,
 };
 use bumpalo::{
@@ -98,7 +99,7 @@ where
     }
 }
 
-impl<'a> Machine<'a> {
+impl<'a, B: BuiltinCostModel> Machine<'a, B> {
     pub fn call<V>(
         &mut self,
         runtime: &'a Runtime<'a, V>,
