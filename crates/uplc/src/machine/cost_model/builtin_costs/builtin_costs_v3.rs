@@ -122,7 +122,7 @@ pub struct BuiltinCostsV3 {
     index_array: TwoArgumentsCosting,
 }
 
-impl BuiltinCostModel for BuiltinCostsV3 {
+impl Default for BuiltinCostsV3 {
     fn default() -> Self {
         Self {
             add_integer: TwoArgumentsCosting::new(
@@ -505,7 +505,9 @@ impl BuiltinCostModel for BuiltinCostsV3 {
             ),
         }
     }
+}
 
+impl BuiltinCostModel for BuiltinCostsV3 {
     fn initialize(cost_map: &CostMap) -> Self {
         Self {
             add_integer: TwoArgumentsCosting::new(

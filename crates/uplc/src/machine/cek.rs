@@ -2,7 +2,10 @@ use bumpalo::{collections::Vec as BumpVec, Bump};
 
 use crate::{
     binder::Eval,
-    machine::{context::Context, env::Env, state::MachineState},
+    machine::{
+        context::Context, cost_model::builtin_costs::BuiltinCostModel, env::Env,
+        state::MachineState,
+    },
     term::Term,
 };
 
@@ -15,21 +18,21 @@ use super::{
     CostModel, ExBudget, MachineError,
 };
 
-pub struct Machine<'a> {
+pub struct Machine<'a, B: BuiltinCostModel> {
     pub(super) arena: &'a Bump,
     ex_budget: ExBudget,
     unbudgeted_steps: [u8; 10],
-    pub(super) costs: CostModel,
+    pub(super) costs: CostModel<B>,
     slippage: u8,
     pub(super) logs: Vec<String>,
     pub(super) semantics: BuiltinSemantics,
 }
 
-impl<'a> Machine<'a> {
+impl<'a, B: BuiltinCostModel> Machine<'a, B> {
     pub fn new(
         arena: &'a Bump,
         initial_budget: ExBudget,
-        costs: CostModel,
+        costs: CostModel<B>,
         semantics: BuiltinSemantics,
     ) -> Self {
         Machine {
