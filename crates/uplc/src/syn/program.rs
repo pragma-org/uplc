@@ -16,6 +16,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Program<'a, DeBruijn>, Extra
         .map_with(|(version, term), e| {
             let state = e.state();
 
+            println!("Finish Parsing");
             Program::new(state.arena, version, term)
         })
 }
