@@ -1,85 +1,27 @@
-mod builtin_costs_v1;
-mod builtin_costs_v2;
-mod builtin_costs_v3;
+pub mod builtin_costs_v1;
+pub mod builtin_costs_v2;
+pub mod builtin_costs_v3;
 
 use crate::{
     builtin::DefaultFunction,
-    machine::{
-        cost_model::{
-            builtin_costs::{
-                builtin_costs_v1::BuiltinCostsV1, builtin_costs_v2::BuiltinCostsV2,
-                builtin_costs_v3::BuiltinCostsV3,
-            },
-            cost_map::CostMap,
-        },
-        ExBudget, PlutusVersion,
-    },
+    machine::{cost_model::cost_map::CostMap, ExBudget},
 };
 
 pub trait BuiltinCostModel {
-    fn default() -> Self;
     fn initialize(cost_map: &CostMap) -> Self;
     fn get_cost(&self, builtin: DefaultFunction, args: &[i64]) -> Option<ExBudget>;
 }
 
-#[derive(Debug, PartialEq)]
-pub enum CostsVersion {
-    V1(BuiltinCostsV1),
-    V2(BuiltinCostsV2),
-    V3(Box<BuiltinCostsV3>),
-}
-
-#[derive(Debug, PartialEq)]
-pub struct BuiltinCosts {
-    version: CostsVersion,
-}
-
-impl Default for BuiltinCosts {
-    fn default() -> Self {
-        Self::v3()
-    }
-}
-
-impl BuiltinCosts {
-    pub fn v1() -> Self {
-        BuiltinCosts {
-            version: CostsVersion::V1(BuiltinCostsV1::default()),
-        }
-    }
-    pub fn v2() -> Self {
-        BuiltinCosts {
-            version: CostsVersion::V2(BuiltinCostsV2::default()),
-        }
-    }
-    pub fn v3() -> Self {
-        BuiltinCosts {
-            version: CostsVersion::V3(Box::new(BuiltinCostsV3::default())),
-        }
-    }
-
-    pub fn initialize_builtin_costs(version: &PlutusVersion, cost_map: &CostMap) -> Self {
-        Self {
-            version: match version {
-                PlutusVersion::V1 => CostsVersion::V1(BuiltinCostsV1::initialize(cost_map)),
-                PlutusVersion::V2 => CostsVersion::V2(BuiltinCostsV2::initialize(cost_map)),
-                PlutusVersion::V3 => {
-                    CostsVersion::V3(Box::new(BuiltinCostsV3::initialize(cost_map)))
-                }
-            },
-        }
-    }
-
-    pub fn get_cost(&self, builtin: DefaultFunction, args: &[i64]) -> Option<ExBudget> {
-        match &self.version {
-            CostsVersion::V1(costs) => costs.get_cost(builtin, args),
-            CostsVersion::V2(costs) => costs.get_cost(builtin, args),
-            CostsVersion::V3(costs) => costs.get_cost(builtin, args),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
+    use crate::machine::{
+        cost_model::builtin_costs::{
+            builtin_costs_v1::BuiltinCostsV1, builtin_costs_v2::BuiltinCostsV2,
+            builtin_costs_v3::BuiltinCostsV3,
+        },
+        PlutusVersion,
+    };
+
     use super::*;
     use pretty_assertions::assert_eq;
 
@@ -102,10 +44,8 @@ mod tests {
         let cost_model = CostMap::new(&PlutusVersion::V1, &costs);
 
         assert_eq!(
-            BuiltinCosts {
-                version: CostsVersion::V1(BuiltinCostsV1::default())
-            },
-            BuiltinCosts::initialize_builtin_costs(&PlutusVersion::V1, &cost_model)
+            BuiltinCostsV1::default(),
+            BuiltinCostsV1::initialize(&cost_model)
         );
     }
 
@@ -128,10 +68,8 @@ mod tests {
         let cost_model = CostMap::new(&PlutusVersion::V2, &costs);
 
         assert_eq!(
-            BuiltinCosts {
-                version: CostsVersion::V2(BuiltinCostsV2::default())
-            },
-            BuiltinCosts::initialize_builtin_costs(&PlutusVersion::V2, &cost_model)
+            BuiltinCostsV2::default(),
+            BuiltinCostsV2::initialize(&cost_model)
         );
     }
 
@@ -163,10 +101,8 @@ mod tests {
         let cost_model = CostMap::new(&PlutusVersion::V3, &costs);
 
         assert_eq!(
-            BuiltinCosts {
-                version: CostsVersion::V3(Box::new(BuiltinCostsV3::default()))
-            },
-            BuiltinCosts::initialize_builtin_costs(&PlutusVersion::V3, &cost_model)
+            BuiltinCostsV3::default(),
+            BuiltinCostsV3::initialize(&cost_model)
         );
     }
 }

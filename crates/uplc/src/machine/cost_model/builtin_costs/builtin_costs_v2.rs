@@ -81,7 +81,7 @@ pub struct BuiltinCostsV2 {
     serialise_data: OneArgumentCosting,
 }
 
-impl BuiltinCostModel for BuiltinCostsV2 {
+impl Default for BuiltinCostsV2 {
     fn default() -> Self {
         Self {
             add_integer: TwoArgumentsCosting::new(
@@ -302,7 +302,8 @@ impl BuiltinCostModel for BuiltinCostsV2 {
             ),
         }
     }
-
+}
+impl BuiltinCostModel for BuiltinCostsV2 {
     fn initialize(cost_map: &CostMap) -> Self {
         Self {
             add_integer: TwoArgumentsCosting::new(

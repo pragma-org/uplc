@@ -2,7 +2,13 @@ use bumpalo::Bump;
 
 use crate::{
     binder::Eval,
-    machine::{BuiltinSemantics, CostModel, EvalResult, ExBudget, Machine, PlutusVersion},
+    machine::{
+        cost_model::builtin_costs::{
+            builtin_costs_v1::BuiltinCostsV1, builtin_costs_v2::BuiltinCostsV2,
+            builtin_costs_v3::BuiltinCostsV3, BuiltinCostModel,
+        },
+        BuiltinSemantics, CostModel, EvalResult, ExBudget, Machine, PlutusVersion,
+    },
     term::Term,
 };
 
@@ -40,18 +46,40 @@ where
         arena: &'a Bump,
         plutus_version: PlutusVersion,
     ) -> EvalResult<'a, V> {
+        match plutus_version {
+            PlutusVersion::V1 => self.evaluate(
+                arena,
+                CostModel::<BuiltinCostsV1>::default(),
+                plutus_version,
+            ),
+            PlutusVersion::V2 => self.evaluate(
+                arena,
+                CostModel::<BuiltinCostsV2>::default(),
+                plutus_version,
+            ),
+            PlutusVersion::V3 => self.evaluate(
+                arena,
+                CostModel::<BuiltinCostsV3>::default(),
+                plutus_version,
+            ),
+        }
+    }
+
+    fn evaluate<B: BuiltinCostModel>(
+        &'a self,
+        arena: &'a Bump,
+        cost_model: CostModel<B>,
+        plutus_version: PlutusVersion,
+    ) -> EvalResult<'a, V> {
         let mut machine = Machine::new(
             arena,
             ExBudget::default(),
-            CostModel::from(&plutus_version),
+            cost_model,
             BuiltinSemantics::from(&plutus_version),
         );
-
         let term = machine.run(self.term);
         let mut info = machine.info();
-
         info.consumed_budget = ExBudget::default() - info.consumed_budget;
-
         EvalResult { term, info }
     }
 
@@ -61,19 +89,23 @@ where
         plutus_version: PlutusVersion,
         cost_model: &[i64],
     ) -> EvalResult<'a, V> {
-        let mut machine = Machine::new(
-            arena,
-            ExBudget::default(),
-            CostModel::initialize_cost_model(&plutus_version, cost_model),
-            BuiltinSemantics::from(&plutus_version),
-        );
-
-        let term = machine.run(self.term);
-        let mut info = machine.info();
-
-        info.consumed_budget = ExBudget::default() - info.consumed_budget;
-
-        EvalResult { term, info }
+        match plutus_version {
+            PlutusVersion::V1 => self.evaluate(
+                arena,
+                CostModel::<BuiltinCostsV1>::initialize_cost_model(&plutus_version, cost_model),
+                plutus_version,
+            ),
+            PlutusVersion::V2 => self.evaluate(
+                arena,
+                CostModel::<BuiltinCostsV2>::initialize_cost_model(&plutus_version, cost_model),
+                plutus_version,
+            ),
+            PlutusVersion::V3 => self.evaluate(
+                arena,
+                CostModel::<BuiltinCostsV3>::initialize_cost_model(&plutus_version, cost_model),
+                plutus_version,
+            ),
+        }
     }
 }
 
