@@ -7,6 +7,7 @@ use crate::{
     builtin::DefaultFunction,
     constant::{self, Constant, Integer},
     data::PlutusData,
+    machine::cost_model::builtin_costs::BuiltinCostModel,
     typ::Type,
 };
 use bumpalo::{
@@ -97,7 +98,7 @@ where
     }
 }
 
-impl<'a> Machine<'a> {
+impl<'a, B: BuiltinCostModel> Machine<'a, B> {
     pub fn call<V>(
         &mut self,
         runtime: &'a Runtime<'a, V>,
@@ -110,10 +111,17 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_integer()?;
                 let arg2 = runtime.args[1].unwrap_integer()?;
 
-                let budget = self.costs.builtin_costs.add_integer([
-                    cost_model::integer_ex_mem(arg1),
-                    cost_model::integer_ex_mem(arg2),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::AddInteger,
+                        &[
+                            cost_model::integer_ex_mem(arg1),
+                            cost_model::integer_ex_mem(arg2),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -128,10 +136,17 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_integer()?;
                 let arg2 = runtime.args[1].unwrap_integer()?;
 
-                let budget = self.costs.builtin_costs.subtract_integer([
-                    cost_model::integer_ex_mem(arg1),
-                    cost_model::integer_ex_mem(arg2),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::SubtractInteger,
+                        &[
+                            cost_model::integer_ex_mem(arg1),
+                            cost_model::integer_ex_mem(arg2),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -147,10 +162,17 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_integer()?;
                 let arg2 = runtime.args[1].unwrap_integer()?;
 
-                let budget = self.costs.builtin_costs.equals_integer([
-                    cost_model::integer_ex_mem(arg1),
-                    cost_model::integer_ex_mem(arg2),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::EqualsInteger,
+                        &[
+                            cost_model::integer_ex_mem(arg1),
+                            cost_model::integer_ex_mem(arg2),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -164,10 +186,17 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_integer()?;
                 let arg2 = runtime.args[1].unwrap_integer()?;
 
-                let budget = self.costs.builtin_costs.less_than_equals_integer([
-                    cost_model::integer_ex_mem(arg1),
-                    cost_model::integer_ex_mem(arg2),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::LessThanEqualsInteger,
+                        &[
+                            cost_model::integer_ex_mem(arg1),
+                            cost_model::integer_ex_mem(arg2),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -181,10 +210,17 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_byte_string()?;
                 let arg2 = runtime.args[1].unwrap_byte_string()?;
 
-                let budget = self.costs.builtin_costs.append_byte_string([
-                    cost_model::byte_string_ex_mem(arg1),
-                    cost_model::byte_string_ex_mem(arg2),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::AppendByteString,
+                        &[
+                            cost_model::byte_string_ex_mem(arg1),
+                            cost_model::byte_string_ex_mem(arg2),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -203,10 +239,17 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_byte_string()?;
                 let arg2 = runtime.args[1].unwrap_byte_string()?;
 
-                let budget = self.costs.builtin_costs.equals_byte_string([
-                    cost_model::byte_string_ex_mem(arg1),
-                    cost_model::byte_string_ex_mem(arg2),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::EqualsByteString,
+                        &[
+                            cost_model::byte_string_ex_mem(arg1),
+                            cost_model::byte_string_ex_mem(arg2),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -220,11 +263,18 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_bool()?;
                 let arg2 = runtime.args[1];
                 let arg3 = runtime.args[2];
-                let budget = self.costs.builtin_costs.if_then_else([
-                    cost_model::BOOL_EX_MEM,
-                    cost_model::value_ex_mem(arg2),
-                    cost_model::value_ex_mem(arg3),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::IfThenElse,
+                        &[
+                            cost_model::BOOL_EX_MEM,
+                            cost_model::value_ex_mem(arg2),
+                            cost_model::value_ex_mem(arg3),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
                 self.spend_budget(budget)?;
 
                 if arg1 {
@@ -237,10 +287,17 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_integer()?;
                 let arg2 = runtime.args[1].unwrap_integer()?;
 
-                let budget = self.costs.builtin_costs.multiply_integer([
-                    cost_model::integer_ex_mem(arg1),
-                    cost_model::integer_ex_mem(arg2),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::MultiplyInteger,
+                        &[
+                            cost_model::integer_ex_mem(arg1),
+                            cost_model::integer_ex_mem(arg2),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -256,10 +313,17 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_integer()?;
                 let arg2 = runtime.args[1].unwrap_integer()?;
 
-                let budget = self.costs.builtin_costs.divide_integer([
-                    cost_model::integer_ex_mem(arg1),
-                    cost_model::integer_ex_mem(arg2),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::DivideInteger,
+                        &[
+                            cost_model::integer_ex_mem(arg1),
+                            cost_model::integer_ex_mem(arg2),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -279,10 +343,17 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_integer()?;
                 let arg2 = runtime.args[1].unwrap_integer()?;
 
-                let budget = self.costs.builtin_costs.quotient_integer([
-                    cost_model::integer_ex_mem(arg1),
-                    cost_model::integer_ex_mem(arg2),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::QuotientInteger,
+                        &[
+                            cost_model::integer_ex_mem(arg1),
+                            cost_model::integer_ex_mem(arg2),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -299,10 +370,17 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_integer()?;
                 let arg2 = runtime.args[1].unwrap_integer()?;
 
-                let budget = self.costs.builtin_costs.remainder_integer([
-                    cost_model::integer_ex_mem(arg1),
-                    cost_model::integer_ex_mem(arg2),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::RemainderInteger,
+                        &[
+                            cost_model::integer_ex_mem(arg1),
+                            cost_model::integer_ex_mem(arg2),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -319,10 +397,17 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_integer()?;
                 let arg2 = runtime.args[1].unwrap_integer()?;
 
-                let budget = self.costs.builtin_costs.mod_integer([
-                    cost_model::integer_ex_mem(arg1),
-                    cost_model::integer_ex_mem(arg2),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::ModInteger,
+                        &[
+                            cost_model::integer_ex_mem(arg1),
+                            cost_model::integer_ex_mem(arg2),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -340,10 +425,17 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_integer()?;
                 let arg2 = runtime.args[1].unwrap_integer()?;
 
-                let budget = self.costs.builtin_costs.less_than_integer([
-                    cost_model::integer_ex_mem(arg1),
-                    cost_model::integer_ex_mem(arg2),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::LessThanInteger,
+                        &[
+                            cost_model::integer_ex_mem(arg1),
+                            cost_model::integer_ex_mem(arg2),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -357,10 +449,17 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_integer()?;
                 let arg2 = runtime.args[1].unwrap_byte_string()?;
 
-                let budget = self.costs.builtin_costs.cons_byte_string([
-                    cost_model::integer_ex_mem(arg1),
-                    cost_model::byte_string_ex_mem(arg2),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::ConsByteString,
+                        &[
+                            cost_model::integer_ex_mem(arg1),
+                            cost_model::byte_string_ex_mem(arg2),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -396,11 +495,18 @@ impl<'a> Machine<'a> {
                 let arg2 = runtime.args[1].unwrap_integer()?;
                 let arg3 = runtime.args[2].unwrap_byte_string()?;
 
-                let budget = self.costs.builtin_costs.slice_byte_string([
-                    cost_model::integer_ex_mem(arg1),
-                    cost_model::integer_ex_mem(arg2),
-                    cost_model::byte_string_ex_mem(arg3),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::SliceByteString,
+                        &[
+                            cost_model::integer_ex_mem(arg1),
+                            cost_model::integer_ex_mem(arg2),
+                            cost_model::byte_string_ex_mem(arg3),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -436,7 +542,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .length_of_byte_string([cost_model::byte_string_ex_mem(arg1)]);
+                    .get_cost(
+                        DefaultFunction::LengthOfByteString,
+                        &[cost_model::byte_string_ex_mem(arg1)],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -451,10 +561,17 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_byte_string()?;
                 let arg2 = runtime.args[1].unwrap_integer()?;
 
-                let budget = self.costs.builtin_costs.index_byte_string([
-                    cost_model::byte_string_ex_mem(arg1),
-                    cost_model::integer_ex_mem(arg2),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::IndexByteString,
+                        &[
+                            cost_model::byte_string_ex_mem(arg1),
+                            cost_model::integer_ex_mem(arg2),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -474,10 +591,17 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_byte_string()?;
                 let arg2 = runtime.args[1].unwrap_byte_string()?;
 
-                let budget = self.costs.builtin_costs.less_than_byte_string([
-                    cost_model::byte_string_ex_mem(arg1),
-                    cost_model::byte_string_ex_mem(arg2),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::LessThanByteString,
+                        &[
+                            cost_model::byte_string_ex_mem(arg1),
+                            cost_model::byte_string_ex_mem(arg2),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -491,10 +615,17 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_byte_string()?;
                 let arg2 = runtime.args[1].unwrap_byte_string()?;
 
-                let budget = self.costs.builtin_costs.less_than_equals_byte_string([
-                    cost_model::byte_string_ex_mem(arg1),
-                    cost_model::byte_string_ex_mem(arg2),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::LessThanEqualsByteString,
+                        &[
+                            cost_model::byte_string_ex_mem(arg1),
+                            cost_model::byte_string_ex_mem(arg2),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -512,7 +643,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .sha2_256([cost_model::byte_string_ex_mem(arg1)]);
+                    .get_cost(
+                        DefaultFunction::Sha2_256,
+                        &[cost_model::byte_string_ex_mem(arg1)],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -542,7 +677,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .sha3_256([cost_model::byte_string_ex_mem(arg1)]);
+                    .get_cost(
+                        DefaultFunction::Sha3_256,
+                        &[cost_model::byte_string_ex_mem(arg1)],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -572,7 +711,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .blake2b_256([cost_model::byte_string_ex_mem(arg1)]);
+                    .get_cost(
+                        DefaultFunction::Blake2b_256,
+                        &[cost_model::byte_string_ex_mem(arg1)],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -601,7 +744,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .keccak_256([cost_model::byte_string_ex_mem(arg1)]);
+                    .get_cost(
+                        DefaultFunction::Keccak_256,
+                        &[cost_model::byte_string_ex_mem(arg1)],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -631,7 +778,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .blake2b_224([cost_model::byte_string_ex_mem(arg1)]);
+                    .get_cost(
+                        DefaultFunction::Blake2b_224,
+                        &[cost_model::byte_string_ex_mem(arg1)],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -659,11 +810,18 @@ impl<'a> Machine<'a> {
                 let message = runtime.args[1].unwrap_byte_string()?;
                 let signature = runtime.args[2].unwrap_byte_string()?;
 
-                let budget = self.costs.builtin_costs.verify_ed25519_signature([
-                    cost_model::byte_string_ex_mem(public_key),
-                    cost_model::byte_string_ex_mem(message),
-                    cost_model::byte_string_ex_mem(signature),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::VerifyEd25519Signature,
+                        &[
+                            cost_model::byte_string_ex_mem(public_key),
+                            cost_model::byte_string_ex_mem(message),
+                            cost_model::byte_string_ex_mem(signature),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -690,11 +848,18 @@ impl<'a> Machine<'a> {
                 let message = runtime.args[1].unwrap_byte_string()?;
                 let signature = runtime.args[2].unwrap_byte_string()?;
 
-                let budget = self.costs.builtin_costs.verify_ecdsa_secp256k1_signature([
-                    cost_model::byte_string_ex_mem(public_key),
-                    cost_model::byte_string_ex_mem(message),
-                    cost_model::byte_string_ex_mem(signature),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::VerifyEcdsaSecp256k1Signature,
+                        &[
+                            cost_model::byte_string_ex_mem(public_key),
+                            cost_model::byte_string_ex_mem(message),
+                            cost_model::byte_string_ex_mem(signature),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -725,11 +890,15 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .verify_schnorr_secp256k1_signature([
-                        cost_model::byte_string_ex_mem(public_key),
-                        cost_model::byte_string_ex_mem(message),
-                        cost_model::byte_string_ex_mem(signature),
-                    ]);
+                    .get_cost(
+                        DefaultFunction::VerifySchnorrSecp256k1Signature,
+                        &[
+                            cost_model::byte_string_ex_mem(public_key),
+                            cost_model::byte_string_ex_mem(message),
+                            cost_model::byte_string_ex_mem(signature),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -751,10 +920,17 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_string()?;
                 let arg2 = runtime.args[1].unwrap_string()?;
 
-                let budget = self.costs.builtin_costs.append_string([
-                    cost_model::string_ex_mem(arg1),
-                    cost_model::string_ex_mem(arg2),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::AppendString,
+                        &[
+                            cost_model::string_ex_mem(arg1),
+                            cost_model::string_ex_mem(arg2),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -773,10 +949,17 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_string()?;
                 let arg2 = runtime.args[1].unwrap_string()?;
 
-                let budget = self.costs.builtin_costs.equals_string([
-                    cost_model::string_ex_mem(arg1),
-                    cost_model::string_ex_mem(arg2),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::EqualsString,
+                        &[
+                            cost_model::string_ex_mem(arg1),
+                            cost_model::string_ex_mem(arg2),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -790,7 +973,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .encode_utf8([cost_model::string_ex_mem(arg1)]);
+                    .get_cost(
+                        DefaultFunction::EncodeUtf8,
+                        &[cost_model::string_ex_mem(arg1)],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -812,7 +999,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .decode_utf8([cost_model::byte_string_ex_mem(arg1)]);
+                    .get_cost(
+                        DefaultFunction::DecodeUtf8,
+                        &[cost_model::byte_string_ex_mem(arg1)],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -829,7 +1020,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .choose_unit([cost_model::UNIT_EX_MEM, cost_model::value_ex_mem(arg2)]);
+                    .get_cost(
+                        DefaultFunction::ChooseUnit,
+                        &[cost_model::UNIT_EX_MEM, cost_model::value_ex_mem(arg2)],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -839,10 +1034,17 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_string()?;
                 let arg2 = runtime.args[1];
 
-                let budget = self.costs.builtin_costs.trace([
-                    cost_model::string_ex_mem(arg1),
-                    cost_model::value_ex_mem(arg2),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::Trace,
+                        &[
+                            cost_model::string_ex_mem(arg1),
+                            cost_model::value_ex_mem(arg2),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -856,7 +1058,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .fst_pair([cost_model::pair_ex_mem(first, second)]);
+                    .get_cost(
+                        DefaultFunction::FstPair,
+                        &[cost_model::pair_ex_mem(first, second)],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -870,7 +1076,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .snd_pair([cost_model::pair_ex_mem(first, second)]);
+                    .get_cost(
+                        DefaultFunction::SndPair,
+                        &[cost_model::pair_ex_mem(first, second)],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -883,11 +1093,18 @@ impl<'a> Machine<'a> {
                 let arg2 = runtime.args[1];
                 let arg3 = runtime.args[2];
 
-                let budget = self.costs.builtin_costs.choose_list([
-                    cost_model::proto_list_ex_mem(list),
-                    cost_model::value_ex_mem(arg2),
-                    cost_model::value_ex_mem(arg3),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::ChooseList,
+                        &[
+                            cost_model::proto_list_ex_mem(list),
+                            cost_model::value_ex_mem(arg2),
+                            cost_model::value_ex_mem(arg3),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -901,10 +1118,17 @@ impl<'a> Machine<'a> {
                 let item = runtime.args[0].unwrap_constant()?;
                 let (typ, list) = runtime.args[1].unwrap_list()?;
 
-                let budget = self.costs.builtin_costs.mk_cons([
-                    cost_model::constant_ex_mem(item),
-                    cost_model::proto_list_ex_mem(list),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::MkCons,
+                        &[
+                            cost_model::constant_ex_mem(item),
+                            cost_model::proto_list_ex_mem(list),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -932,7 +1156,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .head_list([cost_model::proto_list_ex_mem(list)]);
+                    .get_cost(
+                        DefaultFunction::HeadList,
+                        &[cost_model::proto_list_ex_mem(list)],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -950,7 +1178,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .tail_list([cost_model::proto_list_ex_mem(list)]);
+                    .get_cost(
+                        DefaultFunction::TailList,
+                        &[cost_model::proto_list_ex_mem(list)],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -970,7 +1202,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .null_list([cost_model::proto_list_ex_mem(list)]);
+                    .get_cost(
+                        DefaultFunction::NullList,
+                        &[cost_model::proto_list_ex_mem(list)],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -986,14 +1222,21 @@ impl<'a> Machine<'a> {
                 let arg5 = runtime.args[4];
                 let arg6 = runtime.args[5];
 
-                let budget = self.costs.builtin_costs.choose_data([
-                    cost_model::data_ex_mem(arg1),
-                    cost_model::value_ex_mem(arg2),
-                    cost_model::value_ex_mem(arg3),
-                    cost_model::value_ex_mem(arg4),
-                    cost_model::value_ex_mem(arg5),
-                    cost_model::value_ex_mem(arg6),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::ChooseData,
+                        &[
+                            cost_model::data_ex_mem(arg1),
+                            cost_model::value_ex_mem(arg2),
+                            cost_model::value_ex_mem(arg3),
+                            cost_model::value_ex_mem(arg4),
+                            cost_model::value_ex_mem(arg5),
+                            cost_model::value_ex_mem(arg6),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -1009,10 +1252,17 @@ impl<'a> Machine<'a> {
                 let tag = runtime.args[0].unwrap_integer()?;
                 let (typ, fields) = runtime.args[1].unwrap_list()?;
 
-                let budget = self.costs.builtin_costs.constr_data([
-                    cost_model::integer_ex_mem(tag),
-                    cost_model::proto_list_ex_mem(fields),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::ConstrData,
+                        &[
+                            cost_model::integer_ex_mem(tag),
+                            cost_model::proto_list_ex_mem(fields),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -1058,7 +1308,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .map_data([cost_model::proto_list_ex_mem(list)]);
+                    .get_cost(
+                        DefaultFunction::MapData,
+                        &[cost_model::proto_list_ex_mem(list)],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -1094,7 +1348,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .list_data([cost_model::proto_list_ex_mem(fields)]);
+                    .get_cost(
+                        DefaultFunction::ListData,
+                        &[cost_model::proto_list_ex_mem(fields)],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -1126,7 +1384,8 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .i_data([cost_model::integer_ex_mem(i)]);
+                    .get_cost(DefaultFunction::IData, &[cost_model::integer_ex_mem(i)])
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -1142,7 +1401,8 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .b_data([cost_model::byte_string_ex_mem(b)]);
+                    .get_cost(DefaultFunction::BData, &[cost_model::byte_string_ex_mem(b)])
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -1161,7 +1421,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .un_constr_data([cost_model::data_list_ex_mem(fields)]);
+                    .get_cost(
+                        DefaultFunction::UnConstrData,
+                        &[cost_model::data_list_ex_mem(fields)],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -1192,7 +1456,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .un_map_data([cost_model::data_map_ex_mem(map)]);
+                    .get_cost(
+                        DefaultFunction::UnMapData,
+                        &[cost_model::data_map_ex_mem(map)],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -1229,7 +1497,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .un_list_data([cost_model::data_list_ex_mem(list)]);
+                    .get_cost(
+                        DefaultFunction::UnListData,
+                        &[cost_model::data_list_ex_mem(list)],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -1254,7 +1526,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .un_i_data([cost_model::data_integer_ex_mem(i)]);
+                    .get_cost(
+                        DefaultFunction::UnIData,
+                        &[cost_model::data_integer_ex_mem(i)],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -1271,7 +1547,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .un_b_data([cost_model::data_byte_string_ex_mem(bs)]);
+                    .get_cost(
+                        DefaultFunction::UnBData,
+                        &[cost_model::data_byte_string_ex_mem(bs)],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -1286,7 +1566,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .equals_data([cost_model::data_ex_mem(d1), cost_model::data_ex_mem(d2)]);
+                    .get_cost(
+                        DefaultFunction::EqualsData,
+                        &[cost_model::data_ex_mem(d1), cost_model::data_ex_mem(d2)],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -1302,7 +1586,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .mk_pair_data([cost_model::data_ex_mem(d1), cost_model::data_ex_mem(d2)]);
+                    .get_cost(
+                        DefaultFunction::MkPairData,
+                        &[cost_model::data_ex_mem(d1), cost_model::data_ex_mem(d2)],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -1324,7 +1612,8 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .mk_nil_data([cost_model::UNIT_EX_MEM]);
+                    .get_cost(DefaultFunction::MkNilData, &[cost_model::UNIT_EX_MEM])
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -1343,7 +1632,8 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .mk_nil_pair_data([cost_model::UNIT_EX_MEM]);
+                    .get_cost(DefaultFunction::MkNilPairData, &[cost_model::UNIT_EX_MEM])
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -1364,10 +1654,17 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_bls12_381_g1_element()?;
                 let arg2 = runtime.args[1].unwrap_bls12_381_g1_element()?;
 
-                let budget = self.costs.builtin_costs.bls12_381_g1_add([
-                    cost_model::g1_element_ex_mem(),
-                    cost_model::g1_element_ex_mem(),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::Bls12_381_G1_Add,
+                        &[
+                            cost_model::g1_element_ex_mem(),
+                            cost_model::g1_element_ex_mem(),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -1389,7 +1686,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .bls12_381_g1_neg([cost_model::g1_element_ex_mem()]);
+                    .get_cost(
+                        DefaultFunction::Bls12_381_G1_Neg,
+                        &[cost_model::g1_element_ex_mem()],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -1410,10 +1711,17 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_integer()?;
                 let arg2 = runtime.args[1].unwrap_bls12_381_g1_element()?;
 
-                let budget = self.costs.builtin_costs.bls12_381_g1_scalar_mul([
-                    cost_model::integer_ex_mem(arg1),
-                    cost_model::g1_element_ex_mem(),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::Bls12_381_G1_ScalarMul,
+                        &[
+                            cost_model::integer_ex_mem(arg1),
+                            cost_model::g1_element_ex_mem(),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -1456,10 +1764,17 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_bls12_381_g1_element()?;
                 let arg2 = runtime.args[1].unwrap_bls12_381_g1_element()?;
 
-                let budget = self.costs.builtin_costs.bls12_381_g1_equal([
-                    cost_model::g1_element_ex_mem(),
-                    cost_model::g1_element_ex_mem(),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::Bls12_381_G1_Equal,
+                        &[
+                            cost_model::g1_element_ex_mem(),
+                            cost_model::g1_element_ex_mem(),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -1475,7 +1790,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .bls12_381_g1_compress([cost_model::g1_element_ex_mem()]);
+                    .get_cost(
+                        DefaultFunction::Bls12_381_G1_Compress,
+                        &[cost_model::g1_element_ex_mem()],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -1491,7 +1810,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .bls12_381_g1_uncompress([cost_model::byte_string_ex_mem(arg1)]);
+                    .get_cost(
+                        DefaultFunction::Bls12_381_G1_Uncompress,
+                        &[cost_model::byte_string_ex_mem(arg1)],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -1507,10 +1830,17 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_byte_string()?;
                 let arg2 = runtime.args[1].unwrap_byte_string()?;
 
-                let budget = self.costs.builtin_costs.bls12_381_g1_hash_to_group([
-                    cost_model::byte_string_ex_mem(arg1),
-                    cost_model::byte_string_ex_mem(arg2),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::Bls12_381_G1_HashToGroup,
+                        &[
+                            cost_model::byte_string_ex_mem(arg1),
+                            cost_model::byte_string_ex_mem(arg2),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -1543,10 +1873,17 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_bls12_381_g2_element()?;
                 let arg2 = runtime.args[1].unwrap_bls12_381_g2_element()?;
 
-                let budget = self.costs.builtin_costs.bls12_381_g2_add([
-                    cost_model::g2_element_ex_mem(),
-                    cost_model::g2_element_ex_mem(),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::Bls12_381_G2_Add,
+                        &[
+                            cost_model::g2_element_ex_mem(),
+                            cost_model::g2_element_ex_mem(),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -1568,7 +1905,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .bls12_381_g2_neg([cost_model::g2_element_ex_mem()]);
+                    .get_cost(
+                        DefaultFunction::Bls12_381_G2_Neg,
+                        &[cost_model::g2_element_ex_mem()],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -1589,10 +1930,17 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_integer()?;
                 let arg2 = runtime.args[1].unwrap_bls12_381_g2_element()?;
 
-                let budget = self.costs.builtin_costs.bls12_381_g2_scalar_mul([
-                    cost_model::integer_ex_mem(arg1),
-                    cost_model::g2_element_ex_mem(),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::Bls12_381_G2_ScalarMul,
+                        &[
+                            cost_model::integer_ex_mem(arg1),
+                            cost_model::g2_element_ex_mem(),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -1639,10 +1987,17 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_bls12_381_g2_element()?;
                 let arg2 = runtime.args[1].unwrap_bls12_381_g2_element()?;
 
-                let budget = self.costs.builtin_costs.bls12_381_g2_equal([
-                    cost_model::g2_element_ex_mem(),
-                    cost_model::g2_element_ex_mem(),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::Bls12_381_G2_Equal,
+                        &[
+                            cost_model::g2_element_ex_mem(),
+                            cost_model::g2_element_ex_mem(),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -1658,7 +2013,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .bls12_381_g2_compress([cost_model::g2_element_ex_mem()]);
+                    .get_cost(
+                        DefaultFunction::Bls12_381_G2_Compress,
+                        &[cost_model::g2_element_ex_mem()],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -1674,7 +2033,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .bls12_381_g2_uncompress([cost_model::byte_string_ex_mem(arg1)]);
+                    .get_cost(
+                        DefaultFunction::Bls12_381_G2_Uncompress,
+                        &[cost_model::byte_string_ex_mem(arg1)],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -1690,10 +2053,17 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_byte_string()?;
                 let arg2 = runtime.args[1].unwrap_byte_string()?;
 
-                let budget = self.costs.builtin_costs.bls12_381_g2_hash_to_group([
-                    cost_model::byte_string_ex_mem(arg1),
-                    cost_model::byte_string_ex_mem(arg2),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::Bls12_381_G2_HashToGroup,
+                        &[
+                            cost_model::byte_string_ex_mem(arg1),
+                            cost_model::byte_string_ex_mem(arg2),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -1726,10 +2096,17 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_bls12_381_g1_element()?;
                 let arg2 = runtime.args[1].unwrap_bls12_381_g2_element()?;
 
-                let budget = self.costs.builtin_costs.bls12_381_miller_loop([
-                    cost_model::g1_element_ex_mem(),
-                    cost_model::g2_element_ex_mem(),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::Bls12_381_MillerLoop,
+                        &[
+                            cost_model::g1_element_ex_mem(),
+                            cost_model::g2_element_ex_mem(),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -1755,10 +2132,17 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_bls12_381_ml_result()?;
                 let arg2 = runtime.args[1].unwrap_bls12_381_ml_result()?;
 
-                let budget = self.costs.builtin_costs.bls12_381_mul_ml_result([
-                    cost_model::ml_result_ex_mem(),
-                    cost_model::ml_result_ex_mem(),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::Bls12_381_MulMlResult,
+                        &[
+                            cost_model::ml_result_ex_mem(),
+                            cost_model::ml_result_ex_mem(),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -1778,10 +2162,17 @@ impl<'a> Machine<'a> {
                 let arg1 = runtime.args[0].unwrap_bls12_381_ml_result()?;
                 let arg2 = runtime.args[1].unwrap_bls12_381_ml_result()?;
 
-                let budget = self.costs.builtin_costs.bls12_381_final_verify([
-                    cost_model::ml_result_ex_mem(),
-                    cost_model::ml_result_ex_mem(),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::Bls12_381_FinalVerify,
+                        &[
+                            cost_model::ml_result_ex_mem(),
+                            cost_model::ml_result_ex_mem(),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -1811,11 +2202,18 @@ impl<'a> Machine<'a> {
 
                 let arg1_exmem = if arg1 == 0 { 0 } else { ((arg1 - 1) / 8) + 1 };
 
-                let budget = self.costs.builtin_costs.integer_to_byte_string([
-                    cost_model::BOOL_EX_MEM,
-                    arg1_exmem,
-                    cost_model::integer_ex_mem(input),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::IntegerToByteString,
+                        &[
+                            cost_model::BOOL_EX_MEM,
+                            arg1_exmem,
+                            cost_model::integer_ex_mem(input),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -1903,10 +2301,17 @@ impl<'a> Machine<'a> {
                 let endianness = runtime.args[0].unwrap_bool()?;
                 let bytes = runtime.args[1].unwrap_byte_string()?;
 
-                let budget = self.costs.builtin_costs.byte_string_to_integer([
-                    cost_model::BOOL_EX_MEM,
-                    cost_model::byte_string_ex_mem(bytes),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::ByteStringToInteger,
+                        &[
+                            cost_model::BOOL_EX_MEM,
+                            cost_model::byte_string_ex_mem(bytes),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -1927,11 +2332,18 @@ impl<'a> Machine<'a> {
                 let left_bytes = runtime.args[1].unwrap_byte_string()?;
                 let right_bytes = runtime.args[2].unwrap_byte_string()?;
 
-                let budget = self.costs.builtin_costs.and_byte_string([
-                    cost_model::BOOL_EX_MEM,
-                    cost_model::byte_string_ex_mem(left_bytes),
-                    cost_model::byte_string_ex_mem(right_bytes),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::AndByteString,
+                        &[
+                            cost_model::BOOL_EX_MEM,
+                            cost_model::byte_string_ex_mem(left_bytes),
+                            cost_model::byte_string_ex_mem(right_bytes),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -1960,11 +2372,18 @@ impl<'a> Machine<'a> {
                 let left_bytes = runtime.args[1].unwrap_byte_string()?;
                 let right_bytes = runtime.args[2].unwrap_byte_string()?;
 
-                let budget = self.costs.builtin_costs.or_byte_string([
-                    cost_model::BOOL_EX_MEM,
-                    cost_model::byte_string_ex_mem(left_bytes),
-                    cost_model::byte_string_ex_mem(right_bytes),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::OrByteString,
+                        &[
+                            cost_model::BOOL_EX_MEM,
+                            cost_model::byte_string_ex_mem(left_bytes),
+                            cost_model::byte_string_ex_mem(right_bytes),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -1995,11 +2414,18 @@ impl<'a> Machine<'a> {
                 let left_bytes = runtime.args[1].unwrap_byte_string()?;
                 let right_bytes = runtime.args[2].unwrap_byte_string()?;
 
-                let budget = self.costs.builtin_costs.or_byte_string([
-                    cost_model::BOOL_EX_MEM,
-                    cost_model::byte_string_ex_mem(left_bytes),
-                    cost_model::byte_string_ex_mem(right_bytes),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::OrByteString,
+                        &[
+                            cost_model::BOOL_EX_MEM,
+                            cost_model::byte_string_ex_mem(left_bytes),
+                            cost_model::byte_string_ex_mem(right_bytes),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -2031,7 +2457,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .complement_byte_string([cost_model::byte_string_ex_mem(bytes)]);
+                    .get_cost(
+                        DefaultFunction::ComplementByteString,
+                        &[cost_model::byte_string_ex_mem(bytes)],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
                 self.spend_budget(budget)?;
 
                 let result = self
@@ -2044,10 +2474,17 @@ impl<'a> Machine<'a> {
                 let bytes = runtime.args[0].unwrap_byte_string()?;
                 let bit_index = runtime.args[1].unwrap_integer()?;
 
-                let budget = self.costs.builtin_costs.read_bit([
-                    cost_model::byte_string_ex_mem(bytes),
-                    cost_model::integer_ex_mem(bit_index),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::ReadBit,
+                        &[
+                            cost_model::byte_string_ex_mem(bytes),
+                            cost_model::integer_ex_mem(bit_index),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -2077,11 +2514,18 @@ impl<'a> Machine<'a> {
                 let indices = runtime.args[1].unwrap_int_list()?;
                 let set_bit = runtime.args[2].unwrap_bool()?;
 
-                let budget = self.costs.builtin_costs.write_bits([
-                    cost_model::byte_string_ex_mem(bytes.as_slice()),
-                    cost_model::proto_list_ex_mem(indices),
-                    cost_model::BOOL_EX_MEM,
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::WriteBits,
+                        &[
+                            cost_model::byte_string_ex_mem(bytes.as_slice()),
+                            cost_model::proto_list_ex_mem(indices),
+                            cost_model::BOOL_EX_MEM,
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -2135,7 +2579,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .replicate_byte([arg0_ex_mem, cost_model::integer_ex_mem(byte)]);
+                    .get_cost(
+                        DefaultFunction::ReplicateByte,
+                        &[arg0_ex_mem, cost_model::integer_ex_mem(byte)],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -2181,7 +2629,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .shift_byte_string([cost_model::byte_string_ex_mem(bytes), arg1]);
+                    .get_cost(
+                        DefaultFunction::ShiftByteString,
+                        &[cost_model::byte_string_ex_mem(bytes), arg1],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
                 self.spend_budget(budget)?;
 
                 let length = bytes.len();
@@ -2268,7 +2720,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .rotate_byte_string([cost_model::byte_string_ex_mem(bytes), arg1]);
+                    .get_cost(
+                        DefaultFunction::RotateByteString,
+                        &[cost_model::byte_string_ex_mem(bytes), arg1],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
                 self.spend_budget(budget)?;
 
                 let length = bytes.len();
@@ -2332,7 +2788,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .count_set_bits([cost_model::byte_string_ex_mem(bytes)]);
+                    .get_cost(
+                        DefaultFunction::CountSetBits,
+                        &[cost_model::byte_string_ex_mem(bytes)],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
                 self.spend_budget(budget)?;
 
                 let weight: Integer = hamming::weight(bytes).into();
@@ -2345,7 +2805,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .find_first_set_bit([cost_model::byte_string_ex_mem(bytes)]);
+                    .get_cost(
+                        DefaultFunction::FindFirstSetBit,
+                        &[cost_model::byte_string_ex_mem(bytes)],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
                 self.spend_budget(budget)?;
 
                 let first_bit = bytes
@@ -2372,7 +2836,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .ripemd_160([cost_model::byte_string_ex_mem(input)]);
+                    .get_cost(
+                        DefaultFunction::Ripemd_160,
+                        &[cost_model::byte_string_ex_mem(input)],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
                 self.spend_budget(budget)?;
 
                 let mut hasher = Ripemd160::new();
@@ -2387,11 +2855,18 @@ impl<'a> Machine<'a> {
                 let exponent = runtime.args[1].unwrap_integer()?;
                 let modulus = runtime.args[2].unwrap_integer()?;
 
-                let budget = self.costs.builtin_costs.exp_mod_integer([
-                    cost_model::integer_ex_mem(base),
-                    cost_model::integer_ex_mem(exponent),
-                    cost_model::integer_ex_mem(modulus),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::ExpModInteger,
+                        &[
+                            cost_model::integer_ex_mem(base),
+                            cost_model::integer_ex_mem(exponent),
+                            cost_model::integer_ex_mem(modulus),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
                 self.spend_budget(budget)?;
 
                 if modulus <= &Integer::ZERO {
@@ -2422,7 +2897,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .drop_list([arg0, cost_model::proto_list_ex_mem(list)]);
+                    .get_cost(
+                        DefaultFunction::DropList,
+                        &[arg0, cost_model::proto_list_ex_mem(list)],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -2455,7 +2934,11 @@ impl<'a> Machine<'a> {
                 let budget = self
                     .costs
                     .builtin_costs
-                    .length_of_array([cost_model::proto_list_ex_mem(array)]);
+                    .get_cost(
+                        DefaultFunction::LengthOfArray,
+                        &[cost_model::proto_list_ex_mem(array)],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -2468,10 +2951,17 @@ impl<'a> Machine<'a> {
             DefaultFunction::ListToArray => {
                 let (list_type, list) = runtime.args[0].unwrap_list()?;
 
-                let budget = self.costs.builtin_costs.list_to_array([
-                    cost_model::proto_list_ex_mem(list),
-                    cost_model::proto_list_ex_mem(list),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::ListToArray,
+                        &[
+                            cost_model::proto_list_ex_mem(list),
+                            cost_model::proto_list_ex_mem(list),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
 
                 self.spend_budget(budget)?;
 
@@ -2485,10 +2975,17 @@ impl<'a> Machine<'a> {
                 let (_, array) = runtime.args[0].unwrap_array()?;
                 let arg1 = runtime.args[1].unwrap_integer()?;
 
-                let budget = self.costs.builtin_costs.index_array([
-                    cost_model::proto_list_ex_mem(array),
-                    cost_model::integer_ex_mem(arg1),
-                ]);
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::IndexArray,
+                        &[
+                            cost_model::proto_list_ex_mem(array),
+                            cost_model::integer_ex_mem(arg1),
+                        ],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
                 self.spend_budget(budget)?;
 
                 let index: i128 = arg1.try_into().unwrap();

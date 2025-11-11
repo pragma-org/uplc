@@ -40,6 +40,8 @@ where
     Runtime(RuntimeError<'a>),
     #[error("Max constr tag exceeded")]
     MaxConstrTagExceeded(&'a Value<'a, V>),
+    #[error("Unknown builtin function")]
+    UnknownBuiltinFunction,
 }
 
 #[derive(thiserror::Error, Debug)]

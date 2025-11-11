@@ -303,9 +303,6 @@ impl<C> minicbor::encode::Encode<C> for PlutusData<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::binder::DeBruijn;
-    use crate::flat::decode;
-    use bumpalo::Bump;
 
     #[test]
     fn encode_empty_record() {
@@ -314,7 +311,7 @@ mod tests {
             fields: &[],
         };
         let mut v = vec![];
-        minicbor::encode(d, &mut v);
+        minicbor::encode(d, &mut v).expect("invalid PlutusData");
         assert_eq!(hex::encode(v), "d87980");
     }
 
@@ -327,7 +324,7 @@ mod tests {
             fields: &[&b1, &b2],
         };
         let mut v = vec![];
-        minicbor::encode(d, &mut v);
+        minicbor::encode(d, &mut v).expect("invalid PlutusData");
         assert_eq!(hex::encode(v), "d87a9f4100420001ff");
     }
 
@@ -340,7 +337,7 @@ mod tests {
             fields: &[&PlutusData::Integer(&zero), &PlutusData::Integer(&one)],
         };
         let mut v = vec![];
-        minicbor::encode(d, &mut v);
+        minicbor::encode(d, &mut v).expect("invalid PlutusData");
         assert_eq!(hex::encode(v), "d8668218809f0001ff");
     }
 
@@ -355,7 +352,7 @@ mod tests {
             fields: &[&PlutusData::Integer(&big)],
         };
         let mut v = vec![];
-        minicbor::encode(d, &mut v);
+        minicbor::encode(d, &mut v).expect("invalid PlutusData");
         assert_eq!(hex::encode(v), "d8799fc24c033b2e3c9fd0803ce7ffffffff");
     }
 
@@ -369,7 +366,7 @@ mod tests {
             fields: &[&PlutusData::List(&list)],
         };
         let mut v = vec![];
-        minicbor::encode(d, &mut v);
+        minicbor::encode(d, &mut v).expect("invalid PlutusData");
         assert_eq!(hex::encode(v), "d8799f9f0001ffff");
     }
 }
