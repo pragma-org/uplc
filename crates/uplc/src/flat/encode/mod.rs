@@ -289,12 +289,12 @@ mod tests {
                     Ok(roundtripped) => {
                         assert_eq!(bytes_hex, hex::encode(roundtripped));
                     }
-                    Err(e) => {
+                    Err(_) => {
                         assert!(false);
                     }
                 }
             }
-            Err(e) => {
+            Err(_) => {
                 assert!(false);
             }
         }
@@ -320,7 +320,6 @@ mod tests {
         //   ])
         let bytes_hex =
             "0101003370090011bad357426aae78dd526112d8799fc24c033b2e3c9fd0803ce7ffffffff0001";
-        let bytes = hex::decode(bytes_hex).unwrap();
         let bytes = hex::decode(&bytes_hex).unwrap();
         let arena = Bump::new();
         let program: Result<&Program<DeBruijn>, _> = decode(&arena, &bytes);
@@ -361,7 +360,6 @@ mod tests {
         //     ]
         //   ])
         let bytes_hex = "0101003370490021bad357426ae88dd62601049f070eff0001";
-        let bytes = hex::decode(bytes_hex).unwrap();
         let bytes = hex::decode(&bytes_hex).unwrap();
         let arena = Bump::new();
         let program: Result<&Program<DeBruijn>, _> = decode(&arena, &bytes);

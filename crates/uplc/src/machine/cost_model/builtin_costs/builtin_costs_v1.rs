@@ -78,7 +78,7 @@ pub struct BuiltinCostsV1 {
     mk_nil_pair_data: OneArgumentCosting,
 }
 
-impl BuiltinCostModel for BuiltinCostsV1 {
+impl Default for BuiltinCostsV1 {
     fn default() -> Self {
         Self {
             add_integer: TwoArgumentsCosting::new(
@@ -287,6 +287,9 @@ impl BuiltinCostModel for BuiltinCostsV1 {
             ),
         }
     }
+}
+
+impl BuiltinCostModel for BuiltinCostsV1 {
     fn initialize(cost_map: &CostMap) -> Self {
         Self {
             add_integer: TwoArgumentsCosting::new(
