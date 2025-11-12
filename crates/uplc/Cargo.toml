@@ -26,7 +26,7 @@ secp256k1 = "0.30.0"
 thiserror = "1.0.63"
 
 [dev-dependencies]
-criterion = { version = "0.5.1", features = ["html_reports"] }
+criterion = { version = "0.7.0", features = ["html_reports"] }
 insta = "1.40.0"
 itertools = "0.13.0"
 ouroboros = "0.18.4"
