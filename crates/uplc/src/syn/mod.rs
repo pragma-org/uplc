@@ -1,5 +1,5 @@
 use bumpalo::Bump;
-use chumsky::{ParseResult, Parser, extra::SimpleState, prelude::*};
+use chumsky::{extra::SimpleState, prelude::*, ParseResult, Parser};
 
 mod constant;
 mod data;
