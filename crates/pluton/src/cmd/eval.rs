@@ -1,7 +1,7 @@
 use std::io::{self, Read};
 
 use miette::IntoDiagnostic;
-use uplc_turbo::{machine::PlutusVersion};
+use uplc_turbo::machine::PlutusVersion;
 
 #[derive(clap::Args)]
 pub struct Args {
