@@ -123,8 +123,52 @@ where
     }
 }
 
+fn type_from_tags<'a>(ctx: &Ctx<'a>, tags: &[u8]) -> Result<Option<(&'a Type<'a>, usize)>, FlatDecodeError> {
+    match tags {
+        [tag::INTEGER, ..] => Ok(Some((Type::integer(ctx.arena), 1))),
+        [tag::BYTE_STRING, ..] => Ok(Some((Type::byte_string(ctx.arena), 1))),
+        [tag::STRING, ..] => Ok(Some((Type::string(ctx.arena), 1))),
+        [tag::UNIT, ..] => Ok(Some((Type::unit(ctx.arena), 1))),
+        [tag::BOOL, ..] => Ok(Some((Type::bool(ctx.arena), 1))),
+        [tag::DATA, ..] => Ok(Some((Type::data(ctx.arena), 1))),
+        [tag::PROTO_LIST_ONE, tag::PROTO_LIST_TWO, rest @ ..] => {
+            if let Some((sub_typ, consumed)) = type_from_tags(ctx, rest)? {
+                Ok(Some((Type::list(ctx.arena, sub_typ), 2 + consumed)))
+            } else {
+                Ok(None)
+            }
+        }
+        [tag::PROTO_ARRAY_ONE, tag::PROTO_ARRAY_TWO, rest @ ..] => {
+            if let Some((sub_typ, consumed)) = type_from_tags(ctx, rest)? {
+                Ok(Some((Type::array(ctx.arena, sub_typ), 2 + consumed)))
+            } else {
+                Ok(None)
+            }
+        }
+        [tag::PROTO_PAIR_ONE, tag::PROTO_PAIR_TWO, tag::PROTO_PAIR_THREE, rest @ ..] => {
+            if let Some((sub_typ1, consumed1)) = type_from_tags(ctx, rest)? {
+                let rest2 = &rest[consumed1..];
+                if let Some((sub_typ2, consumed2)) = type_from_tags(ctx, rest2)? {
+                    Ok(Some((Type::pair(ctx.arena, sub_typ1, sub_typ2), 3 + consumed1 + consumed2)))
+                } else {
+                    Ok(None)
+                }
+            } else {
+                Ok(None)
+            }
+        }
+        [] => Ok(None),
+        _ => Ok(None),
+    }
+}
+
 fn decode_type<'a>(ctx: &mut Ctx<'a>, d: &mut Decoder) -> Result<&'a Type<'a>, FlatDecodeError> {
     let tag = decode_constant_tags(ctx, d)?;
+
+    // Try to interpret all tags as a complete type first
+    if let Some((typ, _consumed)) = type_from_tags(ctx, tag.as_slice())? {
+        return Ok(typ);
+    }
 
     match &tag.as_slice() {
         [tag::INTEGER] => Ok(Type::integer(ctx.arena)),
@@ -139,9 +183,6 @@ fn decode_type<'a>(ctx: &mut Ctx<'a>, d: &mut Decoder) -> Result<&'a Type<'a>, F
         [tag::PROTO_ARRAY_ONE, tag::PROTO_ARRAY_TWO] => {
             let sub_typ = decode_type(ctx, d)?;
             Ok(Type::array(ctx.arena, sub_typ))
-        }
-        [tag::PROTO_LIST_ONE, tag::PROTO_LIST_TWO, tag::DATA] => {
-            Ok(Type::list(ctx.arena, &Type::Data))
         }
         [tag::PROTO_PAIR_ONE, tag::PROTO_PAIR_TWO, tag::PROTO_PAIR_THREE] => {
             let sub_typ1 = decode_type(ctx, d)?;
@@ -186,6 +227,18 @@ fn decode_constant<'a>(
             Ok(Constant::string(ctx.arena, s))
         }
         Type::Unit => Ok(Constant::unit(ctx.arena)),
+        Type::List(Type::Data) => {
+            let fields = d.list_with(ctx, |ctx, d| {
+                let cbor = d.bytes(ctx.arena)?;
+                let data = minicbor::decode_with(&cbor, ctx)?;
+
+                Ok(Constant::data(ctx.arena, data))
+            })?;
+            
+            let fields = ctx.arena.alloc(fields);
+
+            Ok(Constant::proto_list(ctx.arena, &Type::Data, fields))
+        }
         Type::List(sub_typ) => {
             let fields = d.list_with(ctx, |ctx, d| decode_constant(ctx, d))?;
             let fields = ctx.arena.alloc(fields);
