@@ -60,26 +60,22 @@ pub fn bench_turbo(c: &mut Criterion) {
                     panic!("cannot decode plutus version from filename: {file_name:?}");
                 };
 
-                // FIXME: Also bench V1 & V2
-                if matches!(plutus_version, PlutusVersion::V3) {
-                    let cbor = std::fs::read(&path).unwrap();
-                    let mut arena = Bump::with_capacity(1_048_576);
-                    let CborWrappped(flat) =
-                        minicbor::decode(&cbor).expect("cannot decode from CBOR");
+                let cbor = std::fs::read(&path).unwrap();
+                let mut arena = Bump::with_capacity(1_048_576);
+                let CborWrappped(flat) = minicbor::decode(&cbor).expect("cannot decode from CBOR");
 
-                    c.bench_function(&file_name, |b| {
-                        b.iter(|| {
-                            let program =
-                                flat::decode::<DeBruijn>(&arena, &flat).expect("Failed to decode");
+                c.bench_function(&file_name, |b| {
+                    b.iter(|| {
+                        let program =
+                            flat::decode::<DeBruijn>(&arena, &flat).expect("Failed to decode");
 
-                            let result = program.eval(&arena);
+                        let result = program.eval_version(&arena, plutus_version);
 
-                            let _term = result.term.expect("Failed to evaluate");
+                        let _term = result.term.expect("Failed to evaluate");
 
-                            arena.reset();
-                        })
-                    });
-                }
+                        arena.reset();
+                    })
+                });
             }
         }
     }
@@ -88,7 +84,7 @@ pub fn bench_turbo(c: &mut Criterion) {
 criterion_group! {
     name = turbo;
     config = Criterion::default()
-        .measurement_time(Duration::from_secs(10));
+            .measurement_time(Duration::from_secs(10));
     targets = bench_turbo
 }
 
