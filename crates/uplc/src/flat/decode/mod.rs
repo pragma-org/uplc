@@ -123,7 +123,10 @@ where
     }
 }
 
-fn type_from_tags<'a>(ctx: &Ctx<'a>, tags: &[u8]) -> Result<Option<(&'a Type<'a>, usize)>, FlatDecodeError> {
+fn type_from_tags<'a>(
+    ctx: &Ctx<'a>,
+    tags: &[u8],
+) -> Result<Option<(&'a Type<'a>, usize)>, FlatDecodeError> {
     match tags {
         [tag::INTEGER, ..] => Ok(Some((Type::integer(ctx.arena), 1))),
         [tag::BYTE_STRING, ..] => Ok(Some((Type::byte_string(ctx.arena), 1))),
@@ -149,7 +152,10 @@ fn type_from_tags<'a>(ctx: &Ctx<'a>, tags: &[u8]) -> Result<Option<(&'a Type<'a>
             if let Some((sub_typ1, consumed1)) = type_from_tags(ctx, rest)? {
                 let rest2 = &rest[consumed1..];
                 if let Some((sub_typ2, consumed2)) = type_from_tags(ctx, rest2)? {
-                    Ok(Some((Type::pair(ctx.arena, sub_typ1, sub_typ2), 3 + consumed1 + consumed2)))
+                    Ok(Some((
+                        Type::pair(ctx.arena, sub_typ1, sub_typ2),
+                        3 + consumed1 + consumed2,
+                    )))
                 } else {
                     Ok(None)
                 }
@@ -234,7 +240,7 @@ fn decode_constant<'a>(
 
                 Ok(Constant::data(ctx.arena, data))
             })?;
-            
+
             let fields = ctx.arena.alloc(fields);
 
             Ok(Constant::proto_list(ctx.arena, &Type::Data, fields))
