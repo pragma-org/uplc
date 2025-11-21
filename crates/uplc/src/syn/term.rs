@@ -1,5 +1,3 @@
-use std::cell::Cell;
-
 use bumpalo::{collections::Vec as BumpVec, Bump};
 use chumsky::{prelude::*, Parser};
 
@@ -11,39 +9,17 @@ use super::{
     utils::{comments, name},
 };
 
-thread_local! {
-    static MAX_DEPTH: Cell<usize> = Cell::new(0);
-    static DEPTH: Cell<usize> = Cell::new(0);
-}
-
 pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a, DeBruijn>, Extra<'a>> {
-    DEPTH.with(|d| d.set(0));
-    MAX_DEPTH.with(|m| m.set(0));
-
-    let result = recursive(|term| {
+    recursive(|term| {
         choice((
             // Var
             name().padded().map_with(|v, e: &mut MapExtra<'a, '_>| {
-                DEPTH.with(|d| {
-                    let current = d.get() + 1;
-                    d.set(current);
-                    MAX_DEPTH.with(|m| {
-                        if current > m.get() {
-                            m.set(current);
-                            if current % 10 == 0 {
-                                eprintln!("Parser depth: {}", current);
-                            }
-                        }
-                    });
-                });
                 let state = e.state();
 
                 let position = state.env.iter().rposition(|&x| x == v);
 
                 if position.is_none() {
                     let placeholder = Term::var(state.arena, DeBruijn::zero(state.arena));
-
-                    DEPTH.with(|d| d.set(d.get().saturating_sub(1)));
 
                     // this will fail at eval time
                     // the conformance tests don't expect this
@@ -53,8 +29,6 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a, DeBruijn>, Extra<'a
                     let debruijn_index = state.env.len() - position.unwrap_or_default();
 
                     let d = DeBruijn::new(state.arena, debruijn_index);
-
-                    DEPTH.with(|d| d.set(d.get().saturating_sub(1)));
 
                     Term::var(state.arena, d)
                 }
@@ -209,13 +183,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a, DeBruijn>, Extra<'a
         ))
         .padded_by(comments())
         .boxed()
-    });
-
-    MAX_DEPTH.with(|m| {
-        eprintln!("Maximum parser depth reached: {}", m.get());
-    });
-
-    result
+    })
 }
 
 pub fn builtin_from_str<'a>(arena: &'a Bump, name: &str) -> Option<&'a Term<'a, DeBruijn>> {
