@@ -1,7 +1,7 @@
 use std::io::{self, Read};
 
 use miette::IntoDiagnostic;
-use uplc_turbo::machine::PlutusVersion;
+use uplc_turbo::{machine::PlutusVersion};
 
 #[derive(clap::Args)]
 pub struct Args {
@@ -28,6 +28,17 @@ fn parse_plutus_version(s: &str) -> Result<PlutusVersion, String> {
 
 impl Args {
     pub fn exec(self) -> miette::Result<()> {
+        let handle = std::thread::Builder::new()
+            .stack_size(8 * 1024 * 1024)
+            .spawn(move || self.exec_inner())
+            .into_diagnostic()?;
+
+        handle
+            .join()
+            .map_err(|_| miette::miette!("Thread panicked"))?
+    }
+
+    fn exec_inner(self) -> miette::Result<()> {
         let arena = uplc_turbo::bumpalo::Bump::with_capacity(1_024_000);
 
         let program = if let Some(file_path) = self.file {
