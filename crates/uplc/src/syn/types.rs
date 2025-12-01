@@ -1,5 +1,5 @@
 use bumpalo::Bump;
-use chumsky::{input, prelude::*};
+use chumsky::{extra::SimpleState, input, prelude::*};
 
 use crate::program::Version;
 
@@ -29,5 +29,5 @@ impl<'a> State<'a> {
     }
 }
 
-pub type Extra<'a> = extra::Full<Rich<'a, char>, State<'a>, ()>;
+pub type Extra<'a> = extra::Full<Rich<'a, char>, SimpleState<State<'a>>, ()>;
 pub type MapExtra<'a, 'b> = input::MapExtra<'a, 'b, &'a str, Extra<'a>>;

@@ -25,6 +25,7 @@ pub enum BuiltinSemantics {
     V2,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlutusVersion {
     V1,
     V2,
