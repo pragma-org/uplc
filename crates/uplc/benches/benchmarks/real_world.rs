@@ -22,7 +22,7 @@ pub fn bench_turbo(c: &mut Criterion) {
 
     let dir = fs::read_dir(data_dir).unwrap();
 
-    if dir.count() == 0 {
+    if dir.count() == 1 {
         panic!(
             "missing turbo benchmarks; download archive at {} and unpack it under {}",
             "https://pub-2239d82d9a074482b2eb2c886191cb4e.r2.dev/turbo.tar.xz",
