@@ -190,6 +190,49 @@ pub fn try_from_tag(arena: &Bump, v: u8) -> Result<&DefaultFunction, FlatDecodeE
             Ok(arena.alloc(DefaultFunction::ByteStringToInteger))
         }
 
+        v if v == DefaultFunction::AndByteString as u8 => {
+            Ok(arena.alloc(DefaultFunction::AndByteString))
+        }
+        v if v == DefaultFunction::OrByteString as u8 => {
+            Ok(arena.alloc(DefaultFunction::OrByteString))
+        }
+        v if v == DefaultFunction::XorByteString as u8 => {
+            Ok(arena.alloc(DefaultFunction::XorByteString))
+        }
+        v if v == DefaultFunction::ComplementByteString as u8 => {
+            Ok(arena.alloc(DefaultFunction::ComplementByteString))
+        }
+        v if v == DefaultFunction::ReadBit as u8 => Ok(arena.alloc(DefaultFunction::ReadBit)),
+        v if v == DefaultFunction::WriteBits as u8 => Ok(arena.alloc(DefaultFunction::WriteBits)),
+        v if v == DefaultFunction::ReplicateByte as u8 => {
+            Ok(arena.alloc(DefaultFunction::ReplicateByte))
+        }
+        v if v == DefaultFunction::ShiftByteString as u8 => {
+            Ok(arena.alloc(DefaultFunction::ShiftByteString))
+        }
+        v if v == DefaultFunction::RotateByteString as u8 => {
+            Ok(arena.alloc(DefaultFunction::RotateByteString))
+        }
+        v if v == DefaultFunction::CountSetBits as u8 => {
+            Ok(arena.alloc(DefaultFunction::CountSetBits))
+        }
+        v if v == DefaultFunction::FindFirstSetBit as u8 => {
+            Ok(arena.alloc(DefaultFunction::FindFirstSetBit))
+        }
+        v if v == DefaultFunction::Ripemd_160 as u8 => Ok(arena.alloc(DefaultFunction::Ripemd_160)),
+
+        v if v == DefaultFunction::ExpModInteger as u8 => {
+            Ok(arena.alloc(DefaultFunction::ExpModInteger))
+        }
+        v if v == DefaultFunction::DropList as u8 => Ok(arena.alloc(DefaultFunction::DropList)),
+        v if v == DefaultFunction::LengthOfArray as u8 => {
+            Ok(arena.alloc(DefaultFunction::LengthOfArray))
+        }
+        v if v == DefaultFunction::ListToArray as u8 => {
+            Ok(arena.alloc(DefaultFunction::ListToArray))
+        }
+        v if v == DefaultFunction::IndexArray as u8 => Ok(arena.alloc(DefaultFunction::IndexArray)),
+
         _ => Err(FlatDecodeError::DefaultFunctionNotFound(v)),
     }
 }
