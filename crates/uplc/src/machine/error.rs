@@ -136,6 +136,8 @@ pub enum RuntimeError<'a> {
         "Size"
     )]
     IndexArrayOutOfBounds(&'a Integer, usize),
+    #[error("Serialization error")]
+    SerializationError(&'a PlutusData<'a>),
 }
 
 impl<'a, V> MachineError<'a, V>
@@ -268,5 +270,9 @@ where
 
     pub fn index_array_out_of_bounds(index: &'a Integer, size: usize) -> Self {
         MachineError::runtime(RuntimeError::IndexArrayOutOfBounds(index, size))
+    }
+
+    pub fn serialization_error(data: &'a PlutusData<'a>) -> Self {
+        MachineError::runtime(RuntimeError::SerializationError(data))
     }
 }
