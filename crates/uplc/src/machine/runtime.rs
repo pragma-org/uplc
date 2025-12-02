@@ -1579,7 +1579,25 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
 
                 Ok(value)
             }
-            DefaultFunction::SerialiseData => todo!(),
+            DefaultFunction::SerialiseData => {
+                let arg1 = runtime.args[0].unwrap_constant()?.unwrap_data()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::SerialiseData,
+                        &[cost_model::data_ex_mem(arg1)],
+                    )
+                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+
+                self.spend_budget(budget)?;
+
+                let bytes = arg1.to_bytes(self.arena)?;
+                let value = Value::byte_string(self.arena, bytes);
+
+                Ok(value)
+            }
             DefaultFunction::MkPairData => {
                 let d1 = runtime.args[0].unwrap_constant()?.unwrap_data()?;
                 let d2 = runtime.args[1].unwrap_constant()?.unwrap_data()?;
