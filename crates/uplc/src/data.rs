@@ -115,4 +115,13 @@ impl<'a> PlutusData<'a> {
     pub fn constant(&'a self, arena: &'a Bump) -> &'a Constant<'a> {
         Constant::data(arena, self)
     }
+
+    pub fn to_bytestring<V>(&'a self, arena: &'a Bump) -> Result<&'a [u8], MachineError<'a, V>>
+    where
+        V: Eval<'a>,
+    {
+        minicbor::to_vec(self)
+            .map(|vec| arena.alloc(vec) as &'a [u8])
+            .map_err(|_| MachineError::serialization_error(self))
+    }
 }
