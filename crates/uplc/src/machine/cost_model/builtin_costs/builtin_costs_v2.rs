@@ -653,7 +653,6 @@ impl BuiltinCostModel for BuiltinCostsV2 {
                     cost_map["verify_ecdsa_secp256k1_signature-cpu-arguments"],
                 ),
             ),
-
             verify_ed25519_signature: ThreeArgumentsCosting::new(
                 ThreeArgumentsCosting::constant_cost(
                     cost_map["verify_ed25519_signature-mem-arguments"],
@@ -770,6 +769,22 @@ impl BuiltinCostModel for BuiltinCostsV2 {
                     .mem
                     .cost([args[0], args[1], args[2]]),
                 self.verify_ed25519_signature
+                    .cpu
+                    .cost([args[0], args[1], args[2]]),
+            )),
+            DefaultFunction::VerifyEcdsaSecp256k1Signature => Some(ExBudget::new(
+                self.verify_ecdsa_secp256k1_signature
+                    .mem
+                    .cost([args[0], args[1], args[2]]),
+                self.verify_ecdsa_secp256k1_signature
+                    .cpu
+                    .cost([args[0], args[1], args[2]]),
+            )),
+            DefaultFunction::VerifySchnorrSecp256k1Signature => Some(ExBudget::new(
+                self.verify_schnorr_secp256k1_signature
+                    .mem
+                    .cost([args[0], args[1], args[2]]),
+                self.verify_schnorr_secp256k1_signature
                     .cpu
                     .cost([args[0], args[1], args[2]]),
             )),
