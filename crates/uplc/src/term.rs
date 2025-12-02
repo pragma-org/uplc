@@ -481,6 +481,12 @@ impl<'a, V> Term<'a, V> {
         Term::builtin(arena, fun)
     }
 
+    pub fn serialise_data(arena: &'a Bump) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::SerialiseData);
+
+        Term::builtin(arena, fun)
+    }
+
     pub fn bls12_381_g1_add(arena: &'a Bump) -> &'a Term<'a, V> {
         let fun = arena.alloc(DefaultFunction::Bls12_381_G1_Add);
 
