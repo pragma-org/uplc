@@ -116,7 +116,7 @@ impl<'a> PlutusData<'a> {
         Constant::data(arena, self)
     }
 
-    pub fn to_bytestring<V>(&'a self, arena: &'a Bump) -> Result<&'a [u8], MachineError<'a, V>>
+    pub fn to_bytes<V>(&'a self, arena: &'a Bump) -> Result<&'a [u8], MachineError<'a, V>>
     where
         V: Eval<'a>,
     {
