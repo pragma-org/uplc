@@ -3,6 +3,7 @@ use std::array::TryFromSliceError;
 use crate::{
     binder::Eval,
     bls::BlsError,
+    builtin::DefaultFunction,
     constant::{Constant, Integer},
     data::PlutusData,
     term::Term,
@@ -40,8 +41,8 @@ where
     Runtime(RuntimeError<'a>),
     #[error("Max constr tag exceeded")]
     MaxConstrTagExceeded(&'a Value<'a, V>),
-    #[error("Unknown builtin function")]
-    UnknownBuiltinFunction,
+    #[error("No cost found for builtin function: {0:?}")]
+    NoCostForBuiltin(DefaultFunction),
 }
 
 #[derive(thiserror::Error, Debug)]
