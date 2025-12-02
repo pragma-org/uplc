@@ -122,7 +122,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::integer_ex_mem(arg2),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::AddInteger))?;
 
                 self.spend_budget(budget)?;
 
@@ -147,7 +147,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::integer_ex_mem(arg2),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::SubtractInteger,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -173,7 +175,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::integer_ex_mem(arg2),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::EqualsInteger,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -197,7 +201,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::integer_ex_mem(arg2),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::LessThanEqualsInteger,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -221,7 +227,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::byte_string_ex_mem(arg2),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::AppendByteString,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -250,7 +258,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::byte_string_ex_mem(arg2),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::EqualsByteString,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -275,7 +285,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::value_ex_mem(arg3),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::IfThenElse))?;
                 self.spend_budget(budget)?;
 
                 if arg1 {
@@ -298,7 +308,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::integer_ex_mem(arg2),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::MultiplyInteger,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -324,7 +336,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::integer_ex_mem(arg2),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::DivideInteger,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -354,7 +368,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::integer_ex_mem(arg2),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::QuotientInteger,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -381,7 +397,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::integer_ex_mem(arg2),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::RemainderInteger,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -408,7 +426,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::integer_ex_mem(arg2),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::ModInteger))?;
 
                 self.spend_budget(budget)?;
 
@@ -436,7 +454,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::integer_ex_mem(arg2),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::LessThanInteger,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -460,7 +480,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::byte_string_ex_mem(arg2),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::ConsByteString,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -507,7 +529,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::byte_string_ex_mem(arg3),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::SliceByteString,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -547,7 +571,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::LengthOfByteString,
                         &[cost_model::byte_string_ex_mem(arg1)],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::LengthOfByteString,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -572,7 +598,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::integer_ex_mem(arg2),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::IndexByteString,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -602,7 +630,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::byte_string_ex_mem(arg2),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::LessThanByteString,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -626,7 +656,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::byte_string_ex_mem(arg2),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::LessThanEqualsByteString,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -648,7 +680,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::Sha2_256,
                         &[cost_model::byte_string_ex_mem(arg1)],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::Sha2_256))?;
 
                 self.spend_budget(budget)?;
 
@@ -682,7 +714,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::Sha3_256,
                         &[cost_model::byte_string_ex_mem(arg1)],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::Sha3_256))?;
 
                 self.spend_budget(budget)?;
 
@@ -716,7 +748,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::Blake2b_256,
                         &[cost_model::byte_string_ex_mem(arg1)],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::Blake2b_256))?;
 
                 self.spend_budget(budget)?;
 
@@ -749,7 +781,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::Keccak_256,
                         &[cost_model::byte_string_ex_mem(arg1)],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::Keccak_256))?;
 
                 self.spend_budget(budget)?;
 
@@ -783,7 +815,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::Blake2b_224,
                         &[cost_model::byte_string_ex_mem(arg1)],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::Blake2b_224))?;
 
                 self.spend_budget(budget)?;
 
@@ -822,7 +854,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::byte_string_ex_mem(signature),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::VerifyEd25519Signature,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -860,7 +894,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::byte_string_ex_mem(signature),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::VerifyEcdsaSecp256k1Signature,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -899,7 +935,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::byte_string_ex_mem(signature),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::VerifySchnorrSecp256k1Signature,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -931,7 +969,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::string_ex_mem(arg2),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::AppendString,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -960,7 +1000,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::string_ex_mem(arg2),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::EqualsString,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -978,7 +1020,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::EncodeUtf8,
                         &[cost_model::string_ex_mem(arg1)],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::EncodeUtf8))?;
 
                 self.spend_budget(budget)?;
 
@@ -1004,7 +1046,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::DecodeUtf8,
                         &[cost_model::byte_string_ex_mem(arg1)],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::DecodeUtf8))?;
 
                 self.spend_budget(budget)?;
 
@@ -1025,7 +1067,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::ChooseUnit,
                         &[cost_model::UNIT_EX_MEM, cost_model::value_ex_mem(arg2)],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::ChooseUnit))?;
 
                 self.spend_budget(budget)?;
 
@@ -1045,7 +1087,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::value_ex_mem(arg2),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::Trace))?;
 
                 self.spend_budget(budget)?;
 
@@ -1063,7 +1105,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::FstPair,
                         &[cost_model::pair_ex_mem(first, second)],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::FstPair))?;
 
                 self.spend_budget(budget)?;
 
@@ -1081,7 +1123,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::SndPair,
                         &[cost_model::pair_ex_mem(first, second)],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::SndPair))?;
 
                 self.spend_budget(budget)?;
 
@@ -1105,7 +1147,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::value_ex_mem(arg3),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::ChooseList))?;
 
                 self.spend_budget(budget)?;
 
@@ -1129,7 +1171,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::proto_list_ex_mem(list),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::MkCons))?;
 
                 self.spend_budget(budget)?;
 
@@ -1161,7 +1203,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::HeadList,
                         &[cost_model::proto_list_ex_mem(list)],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::HeadList))?;
 
                 self.spend_budget(budget)?;
 
@@ -1183,7 +1225,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::TailList,
                         &[cost_model::proto_list_ex_mem(list)],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::TailList))?;
 
                 self.spend_budget(budget)?;
 
@@ -1207,7 +1249,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::NullList,
                         &[cost_model::proto_list_ex_mem(list)],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::NullList))?;
 
                 self.spend_budget(budget)?;
 
@@ -1237,7 +1279,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::value_ex_mem(arg6),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::ChooseData))?;
 
                 self.spend_budget(budget)?;
 
@@ -1263,7 +1305,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::proto_list_ex_mem(fields),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::ConstrData))?;
 
                 self.spend_budget(budget)?;
 
@@ -1313,7 +1355,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::MapData,
                         &[cost_model::proto_list_ex_mem(list)],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::MapData))?;
 
                 self.spend_budget(budget)?;
 
@@ -1353,7 +1395,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::ListData,
                         &[cost_model::proto_list_ex_mem(fields)],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::ListData))?;
 
                 self.spend_budget(budget)?;
 
@@ -1386,7 +1428,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                     .costs
                     .builtin_costs
                     .get_cost(DefaultFunction::IData, &[cost_model::integer_ex_mem(i)])
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::IData))?;
 
                 self.spend_budget(budget)?;
 
@@ -1403,7 +1445,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                     .costs
                     .builtin_costs
                     .get_cost(DefaultFunction::BData, &[cost_model::byte_string_ex_mem(b)])
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::BData))?;
 
                 self.spend_budget(budget)?;
 
@@ -1426,7 +1468,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::UnConstrData,
                         &[cost_model::data_list_ex_mem(fields)],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::UnConstrData,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -1461,7 +1505,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::UnMapData,
                         &[cost_model::data_map_ex_mem(map)],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::UnMapData))?;
 
                 self.spend_budget(budget)?;
 
@@ -1502,7 +1546,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::UnListData,
                         &[cost_model::data_list_ex_mem(list)],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::UnListData))?;
 
                 self.spend_budget(budget)?;
 
@@ -1531,7 +1575,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::UnIData,
                         &[cost_model::data_integer_ex_mem(i)],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::UnIData))?;
 
                 self.spend_budget(budget)?;
 
@@ -1552,7 +1596,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::UnBData,
                         &[cost_model::data_byte_string_ex_mem(bs)],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::UnBData))?;
 
                 self.spend_budget(budget)?;
 
@@ -1571,7 +1615,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::EqualsData,
                         &[cost_model::data_ex_mem(d1), cost_model::data_ex_mem(d2)],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::EqualsData))?;
 
                 self.spend_budget(budget)?;
 
@@ -1589,7 +1633,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::SerialiseData,
                         &[cost_model::data_ex_mem(arg1)],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::SerialiseData,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -1609,7 +1655,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::MkPairData,
                         &[cost_model::data_ex_mem(d1), cost_model::data_ex_mem(d2)],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::MkPairData))?;
 
                 self.spend_budget(budget)?;
 
@@ -1632,7 +1678,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                     .costs
                     .builtin_costs
                     .get_cost(DefaultFunction::MkNilData, &[cost_model::UNIT_EX_MEM])
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::MkNilData))?;
 
                 self.spend_budget(budget)?;
 
@@ -1652,7 +1698,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                     .costs
                     .builtin_costs
                     .get_cost(DefaultFunction::MkNilPairData, &[cost_model::UNIT_EX_MEM])
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::MkNilPairData,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -1683,7 +1731,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::g1_element_ex_mem(),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::Bls12_381_G1_Add,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -1709,7 +1759,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::Bls12_381_G1_Neg,
                         &[cost_model::g1_element_ex_mem()],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::Bls12_381_G1_Neg,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -1740,7 +1792,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::g1_element_ex_mem(),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::Bls12_381_G1_ScalarMul,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -1793,7 +1847,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::g1_element_ex_mem(),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::Bls12_381_G1_Equal,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -1813,7 +1869,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::Bls12_381_G1_Compress,
                         &[cost_model::g1_element_ex_mem()],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::Bls12_381_G1_Compress,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -1833,7 +1891,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::Bls12_381_G1_Uncompress,
                         &[cost_model::byte_string_ex_mem(arg1)],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::Bls12_381_G1_Uncompress,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -1859,7 +1919,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::byte_string_ex_mem(arg2),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::Bls12_381_G1_HashToGroup,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -1902,7 +1964,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::g2_element_ex_mem(),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::Bls12_381_G2_Add,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -1928,7 +1992,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::Bls12_381_G2_Neg,
                         &[cost_model::g2_element_ex_mem()],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::Bls12_381_G2_Neg,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -1959,7 +2025,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::g2_element_ex_mem(),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::Bls12_381_G2_ScalarMul,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -2016,7 +2084,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::g2_element_ex_mem(),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::Bls12_381_G2_Equal,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -2036,7 +2106,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::Bls12_381_G2_Compress,
                         &[cost_model::g2_element_ex_mem()],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::Bls12_381_G2_Compress,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -2056,7 +2128,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::Bls12_381_G2_Uncompress,
                         &[cost_model::byte_string_ex_mem(arg1)],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::Bls12_381_G2_Uncompress,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -2082,7 +2156,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::byte_string_ex_mem(arg2),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::Bls12_381_G2_HashToGroup,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -2125,7 +2201,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::g2_element_ex_mem(),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::Bls12_381_MillerLoop,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -2161,7 +2239,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::ml_result_ex_mem(),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::Bls12_381_MulMlResult,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -2191,7 +2271,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::ml_result_ex_mem(),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::Bls12_381_FinalVerify,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -2232,7 +2314,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::integer_ex_mem(input),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::IntegerToByteString,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -2330,7 +2414,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::byte_string_ex_mem(bytes),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::ByteStringToInteger,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -2362,7 +2448,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::byte_string_ex_mem(right_bytes),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::AndByteString,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -2402,7 +2490,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::byte_string_ex_mem(right_bytes),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::OrByteString,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -2444,7 +2534,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::byte_string_ex_mem(right_bytes),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::XorByteString,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -2480,7 +2572,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::ComplementByteString,
                         &[cost_model::byte_string_ex_mem(bytes)],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::ComplementByteString,
+                    ))?;
                 self.spend_budget(budget)?;
 
                 let result = self
@@ -2503,7 +2597,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::integer_ex_mem(bit_index),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::ReadBit))?;
 
                 self.spend_budget(budget)?;
 
@@ -2544,7 +2638,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::BOOL_EX_MEM,
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::WriteBits))?;
 
                 self.spend_budget(budget)?;
 
@@ -2602,7 +2696,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::ReplicateByte,
                         &[arg0_ex_mem, cost_model::integer_ex_mem(byte)],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::ReplicateByte,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -2652,7 +2748,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::ShiftByteString,
                         &[cost_model::byte_string_ex_mem(bytes), arg1],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::ShiftByteString,
+                    ))?;
                 self.spend_budget(budget)?;
 
                 let length = bytes.len();
@@ -2743,7 +2841,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::RotateByteString,
                         &[cost_model::byte_string_ex_mem(bytes), arg1],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::RotateByteString,
+                    ))?;
                 self.spend_budget(budget)?;
 
                 let length = bytes.len();
@@ -2811,7 +2911,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::CountSetBits,
                         &[cost_model::byte_string_ex_mem(bytes)],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::CountSetBits,
+                    ))?;
                 self.spend_budget(budget)?;
 
                 let weight: Integer = hamming::weight(bytes).into();
@@ -2828,7 +2930,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::FindFirstSetBit,
                         &[cost_model::byte_string_ex_mem(bytes)],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::FindFirstSetBit,
+                    ))?;
                 self.spend_budget(budget)?;
 
                 let first_bit = bytes
@@ -2859,7 +2963,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::Ripemd_160,
                         &[cost_model::byte_string_ex_mem(input)],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::Ripemd_160))?;
                 self.spend_budget(budget)?;
 
                 let mut hasher = Ripemd160::new();
@@ -2885,7 +2989,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::integer_ex_mem(modulus),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::ExpModInteger,
+                    ))?;
                 self.spend_budget(budget)?;
 
                 if modulus <= &Integer::ZERO {
@@ -2920,7 +3026,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::DropList,
                         &[arg0, cost_model::proto_list_ex_mem(list)],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::DropList))?;
 
                 self.spend_budget(budget)?;
 
@@ -2957,7 +3063,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         DefaultFunction::LengthOfArray,
                         &[cost_model::proto_list_ex_mem(array)],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::LengthOfArray,
+                    ))?;
 
                 self.spend_budget(budget)?;
 
@@ -2980,7 +3088,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::proto_list_ex_mem(list),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::ListToArray))?;
 
                 self.spend_budget(budget)?;
 
@@ -3004,7 +3112,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             cost_model::integer_ex_mem(arg1),
                         ],
                     )
-                    .ok_or(MachineError::UnknownBuiltinFunction)?;
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::IndexArray))?;
                 self.spend_budget(budget)?;
 
                 let index: i128 = arg1.try_into().unwrap();
