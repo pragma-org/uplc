@@ -265,7 +265,7 @@ impl<C> minicbor::encode::Encode<C> for PlutusData<'_> {
                     }
                     num_bigint::Sign::Minus => {
                         if digits.len() == 1 {
-                            let integer = minicbor::data::Int::try_from(digits[0] as i128).unwrap();
+                            let integer = minicbor::data::Int::try_from(-(digits[0] as i128)).unwrap();
                             e.int(integer)?;
                         } else {
                             e.tag(Tag::new(3))?;
