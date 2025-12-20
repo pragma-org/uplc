@@ -71,13 +71,13 @@ jobs:
       - name: Extract benchmark data
         run: |
           echo "Extracting benchmark data..."
-          mkdir -p benches/benchmarks
-          tar -xf turbo.tar.xz -C benches/benchmarks
+          mkdir -p crates/uplc/benches/benchmarks/turbo
+          tar -xf turbo.tar.xz -C crates/uplc/benches/benchmarks/turbo
           echo "Extraction complete"
-          ls -la benches/benchmarks/
+          ls -la crates/uplc/benches/benchmarks/turbo
 
       - name: Run benchmarks
-        run: cargo bench
+        run: cargo bench --bench bench_main
 
       - name: Upload benchmark results
         uses: actions/upload-artifact@v4
