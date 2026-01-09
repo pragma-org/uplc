@@ -44,8 +44,6 @@ pub fn bench_plutus_use_cases(c: &mut Criterion) {
 criterion_group! {
     name = plutus_use_cases;
     config = Criterion::default()
-    .sample_size(10)
-    .warm_up_time(Duration::from_millis(100))
-        .measurement_time(Duration::from_millis(100));
+        .measurement_time(Duration::from_secs(10));
     targets = bench_plutus_use_cases
 }
