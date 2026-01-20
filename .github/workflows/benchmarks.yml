@@ -45,10 +45,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
 
   benchmark:
-    name: Run Benchmarks
+    name: Benchmark Part ${{ matrix.part }}
     runs-on: ubuntu-latest
     needs: check-changes
     if: needs.check-changes.outputs.should_run == 'true' || github.event_name == 'workflow_dispatch'
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [1, 2, 3, 4]
+    
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
@@ -76,12 +81,12 @@ jobs:
           echo "Extraction complete"
           ls -la crates/uplc/benches/benchmarks/turbo
 
-      - name: Run benchmarks
-        run: cargo bench --bench bench_main
+      - name: Run benchmarks for part ${{ matrix.part }}
+        run: cargo bench --bench bench_main -- turbo~part${{ matrix.part }}
 
       - name: Upload benchmark results
         uses: actions/upload-artifact@v4
         with:
-          name: benchmark-results-${{ github.sha }}
+          name: benchmark-results-part-${{ matrix.part }}-${{ github.sha }}
           path: target/criterion/
           retention-days: 30
