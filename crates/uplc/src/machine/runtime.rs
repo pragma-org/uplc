@@ -125,7 +125,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 self.spend_budget(budget)?;
 
                 let result = arg1 + arg2;
-                let new = self.arena.alloc(result);
+                let new = self.arena.alloc_integer(result);
 
                 let value = Value::integer(self.arena, new);
 
@@ -153,7 +153,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
 
                 let result = arg1 - arg2;
 
-                let new = self.arena.alloc(result);
+                let new = self.arena.alloc_integer(result);
 
                 let value = Value::integer(self.arena, new);
 
@@ -315,7 +315,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
 
                 let result = arg1 * arg2;
 
-                let new = self.arena.alloc(result);
+                let new = self.arena.alloc_integer(result);
 
                 let value = Value::integer(self.arena, new);
 
@@ -344,7 +344,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 if !arg2.is_zero() {
                     let (result, _) = arg1.div_mod_floor(arg2);
 
-                    let new = self.arena.alloc(result);
+                    let new = self.arena.alloc_integer(result);
 
                     let value = Value::integer(self.arena, new);
 
@@ -375,7 +375,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
 
                 if !arg2.is_zero() {
                     let (quotient, _) = arg1.div_rem(arg2);
-                    let q = self.arena.alloc(quotient);
+                    let q = self.arena.alloc_integer(quotient);
                     let value = Value::integer(self.arena, q);
                     Ok(value)
                 } else {
@@ -404,7 +404,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
 
                 if !arg2.is_zero() {
                     let (_, remainder) = arg1.div_rem(arg2);
-                    let r = self.arena.alloc(remainder);
+                    let r = self.arena.alloc_integer(remainder);
                     let value = Value::integer(self.arena, r);
                     Ok(value)
                 } else {
@@ -431,7 +431,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
 
                 if !arg2.is_zero() {
                     let (_, result) = arg1.div_mod_floor(arg2);
-                    let result = self.arena.alloc(result);
+                    let result = self.arena.alloc_integer(result);
                     let value = Value::integer(self.arena, result);
 
                     Ok(value)
@@ -578,7 +578,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
 
                 let result: Integer = arg1.len().into();
 
-                let new = self.arena.alloc(result);
+                let new = self.arena.alloc_integer(result);
                 let value = Value::integer(self.arena, new);
 
                 Ok(value)
@@ -607,7 +607,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
 
                 if 0 <= index && (index as usize) < arg1.len() {
                     let result: Integer = arg1[index as usize].into();
-                    let new = self.arena.alloc(result);
+                    let new = self.arena.alloc_integer(result);
                     let value = Value::integer(self.arena, new);
 
                     Ok(value)
@@ -2423,13 +2423,11 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
 
                 self.spend_budget(budget)?;
 
-                let number = if endianness {
-                    self.arena
-                        .alloc(Integer::from_bytes_be(num_bigint::Sign::Plus, bytes))
+                let number = self.arena.alloc_integer(if endianness {
+                    Integer::from_bytes_be(num_bigint::Sign::Plus, bytes)
                 } else {
-                    self.arena
-                        .alloc(Integer::from_bytes_le(num_bigint::Sign::Plus, bytes))
-                };
+                    Integer::from_bytes_le(num_bigint::Sign::Plus, bytes)
+                });
 
                 let value = Value::integer(self.arena, number);
 
@@ -2920,7 +2918,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 self.spend_budget(budget)?;
 
                 let weight: Integer = hamming::weight(bytes).into();
-                let result = self.arena.alloc(weight);
+                let result = self.arena.alloc_integer(weight);
                 Ok(Value::integer(self.arena, result))
             }
             DefaultFunction::FindFirstSetBit => {
@@ -2953,7 +2951,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                     });
 
                 let first_bit: Integer = first_bit.unwrap_or(-1).into();
-                let result = self.arena.alloc(first_bit);
+                let result = self.arena.alloc_integer(first_bit);
                 Ok(Value::integer(self.arena, result))
             }
             DefaultFunction::Ripemd_160 => {
@@ -3010,7 +3008,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                     base.modpow(exponent, modulus)
                 };
 
-                let value = Value::integer(self.arena, self.arena.alloc(result));
+                let value = Value::integer(self.arena, self.arena.alloc_integer(result));
                 Ok(value)
             }
             DefaultFunction::DropList => {
@@ -3073,7 +3071,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 self.spend_budget(budget)?;
 
                 let result: Integer = array.len().into();
-                let new = self.arena.alloc(result);
+                let new = self.arena.alloc_integer(result);
                 let value = Value::integer(self.arena, new);
 
                 Ok(value)
