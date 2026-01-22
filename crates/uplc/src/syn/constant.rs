@@ -149,7 +149,7 @@ fn value_parser<'a>() -> impl Parser<'a, &'a str, TempConstant<'a>, Extra<'a>> {
                     if maybe_negative.is_some() {
                         integer = -integer;
                     }
-                    let i = state.arena.alloc(integer);
+                    let i = state.arena.alloc_integer(integer);
                     TempConstant::Integer(i)
                 }),
             // bls element

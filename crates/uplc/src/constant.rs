@@ -23,12 +23,12 @@ pub enum Constant<'a> {
 
 pub type Integer = num::BigInt;
 
-pub fn integer(arena: &Arena) -> &mut Integer {
-    arena.alloc(Integer::default())
+pub fn integer(arena: &Arena) -> &Integer {
+    arena.alloc_integer(Integer::default())
 }
 
-pub fn integer_from(arena: &Arena, i: i128) -> &mut Integer {
-    arena.alloc(Integer::from(i))
+pub fn integer_from(arena: &Arena, i: i128) -> &Integer {
+    arena.alloc_integer(Integer::from(i))
 }
 
 impl<'a> Constant<'a> {

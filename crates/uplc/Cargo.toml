@@ -12,7 +12,7 @@ publish = true
 
 [dependencies]
 blst = "0.3.13"
-bumpalo = { version = "3.16.0", features = ["collections"] }
+bumpalo = { version = "3.16.0", features = ["collections", "boxed"] }
 chumsky = { version = "=1.0.0-alpha.8", features = ["pratt"] }
 cryptoxide = { version = "0.4.4", features = ["ripemd160"] }
 hamming = "0.1.3"

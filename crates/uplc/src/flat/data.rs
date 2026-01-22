@@ -99,7 +99,7 @@ impl<'a, 'b> minicbor::decode::Decode<'b, Ctx<'a>> for &'a PlutusData<'a> {
                             bytes.extend_from_slice(chunk);
                         }
 
-                        let integer = ctx.arena.alloc(num::BigInt::from_bytes_be(
+                        let integer = ctx.arena.alloc_integer(num::BigInt::from_bytes_be(
                             if x == IanaTag::PosBignum {
                                 num_bigint::Sign::Plus
                             } else {
