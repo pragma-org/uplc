@@ -1,12 +1,10 @@
-use bumpalo::{
-    collections::{String as BumpString, Vec as BumpVec},
-    Bump,
-};
+use bumpalo::collections::{String as BumpString, Vec as BumpVec};
 
 use chumsky::prelude::*;
 use num::Num;
 
 use crate::{
+    arena::Arena,
     bls::Compressable,
     constant::{self, Constant, Integer},
     data::PlutusData,
@@ -40,7 +38,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Constant<'a>, Extra<'a>> {
 }
 
 fn check_type<'a>(
-    arena: &'a Bump,
+    arena: &'a Arena,
     con: TempConstant<'a>,
     expected_type: &'a Type<'a>,
 ) -> (&'a Constant<'a>, bool) {
@@ -53,7 +51,7 @@ fn check_type<'a>(
         (TempConstant::Unit, Type::Unit) => Constant::unit(arena),
 
         (TempConstant::ProtoList(list), Type::List(inner)) => {
-            let mut constants = BumpVec::with_capacity_in(list.len(), arena);
+            let mut constants = BumpVec::with_capacity_in(list.len(), arena.as_bump());
 
             for con in list {
                 let (constant, is_correct) = check_type(arena, con, inner);
@@ -71,7 +69,7 @@ fn check_type<'a>(
         }
 
         (TempConstant::ProtoList(list), Type::Array(inner)) => {
-            let mut constants = BumpVec::with_capacity_in(list.len(), arena);
+            let mut constants = BumpVec::with_capacity_in(list.len(), arena.as_bump());
 
             for con in list {
                 let (constant, is_correct) = check_type(arena, con, inner);
@@ -179,7 +177,7 @@ fn value_parser<'a>() -> impl Parser<'a, &'a str, TempConstant<'a>, Extra<'a>> {
                 .map_with(|v, e: &mut MapExtra<'a, '_>| {
                     let state = e.state();
 
-                    let bytes = BumpVec::from_iter_in(v, state.arena);
+                    let bytes = BumpVec::from_iter_in(v, state.arena.as_bump());
                     let bytes = state.arena.alloc(bytes);
 
                     TempConstant::ByteString(bytes)
@@ -192,7 +190,7 @@ fn value_parser<'a>() -> impl Parser<'a, &'a str, TempConstant<'a>, Extra<'a>> {
                 .map_with(|v, e: &mut MapExtra<'a, '_>| {
                     let state = e.state();
 
-                    let string = BumpString::from_str_in(&v, state.arena);
+                    let string = BumpString::from_str_in(&v, state.arena.as_bump());
                     let string = state.arena.alloc(string);
 
                     TempConstant::String(string)
@@ -207,7 +205,7 @@ fn value_parser<'a>() -> impl Parser<'a, &'a str, TempConstant<'a>, Extra<'a>> {
                 .map_with(|fields: Vec<TempConstant<'_>>, e: &mut MapExtra<'a, '_>| {
                     let state = e.state();
 
-                    let fields = BumpVec::from_iter_in(fields, state.arena);
+                    let fields = BumpVec::from_iter_in(fields, state.arena.as_bump());
 
                     TempConstant::ProtoList(fields)
                 }),

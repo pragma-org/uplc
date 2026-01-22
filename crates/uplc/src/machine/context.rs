@@ -1,6 +1,6 @@
-use bumpalo::{collections::Vec as BumpVec, Bump};
+use bumpalo::collections::Vec as BumpVec;
 
-use crate::{binder::Eval, term::Term};
+use crate::{arena::Arena, binder::Eval, term::Term};
 
 use super::{env::Env, value::Value};
 
@@ -27,12 +27,12 @@ impl<'a, V> Context<'a, V>
 where
     V: Eval<'a>,
 {
-    pub fn no_frame(arena: &'a Bump) -> &'a Context<'a, V> {
+    pub fn no_frame(arena: &'a Arena) -> &'a Context<'a, V> {
         arena.alloc(Context::NoFrame)
     }
 
     pub fn frame_await_arg(
-        arena: &'a Bump,
+        arena: &'a Arena,
         function: &'a Value<'a, V>,
         context: &'a Context<'a, V>,
     ) -> &'a Context<'a, V> {
@@ -40,7 +40,7 @@ where
     }
 
     pub fn frame_await_fun_term(
-        arena: &'a Bump,
+        arena: &'a Arena,
         arg_env: &'a Env<'a, V>,
         argument: &'a Term<'a, V>,
         context: &'a Context<'a, V>,
@@ -49,32 +49,32 @@ where
     }
 
     pub fn frame_await_fun_value(
-        arena: &'a Bump,
+        arena: &'a Arena,
         argument: &'a Value<'a, V>,
         context: &'a Context<'a, V>,
     ) -> &'a Context<'a, V> {
         arena.alloc(Context::FrameAwaitFunValue(argument, context))
     }
 
-    pub fn frame_force(arena: &'a Bump, context: &'a Context<'a, V>) -> &'a Context<'a, V> {
+    pub fn frame_force(arena: &'a Arena, context: &'a Context<'a, V>) -> &'a Context<'a, V> {
         arena.alloc(Context::FrameForce(context))
     }
 
     pub fn frame_constr_empty(
-        arena: &'a Bump,
+        arena: &'a Arena,
         env: &'a Env<'a, V>,
         index: usize,
         terms: &'a [&'a Term<'a, V>],
         context: &'a Context<'a, V>,
     ) -> &'a Context<'a, V> {
-        let empty = BumpVec::new_in(arena);
+        let empty = BumpVec::new_in(arena.as_bump());
         let empty = arena.alloc(empty);
 
         arena.alloc(Context::FrameConstr(env, index, terms, empty, context))
     }
 
     pub fn frame_constr(
-        arena: &'a Bump,
+        arena: &'a Arena,
         env: &'a Env<'a, V>,
         index: usize,
         terms: &'a [&'a Term<'a, V>],
@@ -85,7 +85,7 @@ where
     }
 
     pub fn frame_cases(
-        arena: &'a Bump,
+        arena: &'a Arena,
         env: &'a Env<'a, V>,
         terms: &'a [&'a Term<'a, V>],
         context: &'a Context<'a, V>,

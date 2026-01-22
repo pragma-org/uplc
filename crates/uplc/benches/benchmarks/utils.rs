@@ -1,7 +1,7 @@
-use bumpalo::Bump;
 use ouroboros::self_referencing;
 
 use uplc_turbo::{
+    arena::Arena,
     binder::DeBruijn,
     program::{Program, Version},
     term::Term,
@@ -9,7 +9,7 @@ use uplc_turbo::{
 
 #[self_referencing]
 pub struct BenchState {
-    pub arena: Bump,
+    pub arena: Arena,
     #[borrows(arena)]
     #[covariant]
     pub program: &'this Program<'this, DeBruijn>,
@@ -28,9 +28,9 @@ impl BenchState {
 
 pub fn setup_program<F>(program_builder: F) -> BenchState
 where
-    F: for<'this> FnOnce(&'this Bump) -> &'this Program<'this, DeBruijn>,
+    F: for<'this> FnOnce(&'this Arena) -> &'this Program<'this, DeBruijn>,
 {
-    let arena = Bump::new();
+    let arena = Arena::new();
 
     let builder = BenchStateBuilder {
         arena,
@@ -43,7 +43,7 @@ where
 #[inline]
 pub fn setup_term<F>(term_builder: F) -> BenchState
 where
-    F: for<'this> FnOnce(&'this Bump) -> &'this Term<'this, DeBruijn>,
+    F: for<'this> FnOnce(&'this Arena) -> &'this Term<'this, DeBruijn>,
 {
     setup_program(|arena| {
         let term = term_builder(arena);

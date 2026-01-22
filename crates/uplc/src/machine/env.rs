@@ -1,6 +1,4 @@
-use bumpalo::Bump;
-
-use crate::binder::Eval;
+use crate::{arena::Arena, binder::Eval};
 
 use super::value::Value;
 
@@ -20,11 +18,11 @@ impl<'a, V> Env<'a, V>
 where
     V: Eval<'a>,
 {
-    pub fn new_in(arena: &'a Bump) -> &'a Self {
+    pub fn new_in(arena: &'a Arena) -> &'a Self {
         arena.alloc(Self::Empty)
     }
 
-    pub fn push(&'a self, arena: &'a Bump, arg: &'a Value<'a, V>) -> &'a Self {
+    pub fn push(&'a self, arena: &'a Arena, arg: &'a Value<'a, V>) -> &'a Self {
         arena.alloc(Self::Cons {
             data: arg,
             next: self,

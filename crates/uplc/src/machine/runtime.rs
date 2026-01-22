@@ -2,6 +2,7 @@ use core::str;
 use std::array::TryFromSliceError;
 
 use crate::{
+    arena::Arena,
     binder::Eval,
     bls::{Compressable, SCALAR_PERIOD},
     builtin::DefaultFunction,
@@ -10,10 +11,7 @@ use crate::{
     machine::cost_model::builtin_costs::BuiltinCostModel,
     typ::Type,
 };
-use bumpalo::{
-    collections::{CollectIn, String as BumpString, Vec as BumpVec},
-    Bump,
-};
+use bumpalo::collections::{CollectIn, String as BumpString, Vec as BumpVec};
 use num::{Integer as NumInteger, Signed, Zero};
 
 use super::{cost_model, value::Value, Machine, MachineError};
@@ -56,15 +54,15 @@ impl<'a, V> Runtime<'a, V>
 where
     V: Eval<'a>,
 {
-    pub fn new(arena: &'a Bump, fun: &'a DefaultFunction) -> &'a Self {
+    pub fn new(arena: &'a Arena, fun: &'a DefaultFunction) -> &'a Self {
         arena.alloc(Self {
-            args: BumpVec::new_in(arena),
+            args: BumpVec::new_in(arena.as_bump()),
             fun,
             forces: 0,
         })
     }
 
-    pub fn force(&self, arena: &'a Bump) -> &'a Self {
+    pub fn force(&self, arena: &'a Arena) -> &'a Self {
         let new_runtime = arena.alloc(Runtime {
             args: self.args.clone(),
             fun: self.fun,
@@ -74,7 +72,7 @@ where
         new_runtime
     }
 
-    pub fn push(&self, arena: &'a Bump, arg: &'a Value<'a, V>) -> &'a Self {
+    pub fn push(&self, arena: &'a Arena, arg: &'a Value<'a, V>) -> &'a Self {
         let new_runtime = arena.alloc(Runtime {
             args: self.args.clone(),
             fun: self.fun,
@@ -233,7 +231,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
 
                 self.spend_budget(budget)?;
 
-                let mut result = BumpVec::with_capacity_in(arg1.len() + arg2.len(), self.arena);
+                let mut result =
+                    BumpVec::with_capacity_in(arg1.len() + arg2.len(), self.arena.as_bump());
 
                 result.extend_from_slice(arg1);
                 result.extend_from_slice(arg2);
@@ -501,7 +500,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                     }
                 };
 
-                let mut ret = BumpVec::with_capacity_in(arg2.len() + 1, self.arena);
+                let mut ret = BumpVec::with_capacity_in(arg2.len() + 1, self.arena.as_bump());
 
                 ret.push(byte);
 
@@ -688,7 +687,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
 
                 hasher.input(arg1);
 
-                let mut bytes = BumpVec::with_capacity_in(hasher.output_bytes(), self.arena);
+                let mut bytes =
+                    BumpVec::with_capacity_in(hasher.output_bytes(), self.arena.as_bump());
 
                 unsafe {
                     bytes.set_len(hasher.output_bytes());
@@ -722,7 +722,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
 
                 hasher.input(arg1);
 
-                let mut bytes = BumpVec::with_capacity_in(hasher.output_bytes(), self.arena);
+                let mut bytes =
+                    BumpVec::with_capacity_in(hasher.output_bytes(), self.arena.as_bump());
 
                 unsafe {
                     bytes.set_len(hasher.output_bytes());
@@ -752,7 +753,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
 
                 self.spend_budget(budget)?;
 
-                let mut digest = BumpVec::with_capacity_in(32, self.arena);
+                let mut digest = BumpVec::with_capacity_in(32, self.arena.as_bump());
 
                 unsafe {
                     digest.set_len(32);
@@ -789,7 +790,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
 
                 hasher.input(arg1);
 
-                let mut bytes = BumpVec::with_capacity_in(hasher.output_bytes(), self.arena);
+                let mut bytes =
+                    BumpVec::with_capacity_in(hasher.output_bytes(), self.arena.as_bump());
 
                 unsafe {
                     bytes.set_len(hasher.output_bytes());
@@ -819,7 +821,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
 
                 self.spend_budget(budget)?;
 
-                let mut digest = BumpVec::with_capacity_in(28, self.arena);
+                let mut digest = BumpVec::with_capacity_in(28, self.arena.as_bump());
 
                 unsafe {
                     digest.set_len(28);
@@ -975,7 +977,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
 
                 self.spend_budget(budget)?;
 
-                let mut new = BumpString::new_in(self.arena);
+                let mut new = BumpString::new_in(self.arena.as_bump());
 
                 new.push_str(arg1);
                 new.push_str(arg2);
@@ -1026,7 +1028,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
 
                 let s_bytes = arg1.as_bytes();
 
-                let mut bytes = BumpVec::with_capacity_in(s_bytes.len(), self.arena);
+                let mut bytes = BumpVec::with_capacity_in(s_bytes.len(), self.arena.as_bump());
 
                 bytes.extend_from_slice(s_bytes);
 
@@ -1179,7 +1181,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                     return Err(MachineError::mk_cons_type_mismatch(item));
                 }
 
-                let mut new_list = BumpVec::with_capacity_in(list.len() + 1, self.arena);
+                let mut new_list = BumpVec::with_capacity_in(list.len() + 1, self.arena.as_bump());
 
                 new_list.push(item);
 
@@ -1323,7 +1325,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         Constant::Data(d) => *d,
                         _ => unreachable!(),
                     })
-                    .collect_in(self.arena);
+                    .collect_in(self.arena.as_bump());
                 let fields = self.arena.alloc(fields);
 
                 let data = PlutusData::constr(self.arena, tag, fields);
@@ -1359,7 +1361,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
 
                 self.spend_budget(budget)?;
 
-                let mut map = BumpVec::new_in(self.arena);
+                let mut map = BumpVec::new_in(self.arena.as_bump());
 
                 for item in list {
                     let Constant::ProtoPair(Type::Data, Type::Data, left, right) = item else {
@@ -1412,7 +1414,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         Constant::Data(d) => *d,
                         _ => unreachable!(),
                     })
-                    .collect_in(self.arena);
+                    .collect_in(self.arena.as_bump());
                 let fields = self.arena.alloc(fields);
 
                 let value = PlutusData::list(self.arena, fields)
@@ -1477,7 +1479,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 let list: BumpVec<'_, _> = fields
                     .iter()
                     .map(|d| Constant::data(self.arena, d))
-                    .collect_in(self.arena);
+                    .collect_in(self.arena.as_bump());
                 let list = self.arena.alloc(list);
 
                 let constant = Constant::proto_pair(
@@ -1520,7 +1522,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             Constant::data(self.arena, v),
                         )
                     })
-                    .collect_in(self.arena);
+                    .collect_in(self.arena.as_bump());
                 let list = self.arena.alloc(list);
 
                 let constant = Constant::proto_list(
@@ -1553,7 +1555,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 let list: BumpVec<'_, _> = list
                     .iter()
                     .map(|d| Constant::data(self.arena, d))
-                    .collect_in(self.arena);
+                    .collect_in(self.arena.as_bump());
                 let list = self.arena.alloc(list);
 
                 let constant = Constant::proto_list(self.arena, Type::data(self.arena), list);
@@ -1682,7 +1684,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
 
                 self.spend_budget(budget)?;
 
-                let list = BumpVec::new_in(self.arena);
+                let list = BumpVec::new_in(self.arena.as_bump());
                 let list = self.arena.alloc(list);
 
                 let constant = Constant::proto_list(self.arena, Type::data(self.arena), list);
@@ -1704,7 +1706,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
 
                 self.spend_budget(budget)?;
 
-                let list = BumpVec::new_in(self.arena);
+                let list = BumpVec::new_in(self.arena.as_bump());
                 let list = self.arena.alloc(list);
 
                 let constant = Constant::proto_list(
@@ -2346,7 +2348,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 let size_unwrapped: usize = size.try_into().unwrap();
 
                 if input.is_zero() {
-                    let mut new_bytes = BumpVec::with_capacity_in(size_unwrapped, self.arena);
+                    let mut new_bytes =
+                        BumpVec::with_capacity_in(size_unwrapped, self.arena.as_bump());
 
                     unsafe {
                         new_bytes.set_len(size_unwrapped);
@@ -2377,7 +2380,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 if size_unwrapped > 0 {
                     let padding_size = size_unwrapped - bytes.len();
 
-                    let mut padding = BumpVec::with_capacity_in(padding_size, self.arena);
+                    let mut padding = BumpVec::with_capacity_in(padding_size, self.arena.as_bump());
 
                     unsafe {
                         padding.set_len(padding_size);
@@ -3129,14 +3132,14 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
     }
 }
 
-fn integer_to_bytes<'a>(arena: &'a Bump, num: &'a Integer, big_endian: bool) -> BumpVec<'a, u8> {
+fn integer_to_bytes<'a>(arena: &'a Arena, num: &'a Integer, big_endian: bool) -> BumpVec<'a, u8> {
     let bytes = if big_endian {
         num.magnitude().to_bytes_be()
     } else {
         num.magnitude().to_bytes_le()
     };
 
-    let mut result = BumpVec::with_capacity_in(bytes.len(), arena);
+    let mut result = BumpVec::with_capacity_in(bytes.len(), arena.as_bump());
     result.extend_from_slice(&bytes);
     result
 }

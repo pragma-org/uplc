@@ -39,7 +39,8 @@ impl Args {
     }
 
     fn exec_inner(self) -> miette::Result<()> {
-        let arena = uplc_turbo::bumpalo::Bump::with_capacity(1_024_000);
+        let bump = uplc_turbo::bumpalo::Bump::with_capacity(1_024_000);
+        let arena = uplc_turbo::arena::Arena::from_bump(bump);
 
         let program = if let Some(file_path) = self.file {
             std::fs::read(file_path).into_diagnostic()?

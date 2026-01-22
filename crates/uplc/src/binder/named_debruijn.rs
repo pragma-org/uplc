@@ -1,4 +1,4 @@
-use bumpalo::Bump;
+use crate::arena::Arena;
 
 use super::{Binder, Eval};
 
@@ -9,7 +9,7 @@ pub struct NamedDeBruijn<'a> {
 }
 
 impl<'a> NamedDeBruijn<'a> {
-    pub fn new(arena: &'a Bump, text: &'a str, index: usize) -> &'a Self {
+    pub fn new(arena: &'a Arena, text: &'a str, index: usize) -> &'a Self {
         arena.alloc(NamedDeBruijn { text, index })
     }
 }
@@ -23,7 +23,7 @@ impl<'a> Binder<'a> for NamedDeBruijn<'a> {
     }
 
     fn var_decode(
-        arena: &'a bumpalo::Bump,
+        arena: &'a Arena,
         d: &mut crate::flat::Decoder,
     ) -> Result<&'a Self, crate::flat::FlatDecodeError> {
         let text = d.utf8(arena)?;
@@ -42,7 +42,7 @@ impl<'a> Binder<'a> for NamedDeBruijn<'a> {
     }
 
     fn parameter_decode(
-        arena: &'a bumpalo::Bump,
+        arena: &'a Arena,
         d: &mut crate::flat::Decoder,
     ) -> Result<&'a Self, crate::flat::FlatDecodeError> {
         Self::var_decode(arena, d)
