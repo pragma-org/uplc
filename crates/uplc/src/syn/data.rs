@@ -42,7 +42,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a PlutusData<'a>, Extra<'a>> {
                         i = -i;
                     };
 
-                    let value = state.arena.alloc(i);
+                    let value = state.arena.alloc_integer(i);
 
                     PlutusData::integer(state.arena, value)
                 }),
