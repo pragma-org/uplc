@@ -1,6 +1,4 @@
-use bumpalo::Bump;
-
-use crate::{binder::Eval, term::Term};
+use crate::{arena::Arena, binder::Eval, term::Term};
 
 use super::{context::Context, env::Env, value::Value};
 
@@ -18,7 +16,7 @@ where
     V: Eval<'a>,
 {
     pub fn compute(
-        arena: &'a Bump,
+        arena: &'a Arena,
         context: &'a Context<'a, V>,
         env: &'a Env<'a, V>,
         term: &'a Term<'a, V>,
@@ -27,14 +25,14 @@ where
     }
 
     pub fn return_(
-        arena: &'a Bump,
+        arena: &'a Arena,
         context: &'a Context<'a, V>,
         value: &'a Value<'a, V>,
     ) -> &'a mut MachineState<'a, V> {
         arena.alloc(MachineState::Return(context, value))
     }
 
-    pub fn done(arena: &'a Bump, term: &'a Term<'a, V>) -> &'a mut MachineState<'a, V> {
+    pub fn done(arena: &'a Arena, term: &'a Term<'a, V>) -> &'a mut MachineState<'a, V> {
         arena.alloc(MachineState::Done(term))
     }
 }
