@@ -7,7 +7,7 @@ use uplc_turbo::{arena::Arena, binder::DeBruijn, flat, machine::PlutusVersion};
 const TURBO_DATA_DIR: &str = "benches/benchmarks/turbo";
 const TURBO_ARCHIVE_URL: &str = "https://pub-2239d82d9a074482b2eb2c886191cb4e.r2.dev/turbo.tar.xz";
 const BUMP_ARENA_CAPACITY: usize = 1_048_576;
-const NUM_PARTS: usize = 4;
+const NUM_PARTS: usize = 8;
 
 #[derive(Debug)]
 struct CborWrapped(Vec<u8>);
@@ -129,6 +129,10 @@ bench_turbo_part!(bench_turbo_part_1, 0, "part1");
 bench_turbo_part!(bench_turbo_part_2, 1, "part2");
 bench_turbo_part!(bench_turbo_part_3, 2, "part3");
 bench_turbo_part!(bench_turbo_part_4, 3, "part4");
+bench_turbo_part!(bench_turbo_part_5, 4, "part5");
+bench_turbo_part!(bench_turbo_part_6, 5, "part6");
+bench_turbo_part!(bench_turbo_part_7, 6, "part7");
+bench_turbo_part!(bench_turbo_part_8, 7, "part8");
 
 criterion_group! {
     name = turbo;
@@ -136,5 +140,5 @@ criterion_group! {
         .sample_size(10)
         .warm_up_time(Duration::from_millis(10))
         .measurement_time(Duration::from_millis(100));
-    targets = bench_turbo_part_1, bench_turbo_part_2, bench_turbo_part_3, bench_turbo_part_4
+    targets = bench_turbo_part_1, bench_turbo_part_2, bench_turbo_part_3, bench_turbo_part_4, bench_turbo_part_5, bench_turbo_part_6, bench_turbo_part_7, bench_turbo_part_8
 }
