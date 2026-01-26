@@ -329,7 +329,7 @@ mod tests {
                 );
             }
             Err(_) => {
-                assert!(false);
+                panic!();
             }
         }
     }
