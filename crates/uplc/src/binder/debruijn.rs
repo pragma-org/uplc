@@ -6,11 +6,11 @@ use super::{Binder, Eval};
 pub struct DeBruijn(usize);
 
 impl DeBruijn {
-    pub fn new<'a>(arena: &'a Arena, i: usize) -> &'a Self {
+    pub fn new(arena: &Arena, i: usize) -> &Self {
         arena.alloc(DeBruijn(i))
     }
 
-    pub fn zero<'a>(arena: &'a Arena) -> &'a Self {
+    pub fn zero(arena: &Arena) -> &Self {
         arena.alloc(DeBruijn(0))
     }
 }
