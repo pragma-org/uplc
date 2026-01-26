@@ -11,8 +11,9 @@ documentation.workspace = true
 publish = true
 
 [dependencies]
+append-only-vec = "0.1.8"
 blst = "0.3.13"
-bumpalo = { version = "3.16.0", features = ["collections", "boxed"] }
+bumpalo = { version = "3.16.0", features = ["collections"] }
 chumsky = { version = "=1.0.0-alpha.8", features = ["pratt"] }
 cryptoxide = { version = "0.4.4", features = ["ripemd160"] }
 hamming = "0.1.3"
