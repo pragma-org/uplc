@@ -1,32 +1,27 @@
-use std::{any::type_name, cell::RefCell};
+use std::any::type_name;
 
-use bumpalo::{boxed::Box as BumpBox, Bump};
+use append_only_vec::AppendOnlyVec;
+use bumpalo::Bump;
 
 use crate::constant::Integer;
 
 pub struct Arena {
     bump: Bump,
-    integers: RefCell<Vec<*mut Integer>>,
-}
-
-impl Drop for Arena {
-    fn drop(&mut self) {
-        self.reset();
-    }
+    integers: AppendOnlyVec<Integer>,
 }
 
 impl Arena {
     pub fn new() -> Self {
         Self {
             bump: Bump::new(),
-            integers: RefCell::new(Vec::new()),
+            integers: AppendOnlyVec::new(),
         }
     }
 
     pub fn from_bump(bump: Bump) -> Self {
         Self {
             bump,
-            integers: RefCell::new(Vec::new()),
+            integers: AppendOnlyVec::new(),
         }
     }
 
@@ -41,10 +36,8 @@ impl Arena {
     }
 
     pub fn alloc_integer(&self, value: Integer) -> &Integer {
-        let boxed = BumpBox::new_in(value, &self.bump);
-        let ptr = BumpBox::leak(boxed);
-        self.integers.borrow_mut().push(ptr);
-        ptr
+        let idx = self.integers.push(value);
+        &self.integers[idx]
     }
 
     pub(crate) fn as_bump(&self) -> &Bump {
@@ -52,11 +45,8 @@ impl Arena {
     }
 
     pub fn reset(&mut self) {
-        while let Some(ptr) = self.integers.borrow_mut().pop() {
-            unsafe {
-                drop(BumpBox::from_raw(ptr));
-            }
-        }
+        // Drop all allocated integers
+        self.integers = AppendOnlyVec::new();
         self.bump.reset();
     }
 }
