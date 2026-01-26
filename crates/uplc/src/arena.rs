@@ -50,3 +50,9 @@ impl Arena {
         self.bump.reset();
     }
 }
+
+impl Default for Arena {
+    fn default() -> Self {
+        Self::new()
+    }
+}
