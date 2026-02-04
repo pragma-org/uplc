@@ -1,6 +1,4 @@
-use bumpalo::Bump;
-
-use crate::{binder::Eval, data::PlutusData, machine::MachineError, typ::Type};
+use crate::{arena::Arena, binder::Eval, data::PlutusData, machine::MachineError, typ::Type};
 
 #[derive(Debug, PartialEq)]
 pub enum Constant<'a> {
@@ -25,45 +23,45 @@ pub enum Constant<'a> {
 
 pub type Integer = num::BigInt;
 
-pub fn integer(arena: &Bump) -> &mut Integer {
-    arena.alloc(Integer::default())
+pub fn integer(arena: &Arena) -> &Integer {
+    arena.alloc_integer(Integer::default())
 }
 
-pub fn integer_from(arena: &Bump, i: i128) -> &mut Integer {
-    arena.alloc(Integer::from(i))
+pub fn integer_from(arena: &Arena, i: i128) -> &Integer {
+    arena.alloc_integer(Integer::from(i))
 }
 
 impl<'a> Constant<'a> {
-    pub fn integer(arena: &'a Bump, i: &'a Integer) -> &'a Constant<'a> {
+    pub fn integer(arena: &'a Arena, i: &'a Integer) -> &'a Constant<'a> {
         arena.alloc(Constant::Integer(i))
     }
 
-    pub fn integer_from(arena: &'a Bump, i: i128) -> &'a Constant<'a> {
+    pub fn integer_from(arena: &'a Arena, i: i128) -> &'a Constant<'a> {
         arena.alloc(Constant::Integer(integer_from(arena, i)))
     }
 
-    pub fn byte_string(arena: &'a Bump, bytes: &'a [u8]) -> &'a Constant<'a> {
+    pub fn byte_string(arena: &'a Arena, bytes: &'a [u8]) -> &'a Constant<'a> {
         arena.alloc(Constant::ByteString(bytes))
     }
 
-    pub fn string(arena: &'a Bump, s: &'a str) -> &'a Constant<'a> {
+    pub fn string(arena: &'a Arena, s: &'a str) -> &'a Constant<'a> {
         arena.alloc(Constant::String(s))
     }
 
-    pub fn bool(arena: &'a Bump, v: bool) -> &'a Constant<'a> {
+    pub fn bool(arena: &'a Arena, v: bool) -> &'a Constant<'a> {
         arena.alloc(Constant::Boolean(v))
     }
 
-    pub fn data(arena: &'a Bump, d: &'a PlutusData<'a>) -> &'a Constant<'a> {
+    pub fn data(arena: &'a Arena, d: &'a PlutusData<'a>) -> &'a Constant<'a> {
         arena.alloc(Constant::Data(d))
     }
 
-    pub fn unit(arena: &'a Bump) -> &'a Constant<'a> {
+    pub fn unit(arena: &'a Arena) -> &'a Constant<'a> {
         arena.alloc(Constant::Unit)
     }
 
     pub fn proto_list(
-        arena: &'a Bump,
+        arena: &'a Arena,
         inner: &'a Type<'a>,
         values: &'a [&'a Constant<'a>],
     ) -> &'a Constant<'a> {
@@ -71,7 +69,7 @@ impl<'a> Constant<'a> {
     }
 
     pub fn proto_array(
-        arena: &'a Bump,
+        arena: &'a Arena,
         inner: &'a Type<'a>,
         values: &'a [&'a Constant<'a>],
     ) -> &'a Constant<'a> {
@@ -79,7 +77,7 @@ impl<'a> Constant<'a> {
     }
 
     pub fn proto_pair(
-        arena: &'a Bump,
+        arena: &'a Arena,
         first_type: &'a Type<'a>,
         second_type: &'a Type<'a>,
         first_value: &'a Constant<'a>,
@@ -93,15 +91,15 @@ impl<'a> Constant<'a> {
         ))
     }
 
-    pub fn g1(arena: &'a Bump, g1: &'a blst::blst_p1) -> &'a Constant<'a> {
+    pub fn g1(arena: &'a Arena, g1: &'a blst::blst_p1) -> &'a Constant<'a> {
         arena.alloc(Constant::Bls12_381G1Element(g1))
     }
 
-    pub fn g2(arena: &'a Bump, g2: &'a blst::blst_p2) -> &'a Constant<'a> {
+    pub fn g2(arena: &'a Arena, g2: &'a blst::blst_p2) -> &'a Constant<'a> {
         arena.alloc(Constant::Bls12_381G2Element(g2))
     }
 
-    pub fn ml_result(arena: &'a Bump, ml_res: &'a blst::blst_fp12) -> &'a Constant<'a> {
+    pub fn ml_result(arena: &'a Arena, ml_res: &'a blst::blst_fp12) -> &'a Constant<'a> {
         arena.alloc(Constant::Bls12_381MlResult(ml_res))
     }
 
@@ -115,7 +113,7 @@ impl<'a> Constant<'a> {
         }
     }
 
-    pub fn type_of(&self, arena: &'a Bump) -> &'a Type<'a> {
+    pub fn type_of(&self, arena: &'a Arena) -> &'a Type<'a> {
         match self {
             Constant::Integer(_) => Type::integer(arena),
             Constant::ByteString(_) => Type::byte_string(arena),

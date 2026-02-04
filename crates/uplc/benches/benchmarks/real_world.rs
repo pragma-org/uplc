@@ -2,7 +2,7 @@ use bumpalo::Bump;
 use criterion::{criterion_group, Criterion};
 use itertools::Itertools;
 use std::{fs, time::Duration};
-use uplc_turbo::{binder::DeBruijn, flat, machine::PlutusVersion};
+use uplc_turbo::{arena::Arena, binder::DeBruijn, flat, machine::PlutusVersion};
 
 #[derive(Debug)]
 struct CborWrappped(Vec<u8>);
@@ -61,7 +61,7 @@ pub fn bench_turbo(c: &mut Criterion) {
                 };
 
                 let cbor = std::fs::read(&path).unwrap();
-                let mut arena = Bump::with_capacity(1_048_576);
+                let mut arena = Arena::from_bump(Bump::with_capacity(1_048_576));
                 let CborWrappped(flat) = minicbor::decode(&cbor).expect("cannot decode from CBOR");
 
                 c.bench_function(&file_name, |b| {
@@ -107,7 +107,7 @@ pub fn bench_plutus_use_cases(c: &mut Criterion) {
 
             let script = std::fs::read(&path).unwrap();
 
-            let mut arena = Bump::with_capacity(1_048_576);
+            let mut arena = Arena::from_bump(Bump::with_capacity(1_048_576));
 
             c.bench_function(&file_name, |b| {
                 b.iter(|| {

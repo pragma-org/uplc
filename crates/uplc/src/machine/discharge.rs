@@ -1,11 +1,12 @@
 use bumpalo::collections::CollectIn;
-use bumpalo::{collections::Vec as BumpVec, Bump};
+use bumpalo::collections::Vec as BumpVec;
 
+use crate::arena::Arena;
 use crate::{binder::Eval, term::Term};
 
 use super::{env::Env, value::Value};
 
-pub fn value_as_term<'a, V>(arena: &'a Bump, value: &'a Value<'a, V>) -> &'a Term<'a, V>
+pub fn value_as_term<'a, V>(arena: &'a Arena, value: &'a Value<'a, V>) -> &'a Term<'a, V>
 where
     V: Eval<'a>,
 {
@@ -34,7 +35,7 @@ where
             let fields: BumpVec<'_, _> = fields
                 .iter()
                 .map(|value| value_as_term(arena, value))
-                .collect_in(arena);
+                .collect_in(arena.as_bump());
 
             let fields = arena.alloc(fields);
 
@@ -44,7 +45,7 @@ where
 }
 
 fn with_env<'a, V>(
-    arena: &'a Bump,
+    arena: &'a Arena,
     lam_cnt: usize,
     env: &'a Env<'a, V>,
     term: &'a Term<'a, V>,

@@ -18,7 +18,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a PlutusData<'a>, Extra<'a>> {
                 .map_with(|v, e: &mut MapExtra<'a, '_>| {
                     let state = e.state();
 
-                    let bytes = BumpVec::from_iter_in(v, state.arena);
+                    let bytes = BumpVec::from_iter_in(v, state.arena.as_bump());
                     let bytes = state.arena.alloc(bytes);
 
                     PlutusData::byte_string(state.arena, bytes)
@@ -42,7 +42,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a PlutusData<'a>, Extra<'a>> {
                         i = -i;
                     };
 
-                    let value = state.arena.alloc(i);
+                    let value = state.arena.alloc_integer(i);
 
                     PlutusData::integer(state.arena, value)
                 }),
@@ -59,7 +59,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a PlutusData<'a>, Extra<'a>> {
                     |(tag, fields): (_, Vec<&PlutusData<'_>>), e: &mut MapExtra<'a, '_>| {
                         let state = e.state();
 
-                        let fields = BumpVec::from_iter_in(fields, state.arena);
+                        let fields = BumpVec::from_iter_in(fields, state.arena.as_bump());
                         let fields = state.arena.alloc(fields);
 
                         PlutusData::constr(state.arena, tag.parse().unwrap(), fields)
@@ -76,7 +76,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a PlutusData<'a>, Extra<'a>> {
                 .map_with(|items: Vec<&PlutusData<'_>>, e: &mut MapExtra<'a, '_>| {
                     let state = e.state();
 
-                    let fields = BumpVec::from_iter_in(items, state.arena);
+                    let fields = BumpVec::from_iter_in(items, state.arena.as_bump());
                     let fields = state.arena.alloc(fields);
 
                     PlutusData::list(state.arena, fields)
@@ -99,7 +99,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a PlutusData<'a>, Extra<'a>> {
                     |items: Vec<(&PlutusData<'_>, &PlutusData<'_>)>, e: &mut MapExtra<'a, '_>| {
                         let state = e.state();
 
-                        let fields = BumpVec::from_iter_in(items, state.arena);
+                        let fields = BumpVec::from_iter_in(items, state.arena.as_bump());
                         let fields = state.arena.alloc(fields);
 
                         PlutusData::map(state.arena, fields)
