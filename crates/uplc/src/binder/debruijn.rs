@@ -1,4 +1,4 @@
-use bumpalo::Bump;
+use crate::arena::Arena;
 
 use super::{Binder, Eval};
 
@@ -6,11 +6,11 @@ use super::{Binder, Eval};
 pub struct DeBruijn(usize);
 
 impl DeBruijn {
-    pub fn new(arena: &Bump, i: usize) -> &Self {
+    pub fn new(arena: &Arena, i: usize) -> &Self {
         arena.alloc(DeBruijn(i))
     }
 
-    pub fn zero(arena: &Bump) -> &Self {
+    pub fn zero(arena: &Arena) -> &Self {
         arena.alloc(DeBruijn(0))
     }
 }
@@ -23,7 +23,7 @@ impl<'a> Binder<'a> for DeBruijn {
     }
 
     fn var_decode(
-        arena: &'a bumpalo::Bump,
+        arena: &'a Arena,
         d: &mut crate::flat::Decoder,
     ) -> Result<&'a Self, crate::flat::FlatDecodeError> {
         let i = d.word()?;
@@ -41,7 +41,7 @@ impl<'a> Binder<'a> for DeBruijn {
     }
 
     fn parameter_decode(
-        arena: &'a bumpalo::Bump,
+        arena: &'a Arena,
         _d: &mut crate::flat::Decoder,
     ) -> Result<&'a Self, crate::flat::FlatDecodeError> {
         let d = DeBruijn::new(arena, 0);

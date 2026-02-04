@@ -1,4 +1,3 @@
-use bumpalo::Bump;
 use chumsky::{extra::SimpleState, prelude::*, ParseResult, Parser};
 
 mod constant;
@@ -10,10 +9,13 @@ mod types;
 mod utils;
 mod version;
 
-use crate::{binder::DeBruijn, constant::Constant, data::PlutusData, program::Program, term::Term};
+use crate::{
+    arena::Arena, binder::DeBruijn, constant::Constant, data::PlutusData, program::Program,
+    term::Term,
+};
 
 pub fn parse_program<'a>(
-    arena: &'a Bump,
+    arena: &'a Arena,
     input: &'a str,
 ) -> ParseResult<&'a Program<'a, DeBruijn>, Rich<'a, char>> {
     let mut initial_state = SimpleState(types::State::new(arena));
@@ -22,7 +24,7 @@ pub fn parse_program<'a>(
 }
 
 pub fn parse_term<'a>(
-    arena: &'a Bump,
+    arena: &'a Arena,
     input: &'a str,
 ) -> ParseResult<&'a Term<'a, DeBruijn>, Rich<'a, char>> {
     let mut initial_state = SimpleState(types::State::new(arena));
@@ -31,7 +33,7 @@ pub fn parse_term<'a>(
 }
 
 pub fn parse_constant<'a>(
-    arena: &'a Bump,
+    arena: &'a Arena,
     input: &'a str,
 ) -> ParseResult<&'a Constant<'a>, Rich<'a, char>> {
     let mut initial_state = SimpleState(types::State::new(arena));
@@ -40,7 +42,7 @@ pub fn parse_constant<'a>(
 }
 
 pub fn parse_data<'a>(
-    arena: &'a Bump,
+    arena: &'a Arena,
     input: &'a str,
 ) -> ParseResult<&'a PlutusData<'a>, Rich<'a, char>> {
     let mut initial_state = SimpleState(types::State::new(arena));

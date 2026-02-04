@@ -5,8 +5,9 @@ pub use decoder::Ctx;
 pub use decoder::Decoder;
 pub use error::FlatDecodeError;
 
-use bumpalo::{collections::Vec as BumpVec, Bump};
+use bumpalo::collections::Vec as BumpVec;
 
+use crate::arena::Arena;
 use crate::binder::Binder;
 use crate::typ::Type;
 use crate::{
@@ -21,7 +22,7 @@ use super::{
     tag::{BUILTIN_TAG_WIDTH, CONST_TAG_WIDTH, TERM_TAG_WIDTH},
 };
 
-pub fn decode<'a, V>(arena: &'a Bump, bytes: &[u8]) -> Result<&'a Program<'a, V>, FlatDecodeError>
+pub fn decode<'a, V>(arena: &'a Arena, bytes: &[u8]) -> Result<&'a Program<'a, V>, FlatDecodeError>
 where
     V: Binder<'a>,
 {
@@ -168,7 +169,7 @@ fn decode_constant<'a>(
     match ty {
         Type::Integer => {
             let v = d.integer()?;
-            let v = ctx.arena.alloc(v);
+            let v = ctx.arena.alloc_integer(v);
 
             Ok(Constant::integer(ctx.arena, v))
         }
@@ -297,7 +298,7 @@ fn decode_constant_tag(d: &mut Decoder) -> Result<u8, FlatDecodeError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::binder::DeBruijn;
+    use crate::{arena::Arena, binder::DeBruijn};
     use hex;
     use num::BigInt;
 
@@ -316,7 +317,7 @@ mod tests {
         //     ]
         //   ])
         let bytes = hex::decode("0101003370090011aab9d375498109d8668218809f0001ff0001").unwrap();
-        let arena = Bump::new();
+        let arena = Arena::new();
         let program: Result<&Program<DeBruijn>, _> = decode(&arena, &bytes);
         match program {
             Ok(program) => {
@@ -328,7 +329,7 @@ mod tests {
                 );
             }
             Err(_) => {
-                assert!(false);
+                panic!();
             }
         }
     }
@@ -355,7 +356,7 @@ mod tests {
             "0101003370090011bad357426aae78dd526112d8799fc24c033b2e3c9fd0803ce7ffffffff0001",
         )
         .unwrap();
-        let arena = Bump::new();
+        let arena = Arena::new();
         let program: Result<&Program<DeBruijn>, _> = decode(&arena, &bytes);
         match program {
             Ok(program) => {
@@ -393,7 +394,7 @@ mod tests {
         //     ]
         //   ])
         let bytes = hex::decode("0101003370490021bad357426ae88dd62601049f070eff0001").unwrap();
-        let arena = Bump::new();
+        let arena = Arena::new();
         let program: Result<&Program<DeBruijn>, _> = decode(&arena, &bytes);
         match program {
             Ok(program) => {

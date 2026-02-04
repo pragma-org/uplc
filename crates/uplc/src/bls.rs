@@ -1,7 +1,7 @@
-use bumpalo::{collections::Vec as BumpVec, Bump};
+use bumpalo::collections::Vec as BumpVec;
 use once_cell::sync::Lazy;
 
-use crate::constant::Integer;
+use crate::{arena::Arena, constant::Integer};
 
 pub static SCALAR_PERIOD: Lazy<Integer> = Lazy::new(|| {
     let bytes: [u8; 32] = [
@@ -24,25 +24,25 @@ pub const INTEGER_TO_BYTE_STRING_MAXIMUM_OUTPUT_LENGTH: i64 = 8192;
 pub struct BlsError(blst::BLST_ERROR);
 
 pub trait Compressable {
-    fn compress<'a>(&self, arena: &'a Bump) -> &'a [u8];
+    fn compress<'a>(&self, arena: &'a Arena) -> &'a [u8];
 
-    fn uncompress<'a>(arena: &'a Bump, bytes: &[u8]) -> Result<&'a Self, BlsError>
+    fn uncompress<'a>(arena: &'a Arena, bytes: &[u8]) -> Result<&'a Self, BlsError>
     where
         Self: std::marker::Sized;
 }
 
 impl Compressable for blst::blst_p1 {
-    fn compress<'a>(&self, arena: &'a Bump) -> &'a [u8] {
+    fn compress<'a>(&self, arena: &'a Arena) -> &'a [u8] {
         let mut out = [0u8; BLST_P1_COMPRESSED_SIZE];
 
         unsafe {
             blst::blst_p1_compress(&mut out as *mut _, self);
         };
 
-        arena.alloc(BumpVec::from_iter_in(out, arena))
+        arena.alloc(BumpVec::from_iter_in(out, arena.as_bump()))
     }
 
-    fn uncompress<'a>(arena: &'a Bump, bytes: &[u8]) -> Result<&'a Self, BlsError> {
+    fn uncompress<'a>(arena: &'a Arena, bytes: &[u8]) -> Result<&'a Self, BlsError> {
         if bytes.len() != BLST_P1_COMPRESSED_SIZE {
             return Err(BlsError(blst::BLST_ERROR::BLST_BAD_ENCODING));
         }
@@ -72,17 +72,17 @@ impl Compressable for blst::blst_p1 {
 }
 
 impl Compressable for blst::blst_p2 {
-    fn compress<'a>(&self, arena: &'a Bump) -> &'a [u8] {
+    fn compress<'a>(&self, arena: &'a Arena) -> &'a [u8] {
         let mut out = [0; BLST_P2_COMPRESSED_SIZE];
 
         unsafe {
             blst::blst_p2_compress(&mut out as *mut _, self);
         };
 
-        arena.alloc(BumpVec::from_iter_in(out, arena))
+        arena.alloc(BumpVec::from_iter_in(out, arena.as_bump()))
     }
 
-    fn uncompress<'a>(arena: &'a Bump, bytes: &[u8]) -> Result<&'a Self, BlsError> {
+    fn uncompress<'a>(arena: &'a Arena, bytes: &[u8]) -> Result<&'a Self, BlsError> {
         if bytes.len() != BLST_P2_COMPRESSED_SIZE {
             return Err(BlsError(blst::BLST_ERROR::BLST_BAD_ENCODING));
         }

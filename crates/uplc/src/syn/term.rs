@@ -1,7 +1,7 @@
-use bumpalo::{collections::Vec as BumpVec, Bump};
+use bumpalo::collections::Vec as BumpVec;
 use chumsky::{prelude::*, Parser};
 
-use crate::{binder::DeBruijn, term::Term};
+use crate::{arena::Arena, binder::DeBruijn, term::Term};
 
 use super::{
     constant,
@@ -132,7 +132,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a, DeBruijn>, Extra<'a
                     let span = e.span();
                     let state = e.state();
 
-                    let fields = BumpVec::from_iter_in(fields, state.arena);
+                    let fields = BumpVec::from_iter_in(fields, state.arena.as_bump());
                     let fields = state.arena.alloc(fields);
 
                     // Handle tag parsing with proper error emission
@@ -169,7 +169,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a, DeBruijn>, Extra<'a
                 .validate(|(tag, branches), e: &mut MapExtra<'a, '_>, emitter| {
                     let state = e.state();
 
-                    let branches = BumpVec::from_iter_in(branches, state.arena);
+                    let branches = BumpVec::from_iter_in(branches, state.arena.as_bump());
                     let branches = state.arena.alloc(branches);
 
                     let ret = Term::case(state.arena, tag, branches);
@@ -186,7 +186,7 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a, DeBruijn>, Extra<'a
     })
 }
 
-pub fn builtin_from_str<'a>(arena: &'a Bump, name: &str) -> Option<&'a Term<'a, DeBruijn>> {
+pub fn builtin_from_str<'a>(arena: &'a Arena, name: &str) -> Option<&'a Term<'a, DeBruijn>> {
     match name {
         "addInteger" => Some(Term::add_integer(arena)),
         "subtractInteger" => Some(Term::subtract_integer(arena)),

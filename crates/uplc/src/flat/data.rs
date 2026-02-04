@@ -23,7 +23,7 @@ impl<'a, 'b> minicbor::decode::Decode<'b, Ctx<'a>> for &'a PlutusData<'a> {
 
                     return match x {
                         121..=127 => {
-                            let mut fields = BumpVec::new_in(ctx.arena);
+                            let mut fields = BumpVec::new_in(ctx.arena.as_bump());
 
                             for x in decoder.array_iter_with(ctx)? {
                                 fields.push(x?);
@@ -36,7 +36,7 @@ impl<'a, 'b> minicbor::decode::Decode<'b, Ctx<'a>> for &'a PlutusData<'a> {
                             Ok(data)
                         }
                         1280..=1400 => {
-                            let mut fields = BumpVec::new_in(ctx.arena);
+                            let mut fields = BumpVec::new_in(ctx.arena.as_bump());
 
                             for x in decoder.array_iter_with(ctx)? {
                                 fields.push(x?);
@@ -49,7 +49,7 @@ impl<'a, 'b> minicbor::decode::Decode<'b, Ctx<'a>> for &'a PlutusData<'a> {
                             Ok(data)
                         }
                         102 => {
-                            let mut fields = BumpVec::new_in(ctx.arena);
+                            let mut fields = BumpVec::new_in(ctx.arena.as_bump());
 
                             let count = decoder.array()?;
                             if count != Some(2) {
@@ -91,7 +91,7 @@ impl<'a, 'b> minicbor::decode::Decode<'b, Ctx<'a>> for &'a PlutusData<'a> {
                 match tag.try_into() {
                     Ok(x @ IanaTag::PosBignum | x @ IanaTag::NegBignum) => {
                         let _ = decoder.tag()?;
-                        let mut bytes = BumpVec::new_in(ctx.arena);
+                        let mut bytes = BumpVec::new_in(ctx.arena.as_bump());
 
                         for chunk in decoder.bytes_iter()? {
                             let chunk = chunk?;
@@ -99,7 +99,7 @@ impl<'a, 'b> minicbor::decode::Decode<'b, Ctx<'a>> for &'a PlutusData<'a> {
                             bytes.extend_from_slice(chunk);
                         }
 
-                        let integer = ctx.arena.alloc(num::BigInt::from_bytes_be(
+                        let integer = ctx.arena.alloc_integer(num::BigInt::from_bytes_be(
                             if x == IanaTag::PosBignum {
                                 num_bigint::Sign::Plus
                             } else {
@@ -121,7 +121,7 @@ impl<'a, 'b> minicbor::decode::Decode<'b, Ctx<'a>> for &'a PlutusData<'a> {
                 }
             }
             minicbor::data::Type::Map | minicbor::data::Type::MapIndef => {
-                let mut fields = BumpVec::new_in(ctx.arena);
+                let mut fields = BumpVec::new_in(ctx.arena.as_bump());
 
                 for x in decoder.map_iter_with(ctx)? {
                     let x = x?;
@@ -134,7 +134,7 @@ impl<'a, 'b> minicbor::decode::Decode<'b, Ctx<'a>> for &'a PlutusData<'a> {
                 Ok(PlutusData::map(ctx.arena, fields))
             }
             minicbor::data::Type::Bytes | minicbor::data::Type::BytesIndef => {
-                let mut bs = BumpVec::new_in(ctx.arena);
+                let mut bs = BumpVec::new_in(ctx.arena.as_bump());
 
                 for chunk in decoder.bytes_iter()? {
                     let chunk = chunk?;
@@ -147,7 +147,7 @@ impl<'a, 'b> minicbor::decode::Decode<'b, Ctx<'a>> for &'a PlutusData<'a> {
                 Ok(PlutusData::byte_string(ctx.arena, bs))
             }
             minicbor::data::Type::Array | minicbor::data::Type::ArrayIndef => {
-                let mut fields = BumpVec::new_in(ctx.arena);
+                let mut fields = BumpVec::new_in(ctx.arena.as_bump());
 
                 for x in decoder.array_iter_with(ctx)? {
                     fields.push(x?);

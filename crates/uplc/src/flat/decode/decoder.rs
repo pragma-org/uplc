@@ -1,9 +1,6 @@
-use bumpalo::{
-    collections::{String as BumpString, Vec as BumpVec},
-    Bump,
-};
+use bumpalo::collections::{String as BumpString, Vec as BumpVec};
 
-use crate::{constant::Integer, flat::zigzag::ZigZag};
+use crate::{arena::Arena, constant::Integer, flat::zigzag::ZigZag};
 
 use super::FlatDecodeError;
 
@@ -14,7 +11,7 @@ pub struct Decoder<'b> {
 }
 
 pub struct Ctx<'a> {
-    pub arena: &'a Bump,
+    pub arena: &'a Arena,
 }
 
 impl<'b> Decoder<'b> {
@@ -71,7 +68,7 @@ impl<'b> Decoder<'b> {
     where
         F: Copy + FnOnce(&mut Ctx<'a>, &mut Decoder) -> Result<T, FlatDecodeError>,
     {
-        let mut vec_array = BumpVec::new_in(ctx.arena);
+        let mut vec_array = BumpVec::new_in(ctx.arena.as_bump());
 
         while self.bit()? {
             vec_array.push(decoder_func(ctx, self)?)
@@ -228,7 +225,7 @@ impl<'b> Decoder<'b> {
     /// above to continue decoding the byte array. We stop once we hit a
     /// byte array length of 0. If array length is 0 for first byte array
     /// length the we return a empty array.
-    pub fn bytes<'a>(&mut self, arena: &'a Bump) -> Result<BumpVec<'a, u8>, FlatDecodeError> {
+    pub fn bytes<'a>(&mut self, arena: &'a Arena) -> Result<BumpVec<'a, u8>, FlatDecodeError> {
         self.filler()?;
         self.byte_array(arena)
     }
@@ -241,7 +238,7 @@ impl<'b> Decoder<'b> {
     /// above to continue decoding the byte array. We stop once we hit a
     /// byte array length of 0. If array length is 0 for first byte array
     /// length the we return a empty array.
-    fn byte_array<'a>(&mut self, arena: &'a Bump) -> Result<BumpVec<'a, u8>, FlatDecodeError> {
+    fn byte_array<'a>(&mut self, arena: &'a Arena) -> Result<BumpVec<'a, u8>, FlatDecodeError> {
         if self.used_bits != 0 {
             return Err(FlatDecodeError::BufferNotByteAligned);
         }
@@ -252,7 +249,7 @@ impl<'b> Decoder<'b> {
 
         self.pos += 1;
 
-        let mut blk_array = BumpVec::with_capacity_in(blk_len, arena);
+        let mut blk_array = BumpVec::with_capacity_in(blk_len, arena.as_bump());
 
         while blk_len != 0 {
             self.ensure_bytes(blk_len + 1)?;
@@ -280,7 +277,7 @@ impl<'b> Decoder<'b> {
     /// above to continue decoding the byte array. We stop once we hit a
     /// byte array length of 0. If array length is 0 for first byte array
     /// length the we return a empty array.
-    pub fn utf8<'a>(&mut self, arena: &'a Bump) -> Result<&'a str, FlatDecodeError> {
+    pub fn utf8<'a>(&mut self, arena: &'a Arena) -> Result<&'a str, FlatDecodeError> {
         let b = self.bytes(arena)?;
 
         let s =
