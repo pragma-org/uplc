@@ -1,13 +1,22 @@
 use bumpalo::Bump;
-use criterion::{criterion_group, BatchSize, Criterion};
+use criterion::{criterion_group, Criterion};
 use itertools::Itertools;
-use std::{fs, path::Path, time::Duration};
+use std::{
+    collections::BTreeMap,
+    fs,
+    path::{Path, PathBuf},
+    time::Duration,
+};
 use uplc_turbo::{arena::Arena, binder::DeBruijn, flat, machine::PlutusVersion};
 
 const TURBO_DATA_DIR: &str = "benches/benchmarks/turbo";
 const TURBO_ARCHIVE_URL: &str = "https://pub-2239d82d9a074482b2eb2c886191cb4e.r2.dev/turbo.tar.xz";
-const BUMP_ARENA_CAPACITY: usize = 1_048_576;
-const NUM_PARTS: usize = 16;
+
+// Initial capacity of the arena, in bytes.
+const BUMP_ARENA_CAPACITY: usize = 524288;
+
+// How many groups to shard the benchmarks into.
+const DEFAULT_NUM_GROUPS: usize = 8;
 
 #[derive(Debug)]
 struct CborWrapped(Vec<u8>);
@@ -34,10 +43,17 @@ fn detect_plutus_version(file_name: &str) -> PlutusVersion {
     }
 }
 
-fn bench_turbo_with_filter<F>(c: &mut Criterion, filter: F, part: &str)
-where
-    F: Fn(usize) -> bool,
-{
+fn bench_turbo(c: &mut Criterion) {
+    let num_groups = std::env::var("UPLC_TURBO_NUM_GROUPS")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(DEFAULT_NUM_GROUPS);
+
+    assert!(
+        num_groups > 0,
+        "UPLC_TURBO_NUM_GROUPS cannot be smaller than 1"
+    );
+
     let data_dir = Path::new(TURBO_DATA_DIR);
 
     // Check directory exists and has content
@@ -69,78 +85,69 @@ where
         .sorted()
         .collect();
 
-    // Filter files by index for even distribution
-    let files: Vec<_> = all_files
-        .into_iter()
-        .enumerate()
-        .filter(|(idx, _)| filter(*idx))
-        .map(|(_, path)| path)
-        .collect();
+    // Group bytes by index for even distribution
+    let groups: BTreeMap<usize, Vec<&Path>> = all_files.iter().enumerate().fold(
+        BTreeMap::new(),
+        |mut acc, (ix, file): (usize, &PathBuf)| {
+            acc.entry(ix % num_groups)
+                .and_modify(|files: &mut Vec<_>| files.push(file.as_path()))
+                .or_insert(vec![file.as_path()]);
+            acc
+        },
+    );
 
-    for path in files {
-        let file_stem = path
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or_default();
+    // Run benchmarks in separate indexed groups, to allow easily filtering them. The size of the
+    // groups can be controlled using UPLC_TURBO_NUM_GROUPS; while one can then select subgroups
+    // using benchmark filters:
+    //
+    // cargo bench turbo::0/
+    // cargo bench turbo::1/
+    // cargo bench turbo::2/
+    for (ix, files) in groups {
+        let mut group = c.benchmark_group(format!("turbo::{}", ix));
 
-        let folder_name = path
-            .parent()
-            .and_then(|p| p.file_name())
-            .and_then(|name| name.to_str())
-            .unwrap_or_default();
+        for path in files {
+            let file_stem = path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or_default();
 
-        let file_name = format!("turbo~{}~{}~{}", part, folder_name, file_stem);
+            let folder_name = path
+                .parent()
+                .and_then(|p| p.file_name())
+                .and_then(|name| name.to_str())
+                .unwrap_or_default();
 
-        let plutus_version = detect_plutus_version(&file_name);
+            let file_name = format!("{}/{}", folder_name, file_stem);
 
-        let cbor = std::fs::read(&path)
-            .unwrap_or_else(|e| panic!("Failed to read {}: {}", path.display(), e));
+            let plutus_version = detect_plutus_version(&file_name);
 
-        let flat = minicbor::decode::<CborWrapped>(&cbor)
-            .unwrap_or_else(|e| panic!("Failed to decode CBOR from {}: {}", path.display(), e))
-            .0;
+            let cbor = std::fs::read(&path)
+                .unwrap_or_else(|e| panic!("Failed to read {}: {}", path.display(), e));
 
-        c.bench_function(&file_name, |b| {
-            b.iter_batched(
-                || Arena::from_bump(Bump::with_capacity(BUMP_ARENA_CAPACITY)),
-                |arena| {
+            let flat = minicbor::decode::<CborWrapped>(&cbor)
+                .unwrap_or_else(|e| panic!("Failed to decode CBOR from {}: {}", path.display(), e))
+                .0;
+
+            let mut arena = Arena::from_bump(Bump::with_capacity(BUMP_ARENA_CAPACITY));
+
+            group.bench_function(&file_name, |b| {
+                b.iter(|| {
                     let program =
                         flat::decode::<DeBruijn>(&arena, &flat).expect("Failed to decode");
 
                     let result = program.eval_version(&arena, plutus_version);
 
                     let _term = result.term.expect("Failed to evaluate");
-                },
-                BatchSize::SmallInput,
-            )
-        });
+
+                    arena.reset();
+                })
+            });
+        }
+
+        group.finish();
     }
 }
-
-macro_rules! bench_turbo_part {
-    ($name:ident, $part_num:expr, $part_name:expr) => {
-        pub fn $name(c: &mut Criterion) {
-            bench_turbo_with_filter(c, |idx| idx % NUM_PARTS == $part_num, $part_name);
-        }
-    };
-}
-
-bench_turbo_part!(bench_turbo_part_1, 0, "part1");
-bench_turbo_part!(bench_turbo_part_2, 1, "part2");
-bench_turbo_part!(bench_turbo_part_3, 2, "part3");
-bench_turbo_part!(bench_turbo_part_4, 3, "part4");
-bench_turbo_part!(bench_turbo_part_5, 4, "part5");
-bench_turbo_part!(bench_turbo_part_6, 5, "part6");
-bench_turbo_part!(bench_turbo_part_7, 6, "part7");
-bench_turbo_part!(bench_turbo_part_8, 7, "part8");
-bench_turbo_part!(bench_turbo_part_9, 8, "part9");
-bench_turbo_part!(bench_turbo_part_10, 9, "part10");
-bench_turbo_part!(bench_turbo_part_11, 10, "part11");
-bench_turbo_part!(bench_turbo_part_12, 11, "part12");
-bench_turbo_part!(bench_turbo_part_13, 12, "part13");
-bench_turbo_part!(bench_turbo_part_14, 13, "part14");
-bench_turbo_part!(bench_turbo_part_15, 14, "part15");
-bench_turbo_part!(bench_turbo_part_16, 15, "part16");
 
 criterion_group! {
     name = turbo;
@@ -148,8 +155,5 @@ criterion_group! {
         .sample_size(10)
         .warm_up_time(Duration::from_millis(10))
         .measurement_time(Duration::from_millis(100));
-    targets = bench_turbo_part_1, bench_turbo_part_2, bench_turbo_part_3, bench_turbo_part_4,
-    bench_turbo_part_5, bench_turbo_part_6, bench_turbo_part_7, bench_turbo_part_8, bench_turbo_part_9,
-    bench_turbo_part_10, bench_turbo_part_11, bench_turbo_part_12, bench_turbo_part_13, bench_turbo_part_14,
-    bench_turbo_part_15, bench_turbo_part_16
+    targets = bench_turbo
 }
