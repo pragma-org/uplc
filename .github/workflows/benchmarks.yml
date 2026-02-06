@@ -75,13 +75,12 @@ jobs:
         run: |
           echo "Extracting benchmark data..."
           mkdir -p crates/uplc/benches/benchmarks/turbo
-
           tar -xf turbo.tar.xz -C crates/uplc/benches/benchmarks/turbo
           echo "Extraction complete"
           ls -la crates/uplc/benches/benchmarks/turbo
 
       - name: Run benchmarks for part ${{ matrix.part }}
-        run: cargo bench --bench "turbo::${{ matrix.part }}/"
+        run: cargo bench "turbo::${{ matrix.part }}/"
 
       - name: Upload benchmark results
         uses: actions/upload-artifact@v4
