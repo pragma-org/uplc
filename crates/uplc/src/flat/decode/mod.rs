@@ -231,7 +231,7 @@ fn decode_constant_with_type<'a>(
     match ty {
         Type::Integer => {
             let v = d.integer()?;
-            let v = ctx.arena.alloc(v);
+            let v = ctx.arena.alloc_integer(v);
 
             Ok(Constant::integer(ctx.arena, v))
         }
