@@ -1,5 +1,5 @@
 /target
 fibonacci.uplc
 test.uplc
-turbo
+*.flat
 turbo.tar.xz
