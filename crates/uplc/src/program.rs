@@ -45,24 +45,33 @@ where
         arena: &'a Arena,
         plutus_version: PlutusVersion,
     ) -> EvalResult<'a, V> {
+        self.eval_version_budget(arena, plutus_version, ExBudget::default())
+    }
+
+    pub fn eval_version_budget(
+        &'a self,
+        arena: &'a Arena,
+        plutus_version: PlutusVersion,
+        initial_budget: ExBudget,
+    ) -> EvalResult<'a, V> {
         match plutus_version {
             PlutusVersion::V1 => self.evaluate(
                 arena,
                 CostModel::<BuiltinCostsV1>::default(),
                 plutus_version,
-                ExBudget::default(),
+                initial_budget,
             ),
             PlutusVersion::V2 => self.evaluate(
                 arena,
                 CostModel::<BuiltinCostsV2>::default(),
                 plutus_version,
-                ExBudget::default(),
+                initial_budget,
             ),
             PlutusVersion::V3 => self.evaluate(
                 arena,
                 CostModel::<BuiltinCostsV3>::default(),
                 plutus_version,
-                ExBudget::default(),
+                initial_budget,
             ),
         }
     }
