@@ -1,4 +1,4 @@
-name: Nightly Benchmarks
+name: benchmarks
 
 on:
   schedule:
@@ -44,16 +44,17 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
-  benchmark:
-    name: Benchmark Part ${{ matrix.part }}
+  run-turbo-benchmarks:
+    name: |
+      turbo::${{ matrix.part }}
     runs-on: ubuntu-latest
     needs: check-changes
     if: needs.check-changes.outputs.should_run == 'true' || github.event_name == 'workflow_dispatch'
     strategy:
       fail-fast: false
       matrix:
-        part: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
-    
+        part: [1, 2, 3, 4, 5, 6, 7, 8]
+
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
@@ -68,25 +69,23 @@ jobs:
 
       - name: Download benchmark data
         if: steps.cache-benchmarks.outputs.cache-hit != 'true'
-        run: |
-          echo "Downloading benchmark data from $BENCHMARK_URL"
-          curl -L -o turbo.tar.xz "$BENCHMARK_URL"
-          echo "Download complete"
+        run: curl -L -o turbo.tar.xz "$BENCHMARK_URL"
 
       - name: Extract benchmark data
         run: |
           echo "Extracting benchmark data..."
           mkdir -p crates/uplc/benches/benchmarks/turbo
+
           tar -xf turbo.tar.xz -C crates/uplc/benches/benchmarks/turbo
           echo "Extraction complete"
           ls -la crates/uplc/benches/benchmarks/turbo
 
       - name: Run benchmarks for part ${{ matrix.part }}
-        run: cargo bench --bench bench_main -- turbo~part${{ matrix.part }}
+        run: cargo bench --bench "turbo::${{ matrix.part }}/"
 
       - name: Upload benchmark results
         uses: actions/upload-artifact@v4
         with:
-          name: benchmark-results-part-${{ matrix.part }}-${{ github.sha }}
+          name: benchmark-turbo-${{ matrix.part }}-${{ github.sha }}
           path: target/criterion/
           retention-days: 30
