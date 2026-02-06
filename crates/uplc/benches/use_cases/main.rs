@@ -1,11 +1,11 @@
 use bumpalo::Bump;
-use criterion::{criterion_group, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use itertools::Itertools;
 use std::{fs, time::Duration};
 use uplc_turbo::{arena::Arena, binder::DeBruijn, flat};
 
 pub fn bench_plutus_use_cases(c: &mut Criterion) {
-    let data_dir = std::path::Path::new("benches/benchmarks/plutus_use_cases");
+    let data_dir = std::path::Path::new("benches/use_cases/plutus_use_cases");
 
     for path in fs::read_dir(data_dir)
         .unwrap()
@@ -46,4 +46,8 @@ criterion_group! {
     config = Criterion::default()
         .measurement_time(Duration::from_secs(10));
     targets = bench_plutus_use_cases
+}
+
+criterion_main! {
+    plutus_use_cases,
 }
