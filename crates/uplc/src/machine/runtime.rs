@@ -8,15 +8,47 @@ use crate::{
     builtin::DefaultFunction,
     constant::{self, Constant, Integer},
     data::PlutusData,
+    ledger_value::{self, LedgerValue, ValueError},
     machine::cost_model::builtin_costs::BuiltinCostModel,
     typ::Type,
 };
 use bumpalo::collections::{CollectIn, String as BumpString, Vec as BumpVec};
 use num::{Integer as NumInteger, Signed, Zero};
 
-use super::{cost_model, value::Value, Machine, MachineError};
+use super::{cost_model, value::Value, Machine, MachineError, RuntimeError};
 
 pub const INTEGER_TO_BYTE_STRING_MAXIMUM_OUTPUT_LENGTH: i64 = 8192;
+
+/// Check that an integer fits in a signed 4096-bit range: [-(2^4095), 2^4095 - 1].
+/// Used by multiScalarMul to limit scalar sizes.
+fn check_multi_scalar_range(int: &Integer) -> Result<(), RuntimeError<'static>> {
+    let bits = int.bits();
+
+    if bits <= 4095 {
+        return Ok(());
+    }
+
+    if bits > 4096 {
+        return Err(RuntimeError::MultiScalarMulScalarOutOfBounds);
+    }
+
+    // bits == 4096: only valid if negative and exactly -(2^4095)
+    if !int.is_negative() {
+        return Err(RuntimeError::MultiScalarMulScalarOutOfBounds);
+    }
+
+    let magnitude = int.magnitude();
+
+    use num::One;
+
+    let two_pow_4095 = num::BigUint::one() << 4095;
+
+    if *magnitude == two_pow_4095 {
+        Ok(())
+    } else {
+        Err(RuntimeError::MultiScalarMulScalarOutOfBounds)
+    }
+}
 
 pub enum BuiltinSemantics {
     V1,
@@ -97,14 +129,11 @@ where
     }
 }
 
-impl<'a, B: BuiltinCostModel> Machine<'a, B> {
-    pub fn call<V>(
+impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
+    pub fn call(
         &mut self,
         runtime: &'a Runtime<'a, V>,
-    ) -> Result<&'a Value<'a, V>, MachineError<'a, V>>
-    where
-        V: Eval<'a>,
-    {
+    ) -> Result<&'a Value<'a, V>, MachineError<'a, V>> {
         match runtime.fun {
             DefaultFunction::AddInteger => {
                 let arg1 = runtime.args[0].unwrap_integer()?;
@@ -3079,16 +3108,12 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
             DefaultFunction::ListToArray => {
                 let (list_type, list) = runtime.args[0].unwrap_list()?;
 
+                let list_len = list.len() as i64;
+
                 let budget = self
                     .costs
                     .builtin_costs
-                    .get_cost(
-                        DefaultFunction::ListToArray,
-                        &[
-                            cost_model::proto_list_ex_mem(list),
-                            cost_model::proto_list_ex_mem(list),
-                        ],
-                    )
+                    .get_cost(DefaultFunction::ListToArray, &[list_len])
                     .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::ListToArray))?;
 
                 self.spend_budget(budget)?;
@@ -3125,6 +3150,397 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 } else {
                     Err(MachineError::index_array_out_of_bounds(arg1, array.len()))
                 }
+            }
+            DefaultFunction::Bls12_381_G1_MultiScalarMul => {
+                let (_, scalars) = runtime.args[0].unwrap_list()?;
+                let (_, points) = runtime.args[1].unwrap_list()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::Bls12_381_G1_MultiScalarMul,
+                        &[scalars.len() as i64, points.len() as i64],
+                    )
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::Bls12_381_G1_MultiScalarMul,
+                    ))?;
+
+                self.spend_budget(budget)?;
+
+                let n = scalars.len().min(points.len());
+
+                if n == 0 {
+                    let out = self.arena.alloc(blst::blst_p1::default());
+
+                    let compressed: [u8; 48] = {
+                        let mut buf = [0u8; 48];
+                        buf[0] = 0xc0;
+                        buf
+                    };
+
+                    let identity = blst::blst_p1::uncompress(self.arena, &compressed)
+                        .map_err(MachineError::bls)?;
+
+                    *out = *identity;
+
+                    let constant = Constant::g1(self.arena, out);
+
+                    return Ok(Value::con(self.arena, constant));
+                }
+
+                let size_scalar = size_of::<blst::blst_scalar>();
+
+                let scalar_buf = self.arena.alloc(blst::blst_scalar::default());
+                let mut acc = blst::blst_p1::default();
+
+                for i in 0..n {
+                    let Constant::Integer(si) = scalars[i] else {
+                        return Err(MachineError::type_mismatch(Type::Integer, scalars[i]));
+                    };
+
+                    let Constant::Bls12_381G1Element(pi) = points[i] else {
+                        return Err(MachineError::type_mismatch(
+                            Type::Bls12_381G1Element,
+                            points[i],
+                        ));
+                    };
+
+                    // Check scalar fits in signed 4096-bit range
+                    check_multi_scalar_range(si).map_err(MachineError::runtime)?;
+
+                    let si = si.mod_floor(&SCALAR_PERIOD);
+
+                    let (_, mut si_bytes) = si.to_bytes_be();
+
+                    if size_scalar > si_bytes.len() {
+                        let diff = size_scalar - si_bytes.len();
+
+                        let mut new_vec = vec![0; diff];
+
+                        new_vec.append(&mut si_bytes);
+
+                        si_bytes = new_vec;
+                    }
+
+                    let mut term = blst::blst_p1::default();
+                    unsafe {
+                        blst::blst_scalar_from_bendian(
+                            scalar_buf as *mut _,
+                            si_bytes.as_ptr() as *const _,
+                        );
+
+                        blst::blst_p1_mult(
+                            &mut term as *mut _,
+                            *pi as *const _,
+                            scalar_buf.b.as_ptr() as *const _,
+                            size_scalar * 8,
+                        );
+                    }
+
+                    if i == 0 {
+                        acc = term;
+                    } else {
+                        let mut sum = blst::blst_p1::default();
+
+                        unsafe {
+                            blst::blst_p1_add_or_double(
+                                &mut sum as *mut _,
+                                &acc as *const _,
+                                &term as *const _,
+                            );
+                        }
+
+                        acc = sum;
+                    }
+                }
+
+                let out = self.arena.alloc(acc);
+
+                let constant = Constant::g1(self.arena, out);
+
+                Ok(Value::con(self.arena, constant))
+            }
+            DefaultFunction::Bls12_381_G2_MultiScalarMul => {
+                let (_, scalars) = runtime.args[0].unwrap_list()?;
+                let (_, points) = runtime.args[1].unwrap_list()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::Bls12_381_G2_MultiScalarMul,
+                        &[scalars.len() as i64, points.len() as i64],
+                    )
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::Bls12_381_G2_MultiScalarMul,
+                    ))?;
+
+                self.spend_budget(budget)?;
+
+                let n = scalars.len().min(points.len());
+
+                if n == 0 {
+                    // Return G2 identity (zero point)
+                    let out = self.arena.alloc(blst::blst_p2::default());
+
+                    let compressed: [u8; 96] = {
+                        let mut buf = [0u8; 96];
+                        buf[0] = 0xc0;
+                        buf
+                    };
+
+                    let identity = blst::blst_p2::uncompress(self.arena, &compressed)
+                        .map_err(MachineError::bls)?;
+
+                    *out = *identity;
+
+                    let constant = Constant::g2(self.arena, out);
+
+                    return Ok(Value::con(self.arena, constant));
+                }
+
+                let size_scalar = size_of::<blst::blst_scalar>();
+
+                let scalar_buf = self.arena.alloc(blst::blst_scalar::default());
+                let mut acc = blst::blst_p2::default();
+
+                for i in 0..n {
+                    let Constant::Integer(si) = scalars[i] else {
+                        return Err(MachineError::type_mismatch(Type::Integer, scalars[i]));
+                    };
+
+                    let Constant::Bls12_381G2Element(pi) = points[i] else {
+                        return Err(MachineError::type_mismatch(
+                            Type::Bls12_381G2Element,
+                            points[i],
+                        ));
+                    };
+
+                    // Check scalar fits in signed 4096-bit range
+                    check_multi_scalar_range(si).map_err(MachineError::runtime)?;
+
+                    let si = si.mod_floor(&SCALAR_PERIOD);
+
+                    let (_, mut si_bytes) = si.to_bytes_be();
+
+                    if size_scalar > si_bytes.len() {
+                        let diff = size_scalar - si_bytes.len();
+                        let mut new_vec = vec![0; diff];
+                        new_vec.append(&mut si_bytes);
+                        si_bytes = new_vec;
+                    }
+
+                    let mut term = blst::blst_p2::default();
+
+                    unsafe {
+                        blst::blst_scalar_from_bendian(
+                            scalar_buf as *mut _,
+                            si_bytes.as_ptr() as *const _,
+                        );
+
+                        blst::blst_p2_mult(
+                            &mut term as *mut _,
+                            *pi as *const _,
+                            scalar_buf.b.as_ptr() as *const _,
+                            size_scalar * 8,
+                        );
+                    }
+
+                    if i == 0 {
+                        acc = term;
+                    } else {
+                        let mut sum = blst::blst_p2::default();
+
+                        unsafe {
+                            blst::blst_p2_add_or_double(
+                                &mut sum as *mut _,
+                                &acc as *const _,
+                                &term as *const _,
+                            );
+                        }
+
+                        acc = sum;
+                    }
+                }
+
+                let out = self.arena.alloc(acc);
+
+                let constant = Constant::g2(self.arena, out);
+
+                Ok(Value::con(self.arena, constant))
+            }
+            DefaultFunction::InsertCoin => {
+                let ccy = runtime.args[0].unwrap_byte_string()?;
+                let tok = runtime.args[1].unwrap_byte_string()?;
+                let qty = runtime.args[2].unwrap_integer()?;
+                let v = runtime.args[3].unwrap_ledger_value()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::InsertCoin,
+                        &[ledger_value::value_max_depth(v)],
+                    )
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::InsertCoin))?;
+
+                self.spend_budget(budget)?;
+
+                // Validate quantity in 128-bit signed range
+                if !qty.is_zero() {
+                    ledger_value::check_quantity_range(qty).map_err(MachineError::value)?;
+                }
+
+                // Validate key lengths (> 32 only allowed when qty=0, which is a no-op)
+                if ccy.len() > 32 || tok.len() > 32 {
+                    if qty.is_zero() {
+                        let constant = Constant::ledger_value(self.arena, v);
+                        return Ok(Value::con(self.arena, constant));
+                    }
+
+                    let err = if ccy.len() > 32 {
+                        ValueError::InsertCoinInvalidCurrency
+                    } else {
+                        ValueError::InsertCoinInvalidToken
+                    };
+
+                    return Err(MachineError::value(err));
+                }
+
+                let result = LedgerValue::insert_coin(self.arena, ccy, tok, qty, v);
+
+                let constant = Constant::ledger_value(self.arena, result);
+
+                Ok(Value::con(self.arena, constant))
+            }
+            DefaultFunction::LookupCoin => {
+                let ccy = runtime.args[0].unwrap_byte_string()?;
+                let tok = runtime.args[1].unwrap_byte_string()?;
+                let v = runtime.args[2].unwrap_ledger_value()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::LookupCoin,
+                        &[
+                            cost_model::byte_string_ex_mem(ccy),
+                            cost_model::byte_string_ex_mem(tok),
+                            ledger_value::value_max_depth(v),
+                        ],
+                    )
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::LookupCoin))?;
+
+                self.spend_budget(budget)?;
+
+                let qty = v.lookup_coin(self.arena, ccy, tok);
+
+                Ok(Value::integer(self.arena, qty))
+            }
+            DefaultFunction::UnionValue => {
+                let v1 = runtime.args[0].unwrap_ledger_value()?;
+                let v2 = runtime.args[1].unwrap_ledger_value()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::UnionValue,
+                        &[v1.size as i64, v2.size as i64],
+                    )
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::UnionValue))?;
+
+                self.spend_budget(budget)?;
+
+                let result =
+                    LedgerValue::union_value(self.arena, v1, v2).map_err(MachineError::value)?;
+
+                let constant = Constant::ledger_value(self.arena, result);
+
+                Ok(Value::con(self.arena, constant))
+            }
+            DefaultFunction::ValueContains => {
+                let v1 = runtime.args[0].unwrap_ledger_value()?;
+                let v2 = runtime.args[1].unwrap_ledger_value()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::ValueContains,
+                        &[v1.size as i64, v2.size as i64],
+                    )
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::ValueContains,
+                    ))?;
+
+                self.spend_budget(budget)?;
+
+                let result =
+                    LedgerValue::value_contains(self.arena, v1, v2).map_err(MachineError::value)?;
+
+                Ok(Value::bool(self.arena, result))
+            }
+            DefaultFunction::ValueData => {
+                let v = runtime.args[0].unwrap_ledger_value()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(DefaultFunction::ValueData, &[v.size as i64])
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::ValueData))?;
+
+                self.spend_budget(budget)?;
+
+                let data = LedgerValue::value_data(self.arena, v);
+
+                let constant = Constant::data(self.arena, data);
+
+                Ok(Value::con(self.arena, constant))
+            }
+            DefaultFunction::UnValueData => {
+                let data = runtime.args[0].unwrap_constant()?.unwrap_data()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::UnValueData,
+                        &[ledger_value::data_node_count(data)],
+                    )
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::UnValueData))?;
+
+                self.spend_budget(budget)?;
+
+                let result =
+                    LedgerValue::un_value_data(self.arena, data).map_err(MachineError::value)?;
+
+                let constant = Constant::ledger_value(self.arena, result);
+
+                Ok(Value::con(self.arena, constant))
+            }
+            DefaultFunction::ScaleValue => {
+                let scalar = runtime.args[0].unwrap_integer()?;
+                let v = runtime.args[1].unwrap_ledger_value()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::ScaleValue,
+                        &[cost_model::integer_ex_mem(scalar), v.size as i64],
+                    )
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::ScaleValue))?;
+
+                self.spend_budget(budget)?;
+
+                let result =
+                    LedgerValue::scale_value(self.arena, scalar, v).map_err(MachineError::value)?;
+
+                let constant = Constant::ledger_value(self.arena, result);
+
+                Ok(Value::con(self.arena, constant))
             }
         }
     }

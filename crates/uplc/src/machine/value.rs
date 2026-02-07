@@ -4,6 +4,7 @@ use crate::{
     arena::Arena,
     binder::Eval,
     constant::{Constant, Integer},
+    ledger_value::LedgerValue,
     term::Term,
     typ::Type,
 };
@@ -251,6 +252,16 @@ where
         };
 
         Ok(ml_res)
+    }
+
+    pub fn unwrap_ledger_value(&'a self) -> Result<&'a LedgerValue<'a>, MachineError<'a, V>> {
+        let inner = self.unwrap_constant()?;
+
+        let Constant::Value(v) = inner else {
+            return Err(MachineError::type_mismatch(Type::Value, inner));
+        };
+
+        Ok(v)
     }
 }
 
