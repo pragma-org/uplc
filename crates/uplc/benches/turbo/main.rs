@@ -1,10 +1,12 @@
 use bumpalo::Bump;
-use divan::{AllocProfiler, Bencher};
+use divan::Bencher;
 use itertools::Itertools;
+use rayon::prelude::*;
 use std::{
     fs,
     path::{Path, PathBuf},
     sync::LazyLock,
+    time::{Duration, Instant},
 };
 use uplc_turbo::{
     arena::Arena,
@@ -13,14 +15,15 @@ use uplc_turbo::{
     machine::{ExBudget, PlutusVersion},
 };
 
+#[cfg(feature = "alloc_profiler")]
 #[global_allocator]
-static ALLOC: AllocProfiler = AllocProfiler::system();
+static ALLOC: divan::AllocProfiler = divan::AllocProfiler::system();
 
 const TURBO_DATA_DIR: &str = "benches/turbo/samples";
 const TURBO_ARCHIVE_URL: &str = "https://pub-2239d82d9a074482b2eb2c886191cb4e.r2.dev/turbo.tar.xz";
 
 // Initial capacity of the arena, in bytes.
-const BUMP_ARENA_CAPACITY: usize = 10485760; // 10 MB
+const BUMP_ARENA_CAPACITY: usize = 1048576; // 1 MB
 
 // All known samples, loaded lazily
 static SAMPLES: LazyLock<Vec<PathBuf>> = LazyLock::new(|| samples());
@@ -83,7 +86,7 @@ fn samples() -> Vec<PathBuf> {
         .collect()
 }
 
-fn collect_scripts(files: &[PathBuf]) -> Vec<(Vec<u8>, PlutusVersion)> {
+fn collect_scripts(files: &[PathBuf]) -> Vec<(String, Vec<u8>, PlutusVersion)> {
     files
         .iter()
         .map(|path| {
@@ -101,13 +104,13 @@ fn collect_scripts(files: &[PathBuf]) -> Vec<(Vec<u8>, PlutusVersion)> {
                 .unwrap_or_else(|e| panic!("Failed to decode CBOR from {}: {}", path.display(), e))
                 .0;
 
-            (flat, plutus_version)
+            (file_stem.to_string(), flat, plutus_version)
         })
         .collect::<Vec<_>>()
 }
 
-fn bench_turbo(arena: &mut Arena) -> impl FnMut((Vec<u8>, PlutusVersion)) + use<'_> {
-    move |(flat, plutus_version)| {
+fn bench_turbo(arena: &mut Arena) -> impl FnMut(Vec<u8>, PlutusVersion) + use<'_> {
+    move |flat, plutus_version| {
         let program = flat::decode::<DeBruijn>(arena, &flat).expect("Failed to decode");
 
         let result = program.eval_version_budget(arena, plutus_version, ExBudget::max());
@@ -118,15 +121,90 @@ fn bench_turbo(arena: &mut Arena) -> impl FnMut((Vec<u8>, PlutusVersion)) + use<
     }
 }
 
+fn analyze_turbo(
+    arena: &mut Arena,
+    flat: Vec<u8>,
+    plutus_version: PlutusVersion,
+) -> (Duration, Duration, Duration) {
+    let instant = Instant::now();
+
+    let program = flat::decode::<DeBruijn>(arena, &flat).expect("Failed to decode");
+    let elapsed_unflat = instant.elapsed();
+
+    let result = program.eval_version_budget(arena, plutus_version, ExBudget::max());
+    let elapsed_eval = instant.elapsed();
+
+    let _term = result.term.expect("Failed to evaluate");
+
+    arena.reset();
+    let elapsed_reset = instant.elapsed();
+
+    (
+        elapsed_unflat,
+        elapsed_eval.saturating_sub(elapsed_unflat),
+        elapsed_reset
+            .saturating_sub(elapsed_unflat)
+            .saturating_sub(elapsed_eval),
+    )
+}
+
 #[divan::bench(sample_count = SAMPLES.len() as u32)]
 fn turbo(bencher: Bencher) {
     let mut arena = Arena::from_bump(Bump::with_capacity(BUMP_ARENA_CAPACITY));
     let mut scripts = collect_scripts(&SAMPLES);
+    let mut f = bench_turbo(&mut arena);
     bencher
         .with_inputs(|| scripts.pop().unwrap())
-        .bench_local_values(bench_turbo(&mut arena));
+        .bench_local_values(|(_, flat, plutus_version)| f(flat, plutus_version));
+}
+
+fn analyze_slow_evals(threshold: Duration) {
+    eprintln!(
+        "Collecting script executions slower than {}ms",
+        threshold.as_millis()
+    );
+    let scripts = collect_scripts(&SAMPLES);
+    scripts
+        .into_par_iter()
+        .map_init(
+            || Arena::from_bump(Bump::with_capacity(BUMP_ARENA_CAPACITY)),
+            |arena, (filename, flat, plutus_version)| {
+                let (elapsed_unflat, elapsed_eval, elapsed_reset) =
+                    analyze_turbo(arena, flat, plutus_version);
+                if elapsed_unflat + elapsed_eval + elapsed_reset > threshold {
+                    Some((filename, elapsed_unflat, elapsed_eval, elapsed_reset))
+                } else {
+                    None
+                }
+            },
+        )
+        .filter_map(|result| result)
+        .for_each(|(filename, elapsed_unflat, elapsed_eval, elapsed_reset)| {
+            fn display_duration(d: Duration) -> String {
+                if d > Duration::from_millis(10) {
+                    format!("{}ms", d.as_millis())
+                } else if d > Duration::from_nanos(10000) {
+                    format!("{}μs", d.as_nanos() / 1000)
+                } else {
+                    format!("{}ns", d.as_nanos())
+                }
+            }
+
+            println!(
+                "{filename} in {}ms\n\telapsed unflat: {}\n\telapsed eval:   {}\n\telapsed reset:  {}",
+                (elapsed_unflat  + elapsed_eval + elapsed_reset).as_millis(),
+                display_duration(elapsed_unflat),
+                display_duration(elapsed_eval),
+                display_duration(elapsed_reset),
+            );
+        })
 }
 
 fn main() {
-    divan::main();
+    match std::env::var("UPLC_TURBO_ANALYZE_SLOW") {
+        Ok(threshold) => analyze_slow_evals(Duration::from_millis(
+            threshold.parse().expect("invalid time limit"),
+        )),
+        Err(..) => divan::main(),
+    }
 }
