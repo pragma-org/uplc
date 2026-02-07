@@ -671,4 +671,58 @@ impl<'a, V> Term<'a, V> {
 
         Term::builtin(arena, fun)
     }
+
+    pub fn bls12_381_g1_multi_scalar_mul(arena: &'a Arena) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::Bls12_381_G1_MultiScalarMul);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn bls12_381_g2_multi_scalar_mul(arena: &'a Arena) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::Bls12_381_G2_MultiScalarMul);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn insert_coin(arena: &'a Arena) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::InsertCoin);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn lookup_coin(arena: &'a Arena) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::LookupCoin);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn union_value(arena: &'a Arena) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::UnionValue);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn value_contains(arena: &'a Arena) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::ValueContains);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn value_data(arena: &'a Arena) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::ValueData);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn un_value_data(arena: &'a Arena) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::UnValueData);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn scale_value(arena: &'a Arena) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::ScaleValue);
+
+        Term::builtin(arena, fun)
+    }
 }

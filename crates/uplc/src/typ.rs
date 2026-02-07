@@ -14,6 +14,7 @@ pub enum Type<'a> {
     Bls12_381G1Element,
     Bls12_381G2Element,
     Bls12_381MlResult,
+    Value,
 }
 
 impl<'a> Type<'a> {
@@ -63,5 +64,9 @@ impl<'a> Type<'a> {
 
     pub fn ml_result(arena: &'a Arena) -> &'a Type<'a> {
         arena.alloc(Type::Bls12_381MlResult)
+    }
+
+    pub fn value(arena: &'a Arena) -> &'a Type<'a> {
+        arena.alloc(Type::Value)
     }
 }

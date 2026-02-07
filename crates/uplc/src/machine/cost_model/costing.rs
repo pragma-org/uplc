@@ -20,8 +20,9 @@ where
 
 #[derive(Debug, PartialEq)]
 pub enum OneArgument {
-    ConstantCost(i64),
-    LinearCost(LinearSize),
+    Constant(i64),
+    Linear(LinearSize),
+    Quadratic(QuadraticFunction),
 }
 
 impl Cost<1> for OneArgument {
@@ -29,8 +30,9 @@ impl Cost<1> for OneArgument {
         let x = args[0];
 
         match self {
-            OneArgument::ConstantCost(c) => *c,
-            OneArgument::LinearCost(m) => m.slope * x + m.intercept,
+            OneArgument::Constant(c) => *c,
+            OneArgument::Linear(m) => m.slope * x + m.intercept,
+            OneArgument::Quadratic(q) => q.coeff_0 + (q.coeff_1 * x) + (q.coeff_2 * x * x),
         }
     }
 }
@@ -39,11 +41,19 @@ pub type OneArgumentCosting = Costing<1, OneArgument>;
 
 impl OneArgumentCosting {
     pub fn constant_cost(c: i64) -> OneArgument {
-        OneArgument::ConstantCost(c)
+        OneArgument::Constant(c)
     }
 
     pub fn linear_cost(intercept: i64, slope: i64) -> OneArgument {
-        OneArgument::LinearCost(LinearSize { intercept, slope })
+        OneArgument::Linear(LinearSize { intercept, slope })
+    }
+
+    pub fn quadratic_cost(coeff_0: i64, coeff_1: i64, coeff_2: i64) -> OneArgument {
+        OneArgument::Quadratic(QuadraticFunction {
+            coeff_0,
+            coeff_1,
+            coeff_2,
+        })
     }
 }
 
@@ -61,6 +71,7 @@ pub enum TwoArguments {
     QuadraticInY(QuadraticFunction),
     ConstAboveDiagonalIntoQuadraticXAndY(i64, TwoArgumentsQuadraticFunction),
     ConstAboveDiagonalIntoMultipliedSizes(i64, MultipliedSizes),
+    WithInteraction(WithInteraction),
 }
 
 pub type TwoArgumentsCosting = Costing<2, TwoArguments>;
@@ -153,6 +164,10 @@ impl TwoArgumentsCosting {
             MultipliedSizes { intercept, slope },
         )
     }
+
+    pub fn with_interaction(c00: i64, c10: i64, c01: i64, c11: i64) -> TwoArguments {
+        TwoArguments::WithInteraction(WithInteraction { c00, c10, c01, c11 })
+    }
 }
 
 impl Cost<2> for TwoArguments {
@@ -199,6 +214,7 @@ impl Cost<2> for TwoArguments {
                     s.slope * (x * y) + s.intercept
                 }
             }
+            TwoArguments::WithInteraction(w) => w.c00 + w.c10 * x + w.c01 * y + w.c11 * x * y,
         }
     }
 }
@@ -391,6 +407,14 @@ pub struct TwoArgumentsQuadraticFunction {
     coeff_10: i64,
     coeff_11: i64,
     coeff_20: i64,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct WithInteraction {
+    pub c00: i64,
+    pub c10: i64,
+    pub c01: i64,
+    pub c11: i64,
 }
 
 #[derive(Debug, PartialEq)]
