@@ -6,6 +6,7 @@ use crate::{
     builtin::DefaultFunction,
     constant::{Constant, Integer},
     data::PlutusData,
+    ledger_value::ValueError,
     term::Term,
     typ::Type,
 };
@@ -139,6 +140,10 @@ pub enum RuntimeError<'a> {
     IndexArrayOutOfBounds(&'a Integer, usize),
     #[error("Serialization error")]
     SerializationError(&'a PlutusData<'a>),
+    #[error("Scalar exceeds 512-byte bound for multiScalarMul")]
+    MultiScalarMulScalarOutOfBounds,
+    #[error(transparent)]
+    Value(#[from] ValueError),
 }
 
 impl<'a, V> MachineError<'a, V>
@@ -147,6 +152,10 @@ where
 {
     pub fn runtime(runtime_error: RuntimeError<'a>) -> Self {
         MachineError::Runtime(runtime_error)
+    }
+
+    pub fn value(error: ValueError) -> Self {
+        MachineError::Runtime(RuntimeError::Value(error))
     }
 
     pub fn type_mismatch(expected: Type<'a>, constant: &'a Constant<'a>) -> Self {
