@@ -8,6 +8,7 @@ use crate::{
     bls::Compressable,
     constant::{self, Constant, Integer},
     data::PlutusData,
+    ledger_value::LedgerValue,
     typ::Type,
 };
 
@@ -112,10 +113,109 @@ fn check_type<'a>(
 
             Constant::g2(arena, element)
         }
+
+        (TempConstant::ProtoList(list), Type::Value) => {
+            match parse_and_normalize_value(arena, list) {
+                Some(v) => Constant::ledger_value(arena, v),
+                None => return (Constant::unit(arena), false),
+            }
+        }
+
         _ => return (Constant::unit(arena), false),
     };
 
     (constant, true)
+}
+
+fn parse_and_normalize_value<'a>(
+    arena: &'a Arena,
+    list: BumpVec<'a, TempConstant<'a>>,
+) -> Option<&'a LedgerValue<'a>> {
+    use crate::ledger_value::check_quantity_range;
+    use num::Zero;
+
+    // First pass: extract all (currency, token, qty) triples
+    struct RawToken<'a> {
+        currency: &'a [u8],
+        name: &'a [u8],
+        quantity: &'a Integer,
+    }
+
+    let mut raw_tokens: Vec<RawToken<'a>> = Vec::new();
+
+    for item in list {
+        let TempConstant::ProtoPair(fst, snd) = item else {
+            return None;
+        };
+
+        let TempConstant::ByteString(ccy) = *fst else {
+            return None;
+        };
+
+        // Validate key length
+        if ccy.len() > 32 {
+            return None;
+        }
+
+        let TempConstant::ProtoList(inner_list) = *snd else {
+            return None;
+        };
+
+        for inner_item in inner_list {
+            let TempConstant::ProtoPair(tok_fst, tok_snd) = inner_item else {
+                return None;
+            };
+
+            let TempConstant::ByteString(tok_name) = *tok_fst else {
+                return None;
+            };
+
+            // Validate key length
+            if tok_name.len() > 32 {
+                return None;
+            }
+
+            let TempConstant::Integer(qty) = *tok_snd else {
+                return None;
+            };
+
+            // Validate quantity range
+            if check_quantity_range(qty).is_err() {
+                return None;
+            }
+
+            raw_tokens.push(RawToken {
+                currency: ccy,
+                name: tok_name,
+                quantity: qty,
+            });
+        }
+    }
+
+    // Build into a normalized value by inserting each token one at a time
+    // Start from empty and use insert_coin logic to handle sorting and dedup
+    let mut result = LedgerValue::empty(arena);
+
+    for rt in raw_tokens {
+        // Look up existing quantity and add
+        let existing = result.lookup_coin(arena, rt.currency, rt.name);
+        let sum = existing + rt.quantity;
+
+        // Validate sum is in range
+        if check_quantity_range(&sum).is_err() {
+            return None;
+        }
+
+        let qty = if sum.is_zero() {
+            arena.alloc_integer(Integer::zero())
+        } else {
+            arena.alloc_integer(sum)
+        };
+
+        result = LedgerValue::insert_coin(arena, rt.currency, rt.name, qty, result);
+    }
+
+    Some(result)
 }
 
 #[derive(Debug, PartialEq)]

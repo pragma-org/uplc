@@ -29,3 +29,4 @@ pub const PROTO_ARRAY_TWO: u8 = 12;
 pub const PROTO_PAIR_ONE: u8 = 7;
 pub const PROTO_PAIR_TWO: u8 = 7;
 pub const PROTO_PAIR_THREE: u8 = 6;
+pub const VALUE: u8 = 13;

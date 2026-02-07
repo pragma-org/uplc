@@ -212,7 +212,7 @@ impl Encoder {
 
     /// Write a 0 bit into the current byte.
     /// Write out to buffer if last used bit in the current byte.
-    fn zero(&mut self) {
+    pub fn zero(&mut self) {
         if self.used_bits == 7 {
             self.next_word();
         } else {
@@ -222,7 +222,7 @@ impl Encoder {
 
     /// Write a 1 bit into the current byte.
     /// Write out to buffer if last used bit in the current byte.
-    fn one(&mut self) {
+    pub fn one(&mut self) {
         if self.used_bits == 7 {
             self.current_byte |= 1;
             self.next_word();

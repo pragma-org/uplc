@@ -9,6 +9,7 @@ use bumpalo::collections::Vec as BumpVec;
 
 use crate::arena::Arena;
 use crate::binder::Binder;
+use crate::ledger_value::{check_quantity_range, CurrencyEntry, LedgerValue, TokenEntry};
 use crate::typ::Type;
 use crate::{
     constant::Constant,
@@ -153,6 +154,7 @@ fn type_from_tags<'a>(
                 3 + consumed1 + consumed2,
             ))
         }
+        [tag::VALUE, ..] => Ok((Type::value(ctx.arena), 1)),
         [] => Err(FlatDecodeError::MissingTypeTag),
         x => Err(FlatDecodeError::UnknownTypeTags(x.to_vec())),
     }
@@ -219,6 +221,7 @@ fn decode_constant<'a>(
         Type::Bls12_381G1Element => Err(FlatDecodeError::BlsTypeNotSupported),
         Type::Bls12_381G2Element => Err(FlatDecodeError::BlsTypeNotSupported),
         Type::Bls12_381MlResult => Err(FlatDecodeError::BlsTypeNotSupported),
+        Type::Value => decode_value(ctx, d),
     }
 }
 
@@ -281,7 +284,79 @@ fn decode_constant_with_type<'a>(
         Type::Bls12_381G1Element => Err(FlatDecodeError::BlsTypeNotSupported),
         Type::Bls12_381G2Element => Err(FlatDecodeError::BlsTypeNotSupported),
         Type::Bls12_381MlResult => Err(FlatDecodeError::BlsTypeNotSupported),
+        Type::Value => decode_value(ctx, d),
     }
+}
+
+fn decode_value<'a>(
+    ctx: &mut Ctx<'a>,
+    d: &mut Decoder,
+) -> Result<&'a Constant<'a>, FlatDecodeError> {
+    let arena = ctx.arena;
+
+    let mut currency_entries = BumpVec::new_in(arena.as_bump());
+    let mut total_size = 0usize;
+
+    // Outer map: bit-prefix list of (ByteString, Map ByteString Integer)
+    while d.bit()? {
+        let ccy = d.bytes(arena)?;
+
+        if ccy.len() > 32 {
+            return Err(FlatDecodeError::Message(
+                "Value key exceeds 32 bytes".into(),
+            ));
+        }
+
+        let ccy: &'a [u8] = arena.alloc(ccy);
+
+        let mut token_entries = BumpVec::new_in(arena.as_bump());
+
+        // Inner map: bit-prefix list of (ByteString, Integer)
+        while d.bit()? {
+            let tok = d.bytes(arena)?;
+
+            if tok.len() > 32 {
+                return Err(FlatDecodeError::Message(
+                    "Value token name exceeds 32 bytes".into(),
+                ));
+            }
+
+            let tok: &'a [u8] = arena.alloc(tok);
+
+            let qty = d.integer()?;
+
+            if check_quantity_range(&qty).is_err() {
+                return Err(FlatDecodeError::Message(
+                    "Value quantity out of range".into(),
+                ));
+            }
+
+            let qty = arena.alloc_integer(qty);
+
+            token_entries.push(TokenEntry {
+                name: tok,
+                quantity: qty,
+            });
+        }
+
+        let tokens: &'a [TokenEntry<'a>] = arena.alloc(token_entries);
+
+        total_size += tokens.len();
+
+        currency_entries.push(CurrencyEntry {
+            currency: ccy,
+            tokens,
+        });
+    }
+
+    let entries: &'a [CurrencyEntry<'a>] = arena.alloc(currency_entries);
+
+    let v = arena.alloc(LedgerValue {
+        entries,
+        size: total_size,
+    });
+
+    Ok(Constant::ledger_value(arena, v))
 }
 
 fn decode_constant_tags<'a>(
