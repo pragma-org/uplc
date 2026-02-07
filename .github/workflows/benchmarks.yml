@@ -75,4 +75,4 @@ jobs:
           ls -la crates/uplc/benches/turbo/samples
 
       - name: Run benchmarks
-        run: cargo bench --bench turbo
+        run: cargo bench --bench turbo -F alloc_profiler
