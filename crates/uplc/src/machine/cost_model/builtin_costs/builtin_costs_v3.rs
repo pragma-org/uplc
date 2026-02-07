@@ -118,8 +118,19 @@ pub struct BuiltinCostsV3 {
     exp_mod_integer: ThreeArgumentsCosting,
     drop_list: TwoArgumentsCosting,
     length_of_array: OneArgumentCosting,
-    list_to_array: TwoArgumentsCosting,
+    list_to_array: OneArgumentCosting,
     index_array: TwoArgumentsCosting,
+    // BLS multi-scalar-mul
+    bls12_381_g1_multi_scalar_mul: TwoArgumentsCosting,
+    bls12_381_g2_multi_scalar_mul: TwoArgumentsCosting,
+    // Value operations
+    insert_coin: OneArgumentCosting,
+    lookup_coin: ThreeArgumentsCosting,
+    union_value: TwoArgumentsCosting,
+    value_contains: TwoArgumentsCosting,
+    value_data: OneArgumentCosting,
+    un_value_data: OneArgumentCosting,
+    scale_value: TwoArgumentsCosting,
 }
 
 impl Default for BuiltinCostsV3 {
@@ -493,15 +504,53 @@ impl Default for BuiltinCostsV3 {
             ),
             length_of_array: OneArgumentCosting::new(
                 OneArgumentCosting::constant_cost(10),
-                OneArgumentCosting::constant_cost(198994),
+                OneArgumentCosting::constant_cost(231883),
             ),
-            list_to_array: TwoArgumentsCosting::new(
-                TwoArgumentsCosting::linear_in_x(7, 1),
-                TwoArgumentsCosting::linear_in_x(307802, 8496),
+            list_to_array: OneArgumentCosting::new(
+                OneArgumentCosting::linear_cost(7, 1),
+                OneArgumentCosting::linear_cost(1000, 24838),
             ),
             index_array: TwoArgumentsCosting::new(
                 TwoArgumentsCosting::constant_cost(32),
-                TwoArgumentsCosting::constant_cost(194922),
+                TwoArgumentsCosting::constant_cost(232010),
+            ),
+            bls12_381_g1_multi_scalar_mul: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(18),
+                TwoArgumentsCosting::linear_in_x(321837444, 25087669),
+            ),
+            bls12_381_g2_multi_scalar_mul: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(36),
+                TwoArgumentsCosting::linear_in_x(617887431, 67302824),
+            ),
+            insert_coin: OneArgumentCosting::new(
+                OneArgumentCosting::linear_cost(45, 21),
+                OneArgumentCosting::linear_cost(356924, 18413),
+            ),
+            lookup_coin: ThreeArgumentsCosting::new(
+                ThreeArgumentsCosting::constant_cost(1),
+                ThreeArgumentsCosting::linear_in_z(219951, 9444),
+            ),
+            union_value: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::added_sizes(24, 21),
+                TwoArgumentsCosting::with_interaction(1000, 172116, 183150, 6),
+            ),
+            value_contains: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(1),
+                TwoArgumentsCosting::const_above_diagonal_into_quadratic_x_and_y(
+                    213283, 0, 618401, 28258, 0, 1998, 0, 0,
+                ),
+            ),
+            value_data: OneArgumentCosting::new(
+                OneArgumentCosting::linear_cost(2, 22),
+                OneArgumentCosting::linear_cost(1000, 38159),
+            ),
+            un_value_data: OneArgumentCosting::new(
+                OneArgumentCosting::linear_cost(11, 1),
+                OneArgumentCosting::quadratic_cost(1000, 95933, 1),
+            ),
+            scale_value: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::linear_in_y(12, 21),
+                TwoArgumentsCosting::linear_in_y(1000, 277577),
             ),
         }
     }
@@ -1179,15 +1228,53 @@ impl BuiltinCostModel for BuiltinCostsV3 {
             ),
             length_of_array: OneArgumentCosting::new(
                 OneArgumentCosting::constant_cost(10),
-                OneArgumentCosting::constant_cost(198994),
+                OneArgumentCosting::constant_cost(231883),
             ),
-            list_to_array: TwoArgumentsCosting::new(
-                TwoArgumentsCosting::linear_in_x(7, 1),
-                TwoArgumentsCosting::linear_in_x(307802, 8496),
+            list_to_array: OneArgumentCosting::new(
+                OneArgumentCosting::linear_cost(7, 1),
+                OneArgumentCosting::linear_cost(1000, 24838),
             ),
             index_array: TwoArgumentsCosting::new(
                 TwoArgumentsCosting::constant_cost(32),
-                TwoArgumentsCosting::constant_cost(194922),
+                TwoArgumentsCosting::constant_cost(232010),
+            ),
+            bls12_381_g1_multi_scalar_mul: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(18),
+                TwoArgumentsCosting::linear_in_x(321837444, 25087669),
+            ),
+            bls12_381_g2_multi_scalar_mul: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(36),
+                TwoArgumentsCosting::linear_in_x(617887431, 67302824),
+            ),
+            insert_coin: OneArgumentCosting::new(
+                OneArgumentCosting::linear_cost(45, 21),
+                OneArgumentCosting::linear_cost(356924, 18413),
+            ),
+            lookup_coin: ThreeArgumentsCosting::new(
+                ThreeArgumentsCosting::constant_cost(1),
+                ThreeArgumentsCosting::linear_in_z(219951, 9444),
+            ),
+            union_value: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::added_sizes(24, 21),
+                TwoArgumentsCosting::with_interaction(1000, 172116, 183150, 6),
+            ),
+            value_contains: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(1),
+                TwoArgumentsCosting::const_above_diagonal_into_quadratic_x_and_y(
+                    213283, 0, 618401, 28258, 0, 1998, 0, 0,
+                ),
+            ),
+            value_data: OneArgumentCosting::new(
+                OneArgumentCosting::linear_cost(2, 22),
+                OneArgumentCosting::linear_cost(1000, 38159),
+            ),
+            un_value_data: OneArgumentCosting::new(
+                OneArgumentCosting::linear_cost(11, 1),
+                OneArgumentCosting::quadratic_cost(1000, 95933, 1),
+            ),
+            scale_value: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::linear_in_y(12, 21),
+                TwoArgumentsCosting::linear_in_y(1000, 277577),
             ),
         }
     }
@@ -1579,12 +1666,56 @@ impl BuiltinCostModel for BuiltinCostsV3 {
                 self.length_of_array.cpu.cost([args[0]]),
             )),
             DefaultFunction::ListToArray => Some(ExBudget::new(
-                self.list_to_array.mem.cost([args[0], args[1]]),
-                self.list_to_array.cpu.cost([args[0], args[1]]),
+                self.list_to_array.mem.cost([args[0]]),
+                self.list_to_array.cpu.cost([args[0]]),
             )),
             DefaultFunction::IndexArray => Some(ExBudget::new(
                 self.index_array.mem.cost([args[0], args[1]]),
                 self.index_array.cpu.cost([args[0], args[1]]),
+            )),
+            DefaultFunction::Bls12_381_G1_MultiScalarMul => Some(ExBudget::new(
+                self.bls12_381_g1_multi_scalar_mul
+                    .mem
+                    .cost([args[0], args[1]]),
+                self.bls12_381_g1_multi_scalar_mul
+                    .cpu
+                    .cost([args[0], args[1]]),
+            )),
+            DefaultFunction::Bls12_381_G2_MultiScalarMul => Some(ExBudget::new(
+                self.bls12_381_g2_multi_scalar_mul
+                    .mem
+                    .cost([args[0], args[1]]),
+                self.bls12_381_g2_multi_scalar_mul
+                    .cpu
+                    .cost([args[0], args[1]]),
+            )),
+            DefaultFunction::InsertCoin => Some(ExBudget::new(
+                self.insert_coin.mem.cost([args[0]]),
+                self.insert_coin.cpu.cost([args[0]]),
+            )),
+            DefaultFunction::LookupCoin => Some(ExBudget::new(
+                self.lookup_coin.mem.cost([args[0], args[1], args[2]]),
+                self.lookup_coin.cpu.cost([args[0], args[1], args[2]]),
+            )),
+            DefaultFunction::UnionValue => Some(ExBudget::new(
+                self.union_value.mem.cost([args[0], args[1]]),
+                self.union_value.cpu.cost([args[0], args[1]]),
+            )),
+            DefaultFunction::ValueContains => Some(ExBudget::new(
+                self.value_contains.mem.cost([args[0], args[1]]),
+                self.value_contains.cpu.cost([args[0], args[1]]),
+            )),
+            DefaultFunction::ValueData => Some(ExBudget::new(
+                self.value_data.mem.cost([args[0]]),
+                self.value_data.cpu.cost([args[0]]),
+            )),
+            DefaultFunction::UnValueData => Some(ExBudget::new(
+                self.un_value_data.mem.cost([args[0]]),
+                self.un_value_data.cpu.cost([args[0]]),
+            )),
+            DefaultFunction::ScaleValue => Some(ExBudget::new(
+                self.scale_value.mem.cost([args[0], args[1]]),
+                self.scale_value.cpu.cost([args[0], args[1]]),
             )),
         }
     }
