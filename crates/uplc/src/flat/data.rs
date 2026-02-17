@@ -99,14 +99,10 @@ impl<'a, 'b> minicbor::decode::Decode<'b, Ctx<'a>> for &'a PlutusData<'a> {
                             bytes.extend_from_slice(chunk);
                         }
 
-                        let integer = ctx.arena.alloc(num::BigInt::from_bytes_be(
-                            if x == IanaTag::PosBignum {
-                                num_bigint::Sign::Plus
-                            } else {
-                                num_bigint::Sign::Minus
-                            },
-                            &bytes,
-                        ));
+                        let n = num::BigInt::from_bytes_be(num_bigint::Sign::Plus, &bytes);
+                        let integer =
+                            ctx.arena
+                                .alloc(if x == IanaTag::PosBignum { n } else { -n - 1 });
 
                         Ok(PlutusData::integer(ctx.arena, integer))
                     }
@@ -270,7 +266,8 @@ impl<C> minicbor::encode::Encode<C> for PlutusData<'_> {
                             e.int(integer)?;
                         } else {
                             e.tag(Tag::new(3))?;
-                            let (_sign, bytes) = n.to_bytes_be();
+                            let abs_minus_one = (-*n) - num::BigInt::from(1);
+                            let (_sign, bytes) = abs_minus_one.to_bytes_be();
                             encode_bytestring(e, &bytes)?;
                         }
                     }
