@@ -1,6 +1,5 @@
-use bumpalo::Bump;
-
 use crate::{
+    arena::Arena,
     binder::Eval,
     machine::{
         cost_model::builtin_costs::{
@@ -19,13 +18,13 @@ pub struct Program<'a, V> {
 }
 
 impl<'a, V> Program<'a, V> {
-    pub fn new(arena: &'a Bump, version: &'a Version<'a>, term: &'a Term<'a, V>) -> &'a Self {
+    pub fn new(arena: &'a Arena, version: &'a Version<'a>, term: &'a Term<'a, V>) -> &'a Self {
         let program = Program { version, term };
 
         arena.alloc(program)
     }
 
-    pub fn apply(&'a self, arena: &'a Bump, term: &'a Term<'a, V>) -> &'a Self {
+    pub fn apply(&'a self, arena: &'a Arena, term: &'a Term<'a, V>) -> &'a Self {
         let term = self.term.apply(arena, term);
 
         Self::new(arena, self.version, term)
@@ -36,41 +35,50 @@ impl<'a, V> Program<'a, V>
 where
     V: Eval<'a>,
 {
-    pub fn eval(&'a self, arena: &'a Bump) -> EvalResult<'a, V> {
+    pub fn eval(&'a self, arena: &'a Arena) -> EvalResult<'a, V> {
         self.eval_version(arena, PlutusVersion::V3)
     }
 
     /// Evaluate with explicit Plutus version
     pub fn eval_version(
         &'a self,
-        arena: &'a Bump,
+        arena: &'a Arena,
         plutus_version: PlutusVersion,
+    ) -> EvalResult<'a, V> {
+        self.eval_version_budget(arena, plutus_version, ExBudget::default())
+    }
+
+    pub fn eval_version_budget(
+        &'a self,
+        arena: &'a Arena,
+        plutus_version: PlutusVersion,
+        initial_budget: ExBudget,
     ) -> EvalResult<'a, V> {
         match plutus_version {
             PlutusVersion::V1 => self.evaluate(
                 arena,
                 CostModel::<BuiltinCostsV1>::default(),
                 plutus_version,
-                ExBudget::default(),
+                initial_budget,
             ),
             PlutusVersion::V2 => self.evaluate(
                 arena,
                 CostModel::<BuiltinCostsV2>::default(),
                 plutus_version,
-                ExBudget::default(),
+                initial_budget,
             ),
             PlutusVersion::V3 => self.evaluate(
                 arena,
                 CostModel::<BuiltinCostsV3>::default(),
                 plutus_version,
-                ExBudget::default(),
+                initial_budget,
             ),
         }
     }
 
     fn evaluate<B: BuiltinCostModel>(
         &'a self,
-        arena: &'a Bump,
+        arena: &'a Arena,
         cost_model: CostModel<B>,
         plutus_version: PlutusVersion,
         initial_budget: ExBudget,
@@ -89,7 +97,7 @@ where
 
     pub fn eval_with_params(
         &'a self,
-        arena: &'a Bump,
+        arena: &'a Arena,
         plutus_version: PlutusVersion,
         cost_model: &[i64],
         initial_budget: ExBudget,
@@ -121,21 +129,21 @@ where
 pub struct Version<'a>(&'a (usize, usize, usize));
 
 impl<'a> Version<'a> {
-    pub fn new(arena: &'a Bump, major: usize, minor: usize, patch: usize) -> &'a mut Self {
+    pub fn new(arena: &'a Arena, major: usize, minor: usize, patch: usize) -> &'a mut Self {
         let version = arena.alloc((major, minor, patch));
 
         arena.alloc(Version(version))
     }
 
-    pub fn plutus_v1(arena: &'a Bump) -> &'a mut Self {
+    pub fn plutus_v1(arena: &'a Arena) -> &'a mut Self {
         Self::new(arena, 1, 0, 0)
     }
 
-    pub fn plutus_v2(arena: &'a Bump) -> &'a mut Self {
+    pub fn plutus_v2(arena: &'a Arena) -> &'a mut Self {
         Self::new(arena, 1, 0, 0)
     }
 
-    pub fn plutus_v3(arena: &'a Bump) -> &'a mut Self {
+    pub fn plutus_v3(arena: &'a Arena) -> &'a mut Self {
         Self::new(arena, 1, 1, 0)
     }
 

@@ -1,6 +1,7 @@
-use bumpalo::{collections::Vec as BumpVec, Bump};
+use bumpalo::collections::Vec as BumpVec;
 
 use crate::{
+    arena::Arena,
     binder::Eval,
     machine::{
         context::Context, cost_model::builtin_costs::BuiltinCostModel, env::Env,
@@ -19,7 +20,7 @@ use super::{
 };
 
 pub struct Machine<'a, B: BuiltinCostModel> {
-    pub(super) arena: &'a Bump,
+    pub(super) arena: &'a Arena,
     ex_budget: ExBudget,
     unbudgeted_steps: [u8; 10],
     pub(super) costs: CostModel<B>,
@@ -30,7 +31,7 @@ pub struct Machine<'a, B: BuiltinCostModel> {
 
 impl<'a, B: BuiltinCostModel> Machine<'a, B> {
     pub fn new(
-        arena: &'a Bump,
+        arena: &'a Arena,
         initial_budget: ExBudget,
         costs: CostModel<B>,
         semantics: BuiltinSemantics,
@@ -208,7 +209,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
             }
             Context::FrameForce(context) => self.force_evaluate(context, value),
             Context::FrameConstr(env, tag, terms, values, context) => {
-                let mut new_values = BumpVec::with_capacity_in(values.len() + 1, self.arena);
+                let mut new_values =
+                    BumpVec::with_capacity_in(values.len() + 1, self.arena.as_bump());
 
                 for value in values.iter() {
                     new_values.push(*value);

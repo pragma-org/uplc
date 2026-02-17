@@ -1,7 +1,6 @@
-use bumpalo::Bump;
 use criterion::{criterion_group, Criterion};
 
-use uplc_turbo::{binder::DeBruijn, term::Term};
+use uplc_turbo::{arena::Arena, binder::DeBruijn, term::Term};
 
 use super::utils;
 
@@ -9,7 +8,7 @@ pub fn run(c: &mut Criterion) {
     c.bench_function("fibonacci", |b| {
         b.iter_with_setup(
             || {
-                utils::setup_term(|arena: &Bump| {
+                utils::setup_term(|arena: &Arena| {
                     let double_force = Term::var(arena, DeBruijn::new(arena, 1))
                         .apply(arena, Term::var(arena, DeBruijn::new(arena, 1)))
                         .lambda(arena, DeBruijn::zero(arena))

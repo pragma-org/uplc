@@ -1,3 +1,4 @@
+pub mod arena;
 pub mod binder;
 pub mod bls;
 pub mod builtin;
@@ -19,12 +20,13 @@ mod tests {
     use crate::binder::DeBruijn;
     use crate::program::Version;
 
+    use super::arena::Arena;
     use super::program::Program;
     use super::term::Term;
 
     #[test]
     fn add_integer() {
-        let arena = bumpalo::Bump::new();
+        let arena = Arena::new();
 
         let term = Term::add_integer(&arena)
             .apply(&arena, Term::integer_from(&arena, 1))
@@ -41,7 +43,7 @@ mod tests {
 
     #[test]
     fn fibonacci() {
-        let arena = &bumpalo::Bump::new();
+        let arena = &Arena::new();
 
         let double_force = Term::var(arena, DeBruijn::new(arena, 1))
             .apply(arena, Term::var(arena, DeBruijn::new(arena, 1)))

@@ -1,6 +1,7 @@
-use bumpalo::{collections::Vec as BumpVec, Bump};
+use bumpalo::collections::Vec as BumpVec;
 
 use crate::{
+    arena::Arena,
     binder::Eval,
     constant::{Constant, Integer},
     term::Term,
@@ -29,12 +30,12 @@ impl<'a, V> Value<'a, V>
 where
     V: Eval<'a>,
 {
-    pub fn con(arena: &'a Bump, constant: &'a Constant<'a>) -> &'a Value<'a, V> {
+    pub fn con(arena: &'a Arena, constant: &'a Constant<'a>) -> &'a Value<'a, V> {
         arena.alloc(Value::Con(constant))
     }
 
     pub fn lambda(
-        arena: &'a Bump,
+        arena: &'a Arena,
         parameter: &'a V,
         body: &'a Term<'a, V>,
         env: &'a Env<'a, V>,
@@ -46,44 +47,48 @@ where
         })
     }
 
-    pub fn delay(arena: &'a Bump, body: &'a Term<'a, V>, env: &'a Env<'a, V>) -> &'a Value<'a, V> {
+    pub fn delay(arena: &'a Arena, body: &'a Term<'a, V>, env: &'a Env<'a, V>) -> &'a Value<'a, V> {
         arena.alloc(Value::Delay(body, env))
     }
 
-    pub fn constr_empty(arena: &'a Bump, tag: usize) -> &'a Value<'a, V> {
-        let empty = BumpVec::new_in(arena);
+    pub fn constr_empty(arena: &'a Arena, tag: usize) -> &'a Value<'a, V> {
+        let empty = BumpVec::new_in(arena.as_bump());
         let empty = arena.alloc(empty);
 
         arena.alloc(Value::Constr(tag, empty))
     }
 
-    pub fn constr(arena: &'a Bump, tag: usize, values: &'a [&'a Value<'a, V>]) -> &'a Value<'a, V> {
+    pub fn constr(
+        arena: &'a Arena,
+        tag: usize,
+        values: &'a [&'a Value<'a, V>],
+    ) -> &'a Value<'a, V> {
         arena.alloc(Value::Constr(tag, values))
     }
 
-    pub fn builtin(arena: &'a Bump, runtime: &'a Runtime<'a, V>) -> &'a Value<'a, V> {
+    pub fn builtin(arena: &'a Arena, runtime: &'a Runtime<'a, V>) -> &'a Value<'a, V> {
         arena.alloc(Value::Builtin(runtime))
     }
 
-    pub fn integer(arena: &'a Bump, i: &'a Integer) -> &'a Value<'a, V> {
+    pub fn integer(arena: &'a Arena, i: &'a Integer) -> &'a Value<'a, V> {
         let con = arena.alloc(Constant::Integer(i));
 
         Value::con(arena, con)
     }
 
-    pub fn byte_string(arena: &'a Bump, b: &'a [u8]) -> &'a Value<'a, V> {
+    pub fn byte_string(arena: &'a Arena, b: &'a [u8]) -> &'a Value<'a, V> {
         let con = arena.alloc(Constant::ByteString(b));
 
         Value::con(arena, con)
     }
 
-    pub fn string(arena: &'a Bump, s: &'a str) -> &'a Value<'a, V> {
+    pub fn string(arena: &'a Arena, s: &'a str) -> &'a Value<'a, V> {
         let con = arena.alloc(Constant::String(s));
 
         Value::con(arena, con)
     }
 
-    pub fn bool(arena: &'a Bump, b: bool) -> &'a Value<'a, V> {
+    pub fn bool(arena: &'a Arena, b: bool) -> &'a Value<'a, V> {
         let con = arena.alloc(Constant::Boolean(b));
 
         Value::con(arena, con)
@@ -250,7 +255,7 @@ where
 }
 
 impl<'a> Constant<'a> {
-    pub fn value<V>(&'a self, arena: &'a Bump) -> &'a Value<'a, V>
+    pub fn value<V>(&'a self, arena: &'a Arena) -> &'a Value<'a, V>
     where
         V: Eval<'a>,
     {
