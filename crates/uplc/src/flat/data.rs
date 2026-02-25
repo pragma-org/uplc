@@ -100,9 +100,11 @@ impl<'a, 'b> minicbor::decode::Decode<'b, Ctx<'a>> for &'a PlutusData<'a> {
                         }
 
                         let n = num::BigInt::from_bytes_be(num_bigint::Sign::Plus, &bytes);
-                        let integer =
-                            ctx.arena
-                                .alloc_integer(if x == IanaTag::PosBignum { n } else { -n - 1 });
+                        let integer = ctx.arena.alloc_integer(if x == IanaTag::PosBignum {
+                            n
+                        } else {
+                            -n - 1
+                        });
 
                         Ok(PlutusData::integer(ctx.arena, integer))
                     }
