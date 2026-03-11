@@ -303,6 +303,7 @@ impl<C> minicbor::encode::Encode<C> for PlutusData<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::arena::Arena;
 
     #[test]
     fn encode_empty_record() {
@@ -354,6 +355,45 @@ mod tests {
         let mut v = vec![];
         minicbor::encode(d, &mut v).expect("invalid PlutusData");
         assert_eq!(hex::encode(v), "d8799fc24c033b2e3c9fd0803ce7ffffffff");
+    }
+
+    #[test]
+    fn encode_cbor_data_negative_bigint() {
+        let n = -num::BigInt::from_bytes_be(
+            num_bigint::Sign::Plus,
+            &hex::decode("033b2e3c9fd0803ce7ffffff").unwrap(),
+        ) - num::BigInt::from(1);
+        let d = PlutusData::Constr {
+            tag: 0,
+            fields: &[&PlutusData::Integer(&n)],
+        };
+        let mut v = vec![];
+        minicbor::encode(d, &mut v).expect("invalid PlutusData");
+        assert_eq!(hex::encode(v), "d8799fc34c033b2e3c9fd0803ce7ffffffff");
+    }
+
+    #[test]
+    fn decode_cbor_data_negative_bigint() {
+        let cbor = hex::decode("c34c033b2e3c9fd0803ce7ffffff").unwrap();
+        let arena = Arena::new();
+        let decoded = PlutusData::from_cbor(&arena, &cbor).expect("failed to decode negative bigint");
+        let expected = -num::BigInt::from_bytes_be(
+            num_bigint::Sign::Plus,
+            &hex::decode("033b2e3c9fd0803ce7ffffff").unwrap(),
+        ) - num::BigInt::from(1);
+        assert_eq!(decoded, &PlutusData::Integer(&expected));
+    }
+
+    #[test]
+    fn roundtrip_cbor_data_negative_bigint() {
+        let n = -num::BigInt::from_bytes_be(
+            num_bigint::Sign::Plus,
+            &hex::decode("033b2e3c9fd0803ce7ffffff").unwrap(),
+        ) - num::BigInt::from(1);
+        let encoded = minicbor::to_vec(&PlutusData::Integer(&n)).expect("encode failed");
+        let arena = Arena::new();
+        let decoded = PlutusData::from_cbor(&arena, &encoded).expect("decode failed");
+        assert_eq!(decoded, &PlutusData::Integer(&n));
     }
 
     #[test]
