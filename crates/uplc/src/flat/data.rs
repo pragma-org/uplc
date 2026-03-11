@@ -376,7 +376,8 @@ mod tests {
     fn decode_cbor_data_negative_bigint() {
         let cbor = hex::decode("c34c033b2e3c9fd0803ce7ffffff").unwrap();
         let arena = Arena::new();
-        let decoded = PlutusData::from_cbor(&arena, &cbor).expect("failed to decode negative bigint");
+        let decoded =
+            PlutusData::from_cbor(&arena, &cbor).expect("failed to decode negative bigint");
         let expected = -num::BigInt::from_bytes_be(
             num_bigint::Sign::Plus,
             &hex::decode("033b2e3c9fd0803ce7ffffff").unwrap(),
