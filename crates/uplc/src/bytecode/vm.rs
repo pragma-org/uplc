@@ -67,10 +67,18 @@ pub fn execute<'a, B: BuiltinCostModel>(
         .map(|c| Value::con(arena, c))
         .collect();
 
+    // Pre-wrap specialized constants
+    let val_unit: &'a Value<'a, DeBruijn> = Value::con(arena, arena.alloc(Constant::Unit));
+    let val_true: &'a Value<'a, DeBruijn> = Value::con(arena, arena.alloc(Constant::Boolean(true)));
+    let val_false: &'a Value<'a, DeBruijn> = Value::con(arena, arena.alloc(Constant::Boolean(false)));
+
     let mut vm = Vm {
         arena,
         bytecode: &program.bytecode,
         constant_values: &pre_wrapped,
+        val_unit,
+        val_true,
+        val_false,
         lambdas: &program.lambdas,
         delays: &program.delays,
         ip: 0,
@@ -97,6 +105,9 @@ struct Vm<'a, 'b, B: BuiltinCostModel> {
     arena: &'a Arena,
     bytecode: &'a [u8],
     constant_values: &'b [&'a Value<'a, DeBruijn>],
+    val_unit: &'a Value<'a, DeBruijn>,
+    val_true: &'a Value<'a, DeBruijn>,
+    val_false: &'a Value<'a, DeBruijn>,
     lambdas: &'a [super::LambdaInfo<'a>],
     delays: &'a [super::DelayInfo<'a>],
     ip: usize,
@@ -326,20 +337,17 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
 
             0x20 => {
                 self.machine.step_and_maybe_spend(StepKind::Constant)?;
-                let c = self.arena.alloc(Constant::Unit);
-                Ok(Phase::Return(Value::con(self.arena, c)))
+                Ok(Phase::Return(self.val_unit))
             }
 
             0x21 => {
                 self.machine.step_and_maybe_spend(StepKind::Constant)?;
-                let c = self.arena.alloc(Constant::Boolean(true));
-                Ok(Phase::Return(Value::con(self.arena, c)))
+                Ok(Phase::Return(self.val_true))
             }
 
             0x22 => {
                 self.machine.step_and_maybe_spend(StepKind::Constant)?;
-                let c = self.arena.alloc(Constant::Boolean(false));
-                Ok(Phase::Return(Value::con(self.arena, c)))
+                Ok(Phase::Return(self.val_false))
             }
 
             0x23 => {
