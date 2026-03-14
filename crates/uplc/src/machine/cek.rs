@@ -102,6 +102,16 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
             Term::Apply { function, argument } => {
                 self.step_and_maybe_spend(StepKind::Apply)?;
 
+                // Fast path: Apply(Lambda(body), arg) → evaluate arg, then
+                // directly extend env and compute body, skipping VLambda allocation
+                if let Term::Lambda { body, .. } = function {
+                    self.step_and_maybe_spend(StepKind::Lambda)?;
+                    let frame = Context::frame_await_arg_for_lambda(
+                        self.arena, body, env, context,
+                    );
+                    return Ok(MachineState::Compute(frame, env, argument));
+                }
+
                 let frame = Context::frame_await_fun_term(self.arena, env, argument, context);
 
                 Ok(MachineState::Compute(frame, env, function))
@@ -180,6 +190,10 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
             }
             Context::FrameAwaitArg(function, context) => {
                 self.apply_evaluate(context, function, value)
+            }
+            Context::FrameAwaitArgForLambda(body, env, context) => {
+                let new_env = env.push(self.arena, value);
+                Ok(MachineState::Compute(context, new_env, body))
             }
             Context::FrameAwaitFunValue(argument, context) => {
                 self.apply_evaluate(context, value, argument)
