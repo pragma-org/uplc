@@ -19,8 +19,8 @@ where
                 term = term.force(arena);
             }
 
-            for arg in &runtime.args {
-                term = term.apply(arena, value_as_term(arena, arg));
+            for i in 0..runtime.arg_count() {
+                term = term.apply(arena, value_as_term(arena, runtime.arg(i)));
             }
 
             term
