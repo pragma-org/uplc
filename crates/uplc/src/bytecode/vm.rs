@@ -444,6 +444,18 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                         Err(MachineError::ExplicitErrorTerm)
                     }
                 }
+                // In Plutus V3, Bool is matchable via case:
+                // False = tag 0, True = tag 1
+                Value::Con(Constant::Boolean(b)) => {
+                    let tag = if *b { 1 } else { 0 };
+                    if tag < nbranches {
+                        self.env = env;
+                        self.ip = read_u32(self.bytecode, offsets_start + tag * 4) as usize;
+                        Ok(Phase::Compute)
+                    } else {
+                        Err(MachineError::ExplicitErrorTerm)
+                    }
+                }
                 _ => Err(MachineError::ExplicitErrorTerm),
             },
 
