@@ -232,6 +232,19 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                 Ok(Phase::Return(value))
             }
 
+            // ApplyVar: Apply(Var(idx), arg) — skip FrameAwaitFunTerm
+            0x14 => {
+                let idx = self.bytecode[self.ip] as usize;
+                self.ip += 1;
+                self.machine.step_and_maybe_spend(StepKind::Apply)?;
+                self.machine.step_and_maybe_spend(StepKind::Var)?;
+                let fun_value = self.env.lookup(idx)
+                    .ok_or(MachineError::ExplicitErrorTerm)?;
+                self.stack.push(Frame::AwaitArg(fun_value));
+                // arg follows inline
+                Ok(Phase::Compute)
+            }
+
             0x06 | 0x0B => {
                 let tag = if op == 0x06 {
                     let t = self.bytecode[self.ip] as usize;

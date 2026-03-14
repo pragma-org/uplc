@@ -69,6 +69,16 @@ impl<'a> Compiler<'a> {
                 self.compile_term(body);
             }
 
+            // Superinstruction: Apply(Var(idx), arg)
+            // Var lookup is immediate, so skip FrameAwaitFunTerm — directly
+            // push FrameAwaitArg with the looked-up value, then compute arg.
+            Term::Apply { function: Term::Var(db), argument } => {
+                self.emit(Op::ApplyVar as u8);
+                self.emit(db.index() as u8);
+                // arg bytecode follows inline
+                self.compile_term(argument);
+            }
+
             Term::Apply { function, argument } => {
                 self.emit(Op::Apply as u8);
                 let arg_hole = self.emit_u32_hole();
