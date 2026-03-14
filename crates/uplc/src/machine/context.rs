@@ -12,6 +12,13 @@ where
     FrameAwaitFunTerm(&'a Env<'a, V>, &'a Term<'a, V>, &'a Context<'a, V>),
     FrameAwaitFunValue(&'a Value<'a, V>, &'a Context<'a, V>),
     FrameForce(&'a Context<'a, V>),
+    /// Fast path for Apply(Lambda(body), arg): once arg is evaluated,
+    /// directly extend env and compute body, skipping VLambda allocation.
+    FrameAwaitArgForLambda(
+        &'a Term<'a, V>,  // lambda body
+        &'a Env<'a, V>,   // lambda env
+        &'a Context<'a, V>,
+    ),
     FrameConstr(
         &'a Env<'a, V>,
         usize,
@@ -58,6 +65,15 @@ where
 
     pub fn frame_force(arena: &'a Arena, context: &'a Context<'a, V>) -> &'a Context<'a, V> {
         arena.alloc(Context::FrameForce(context))
+    }
+
+    pub fn frame_await_arg_for_lambda(
+        arena: &'a Arena,
+        body: &'a Term<'a, V>,
+        env: &'a Env<'a, V>,
+        context: &'a Context<'a, V>,
+    ) -> &'a Context<'a, V> {
+        arena.alloc(Context::FrameAwaitArgForLambda(body, env, context))
     }
 
     pub fn frame_constr_empty(
