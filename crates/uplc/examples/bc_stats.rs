@@ -57,6 +57,7 @@ fn main() {
             0x12 => ip += 1,                          // ForceBuiltin: u8
             0x13 => ip += 1,                          // Force2Builtin: u8
             0x14 => ip += 1,                          // ApplyVar: u8 idx
+            0x15 => ip += 1,                          // ForceVar: u8 idx
             0x20 => {},                               // ConstUnit
             0x21 => {},                               // ConstTrue
             0x22 => {},                               // ConstFalse
@@ -70,7 +71,7 @@ fn main() {
         (0x05, "Force"), (0x06, "Constr"), (0x07, "Case"), (0x08, "Const"),
         (0x09, "Builtin"), (0x0A, "Error"), (0x0B, "ConstrBig"),
         (0x10, "ForceDelay"), (0x11, "ApplyLambda"), (0x12, "ForceBuiltin"),
-        (0x13, "Force2Builtin"), (0x14, "ApplyVar"), (0x20, "ConstUnit"), (0x21, "ConstTrue"),
+        (0x13, "Force2Builtin"), (0x14, "ApplyVar"), (0x15, "ForceVar"), (0x20, "ConstUnit"), (0x21, "ConstTrue"),
         (0x22, "ConstFalse"), (0x23, "ConstSmallInt"),
     ];
 

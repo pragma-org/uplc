@@ -116,6 +116,12 @@ impl<'a> Compiler<'a> {
                 self.emit(**f as u8);
             }
 
+            // Superinstruction: Force(Var(idx))
+            Term::Force(Term::Var(db)) => {
+                self.emit(Op::ForceVar as u8);
+                self.emit(db.index() as u8);
+            }
+
             Term::Force(body) => {
                 self.emit(Op::Force as u8);
                 self.compile_term(body);
