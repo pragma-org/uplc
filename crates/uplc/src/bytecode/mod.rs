@@ -41,6 +41,9 @@ pub enum Op {
     ForceBuiltin = 0x12,
     /// Force(Force(Builtin(f))) — create runtime, force twice, return
     Force2Builtin = 0x13,
+    /// Apply(Var(idx), arg) — look up var, push FrameAwaitArg directly, compute arg
+    /// Skips FrameAwaitFunTerm entirely (saves 1 frame push/pop)
+    ApplyVar = 0x14,
 
     // === Specialized constants ===
 
