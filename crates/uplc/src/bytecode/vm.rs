@@ -32,21 +32,22 @@ enum Frame<'a> {
         body_ip: u32,
         env: &'a Env<'a, DeBruijn>,
     },
-    Constr {
-        env: &'a Env<'a, DeBruijn>,
-        tag: usize,
-        /// Byte offset in bytecode where the field offset table starts.
-        offsets_start: usize,
-        nfields: usize,
-        next_field: usize,
-        values: BumpVec<'a, &'a Value<'a, DeBruijn>>,
-    },
+    Constr(Box<ConstrFrame<'a>>),
     Cases {
         env: &'a Env<'a, DeBruijn>,
         /// Byte offset in bytecode where the branch offset table starts.
         offsets_start: usize,
         nbranches: usize,
     },
+}
+
+struct ConstrFrame<'a> {
+    env: &'a Env<'a, DeBruijn>,
+    tag: usize,
+    offsets_start: usize,
+    nfields: usize,
+    next_field: usize,
+    values: BumpVec<'a, &'a Value<'a, DeBruijn>>,
 }
 
 /// Execute a compiled program using the bytecode VM.
@@ -309,14 +310,14 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                 self.ip += nfields * 4; // skip past the offset table
 
                 let first_ip = read_u32(self.bytecode, offsets_start) as usize;
-                self.stack.push(Frame::Constr {
+                self.stack.push(Frame::Constr(Box::new(ConstrFrame {
                     env: self.env,
                     tag,
                     offsets_start,
                     nfields,
                     next_field: 1,
                     values: BumpVec::with_capacity_in(nfields, self.arena.as_bump()),
-                });
+                })));
                 self.ip = first_ip;
                 Ok(Phase::Compute)
             }
@@ -408,32 +409,20 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
 
             Some(Frame::Force) => self.force_evaluate(value),
 
-            Some(Frame::Constr {
-                env,
-                tag,
-                offsets_start,
-                nfields,
-                next_field,
-                mut values,
-            }) => {
-                values.push(value);
+            Some(Frame::Constr(mut cf)) => {
+                cf.values.push(value);
 
-                if next_field < nfields {
-                    let next_ip = read_u32(self.bytecode, offsets_start + next_field * 4) as usize;
-                    self.stack.push(Frame::Constr {
-                        env,
-                        tag,
-                        offsets_start,
-                        nfields,
-                        next_field: next_field + 1,
-                        values,
-                    });
+                if cf.next_field < cf.nfields {
+                    let next_ip = read_u32(self.bytecode, cf.offsets_start + cf.next_field * 4) as usize;
+                    let env = cf.env;
+                    cf.next_field += 1;
+                    self.stack.push(Frame::Constr(cf));
                     self.env = env;
                     self.ip = next_ip;
                     Ok(Phase::Compute)
                 } else {
-                    let values = self.arena.alloc(values);
-                    let constr_value = Value::constr(self.arena, tag, values);
+                    let values = self.arena.alloc(cf.values);
+                    let constr_value = Value::constr(self.arena, cf.tag, values);
                     Ok(Phase::Return(constr_value))
                 }
             }
