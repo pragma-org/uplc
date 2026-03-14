@@ -232,6 +232,17 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                 Ok(Phase::Return(value))
             }
 
+            // ForceVar: Force(Var(idx)) — skip FrameForce, directly force
+            0x15 => {
+                let idx = self.bytecode[self.ip] as usize;
+                self.ip += 1;
+                self.machine.step_and_maybe_spend(StepKind::Force)?;
+                self.machine.step_and_maybe_spend(StepKind::Var)?;
+                let value = self.env.lookup(idx)
+                    .ok_or(MachineError::ExplicitErrorTerm)?;
+                return self.force_evaluate(value);
+            }
+
             // ApplyVar: Apply(Var(idx), arg) — skip FrameAwaitFunTerm
             0x14 => {
                 let idx = self.bytecode[self.ip] as usize;

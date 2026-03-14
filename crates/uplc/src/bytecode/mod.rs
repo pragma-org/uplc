@@ -44,6 +44,9 @@ pub enum Op {
     /// Apply(Var(idx), arg) — look up var, push FrameAwaitArg directly, compute arg
     /// Skips FrameAwaitFunTerm entirely (saves 1 frame push/pop)
     ApplyVar = 0x14,
+    /// Force(Var(idx)) — look up var, force it directly
+    /// Skips FrameForce + value allocation cycle
+    ForceVar = 0x15,
 
     // === Specialized constants ===
 
