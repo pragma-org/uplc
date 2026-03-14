@@ -63,18 +63,16 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
         let initial_context = Context::no_frame(self.arena);
 
         let mut state =
-            MachineState::compute(self.arena, initial_context, Env::new_in(self.arena), term);
+            MachineState::Compute(initial_context, Env::new_in(self.arena), term);
 
         loop {
-            let step = match state {
-                MachineState::Compute(context, env, term) => self.compute(context, env, term),
-                MachineState::Return(context, value) => self.return_compute(context, value),
+            state = match state {
+                MachineState::Compute(context, env, term) => self.compute(context, env, term)?,
+                MachineState::Return(context, value) => self.return_compute(context, value)?,
                 MachineState::Done(term) => {
                     return Ok(term);
                 }
             };
-
-            state = step?;
         }
     }
 
@@ -83,7 +81,7 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
         context: &'a Context<'a, V>,
         env: &'a Env<'a, V>,
         term: &'a Term<'a, V>,
-    ) -> Result<&'a mut MachineState<'a, V>, MachineError<'a, V>> {
+    ) -> Result<MachineState<'a, V>, MachineError<'a, V>> {
         match term {
             Term::Var(name) => {
                 self.step_and_maybe_spend(StepKind::Var)?;
@@ -92,45 +90,35 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
                     .lookup(name.index())
                     .ok_or(MachineError::OpenTermEvaluated(term))?;
 
-                let state = MachineState::return_(self.arena, context, value);
-
-                Ok(state)
+                Ok(MachineState::Return(context, value))
             }
             Term::Lambda { parameter, body } => {
                 self.step_and_maybe_spend(StepKind::Lambda)?;
 
                 let value = Value::lambda(self.arena, *parameter, body, env);
 
-                let state = MachineState::return_(self.arena, context, value);
-
-                Ok(state)
+                Ok(MachineState::Return(context, value))
             }
             Term::Apply { function, argument } => {
                 self.step_and_maybe_spend(StepKind::Apply)?;
 
                 let frame = Context::frame_await_fun_term(self.arena, env, argument, context);
 
-                let state = MachineState::compute(self.arena, frame, env, function);
-
-                Ok(state)
+                Ok(MachineState::Compute(frame, env, function))
             }
             Term::Delay(body) => {
                 self.step_and_maybe_spend(StepKind::Delay)?;
 
                 let value = Value::delay(self.arena, body, env);
 
-                let state = MachineState::return_(self.arena, context, value);
-
-                Ok(state)
+                Ok(MachineState::Return(context, value))
             }
             Term::Force(body) => {
                 self.step_and_maybe_spend(StepKind::Force)?;
 
                 let frame = Context::frame_force(self.arena, context);
 
-                let state = MachineState::compute(self.arena, frame, env, body);
-
-                Ok(state)
+                Ok(MachineState::Compute(frame, env, body))
             }
             Term::Constr { tag, fields } => {
                 self.step_and_maybe_spend(StepKind::Constr)?;
@@ -138,15 +126,11 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
                 if let Some((first, terms)) = fields.split_first() {
                     let frame = Context::frame_constr_empty(self.arena, env, *tag, terms, context);
 
-                    let state = MachineState::compute(self.arena, frame, env, first);
-
-                    Ok(state)
+                    Ok(MachineState::Compute(frame, env, first))
                 } else {
                     let value = Value::constr_empty(self.arena, *tag);
 
-                    let state = MachineState::return_(self.arena, context, value);
-
-                    Ok(state)
+                    Ok(MachineState::Return(context, value))
                 }
             }
             Term::Case { constr, branches } => {
@@ -154,18 +138,14 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
 
                 let frame = Context::frame_cases(self.arena, env, branches, context);
 
-                let state = MachineState::compute(self.arena, frame, env, constr);
-
-                Ok(state)
+                Ok(MachineState::Compute(frame, env, constr))
             }
             Term::Constant(constant) => {
                 self.step_and_maybe_spend(StepKind::Constant)?;
 
                 let value = Value::con(self.arena, constant);
 
-                let state = MachineState::return_(self.arena, context, value);
-
-                Ok(state)
+                Ok(MachineState::Return(context, value))
             }
             Term::Builtin(fun) => {
                 self.step_and_maybe_spend(StepKind::Builtin)?;
@@ -174,9 +154,7 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
 
                 let value = Value::builtin(self.arena, runtime);
 
-                let state = MachineState::return_(self.arena, context, value);
-
-                Ok(state)
+                Ok(MachineState::Return(context, value))
             }
             Term::Error => Err(MachineError::ExplicitErrorTerm),
         }
@@ -186,14 +164,12 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
         &mut self,
         context: &'a Context<'a, V>,
         value: &'a Value<'a, V>,
-    ) -> Result<&'a mut MachineState<'a, V>, MachineError<'a, V>> {
+    ) -> Result<MachineState<'a, V>, MachineError<'a, V>> {
         match context {
             Context::FrameAwaitFunTerm(arg_env, argument, context) => {
                 let context = Context::frame_await_arg(self.arena, value, context);
 
-                let state = MachineState::compute(self.arena, context, arg_env, argument);
-
-                Ok(state)
+                Ok(MachineState::Compute(context, arg_env, argument))
             }
             Context::FrameAwaitArg(function, context) => {
                 self.apply_evaluate(context, function, value)
@@ -218,15 +194,11 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
                     let frame =
                         Context::frame_constr(self.arena, env, *tag, terms, values, context);
 
-                    let state = MachineState::compute(self.arena, frame, env, first);
-
-                    Ok(state)
+                    Ok(MachineState::Compute(frame, env, first))
                 } else {
                     let value = Value::constr(self.arena, *tag, values);
 
-                    let state = MachineState::return_(self.arena, context, value);
-
-                    Ok(state)
+                    Ok(MachineState::Return(context, value))
                 }
             }
             Context::FrameCases(env, branches, context) => match value {
@@ -234,9 +206,7 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
                     if let Some(branch) = branches.get(*tag) {
                         let frame = self.transfer_arg_stack(fields, context);
 
-                        let state = MachineState::compute(self.arena, frame, env, branch);
-
-                        Ok(state)
+                        Ok(MachineState::Compute(frame, env, branch))
                     } else {
                         Err(MachineError::MissingCaseBranch(branches, value))
                     }
@@ -251,9 +221,7 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
 
                 let term = discharge::value_as_term(self.arena, value);
 
-                let state = MachineState::done(self.arena, term);
-
-                Ok(state)
+                Ok(MachineState::Done(term))
             }
         }
     }
@@ -262,9 +230,9 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
         &mut self,
         context: &'a Context<'a, V>,
         value: &'a Value<'a, V>,
-    ) -> Result<&'a mut MachineState<'a, V>, MachineError<'a, V>> {
+    ) -> Result<MachineState<'a, V>, MachineError<'a, V>> {
         match value {
-            Value::Delay(term, env) => Ok(MachineState::compute(self.arena, context, env, term)),
+            Value::Delay(term, env) => Ok(MachineState::Compute(context, env, term)),
             Value::Builtin(runtime) => {
                 if runtime.needs_force() {
                     let value = if runtime.is_ready() {
@@ -273,9 +241,7 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
                         Value::builtin(self.arena, runtime.force(self.arena))
                     };
 
-                    let state = MachineState::return_(self.arena, context, value);
-
-                    Ok(state)
+                    Ok(MachineState::Return(context, value))
                 } else {
                     let term = discharge::value_as_term(self.arena, value);
 
@@ -291,14 +257,12 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
         context: &'a Context<'a, V>,
         function: &'a Value<'a, V>,
         argument: &'a Value<'a, V>,
-    ) -> Result<&'a mut MachineState<'a, V>, MachineError<'a, V>> {
+    ) -> Result<MachineState<'a, V>, MachineError<'a, V>> {
         match function {
             Value::Lambda { body, env, .. } => {
                 let new_env = env.push(self.arena, argument);
 
-                let state = MachineState::compute(self.arena, context, new_env, body);
-
-                Ok(state)
+                Ok(MachineState::Compute(context, new_env, body))
             }
             Value::Builtin(runtime) => {
                 if !runtime.needs_force() && runtime.is_arrow() {
@@ -310,9 +274,7 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
                         Value::builtin(self.arena, runtime)
                     };
 
-                    let state = MachineState::return_(self.arena, context, value);
-
-                    Ok(state)
+                    Ok(MachineState::Return(context, value))
                 } else {
                     let term = discharge::value_as_term(self.arena, function);
 
