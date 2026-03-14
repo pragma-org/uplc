@@ -26,7 +26,7 @@ pub struct Machine<'a, B: BuiltinCostModel, V: Eval<'a>> {
     pub(super) arena: &'a Arena,
     ex_budget: ExBudget,
     unbudgeted_steps: [u8; 10],
-    pub(super) costs: CostModel<B>,
+    pub(crate) costs: CostModel<B>,
     slippage: u8,
     pub(super) logs: Vec<String>,
     pub(super) semantics: BuiltinSemantics,
@@ -57,6 +57,16 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
             consumed_budget: self.ex_budget,
             logs: self.logs,
         }
+    }
+
+    /// Get remaining budget without consuming the machine.
+    pub(crate) fn remaining_budget(&self) -> ExBudget {
+        self.ex_budget
+    }
+
+    /// Take logs without consuming the machine.
+    pub(crate) fn take_logs(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.logs)
     }
 
     pub fn run(&mut self, term: &'a Term<'a, V>) -> Result<&'a Term<'a, V>, MachineError<'a, V>> {
@@ -441,7 +451,7 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
         }
     }
 
-    fn step_and_maybe_spend(&mut self, step: StepKind) -> Result<(), MachineError<'a, V>> {
+    pub(crate) fn step_and_maybe_spend(&mut self, step: StepKind) -> Result<(), MachineError<'a, V>> {
         let index = step as usize;
 
         self.unbudgeted_steps[index] += 1;
@@ -451,6 +461,13 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
             self.spend_unbudgeted_steps()?;
         }
 
+        Ok(())
+    }
+
+    pub(crate) fn flush_unbudgeted_steps(&mut self) -> Result<(), MachineError<'a, V>> {
+        if self.unbudgeted_steps[9] > 0 {
+            self.spend_unbudgeted_steps()?;
+        }
         Ok(())
     }
 
@@ -470,7 +487,7 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
         Ok(())
     }
 
-    pub(super) fn spend_budget(
+    pub(crate) fn spend_budget(
         &mut self,
         spend_budget: ExBudget,
     ) -> Result<(), MachineError<'a, V>> {
