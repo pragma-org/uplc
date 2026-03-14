@@ -41,10 +41,12 @@ where
 
             Term::constr(arena, *tag, fields)
         }
-        // Bytecode closures: discharge as opaque error terms since we
-        // don't have the original AST. This is only used for error reporting.
-        Value::LambdaBC { .. } => Term::error(arena),
-        Value::DelayBC { .. } => Term::error(arena),
+        Value::LambdaBC { parameter, body, env, .. } => {
+            with_env(arena, 0, env, body.lambda(arena, parameter))
+        }
+        Value::DelayBC { body, env, .. } => {
+            with_env(arena, 0, env, body.delay(arena))
+        }
     }
 }
 

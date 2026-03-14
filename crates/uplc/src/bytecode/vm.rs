@@ -15,7 +15,7 @@ use crate::{
     },
 };
 
-use super::{read_u16, read_u32, CompiledProgram, Op};
+use super::{read_u16, read_u32, read_u64, CompiledProgram, Op};
 
 /// Bytecode CEK continuation frame.
 enum Frame<'a> {
@@ -58,6 +58,8 @@ pub fn execute<'a, B: BuiltinCostModel>(
         arena,
         bytecode: &program.bytecode,
         constant_pool: &program.constant_pool,
+        lambda_info: &program.lambda_info,
+        delay_info: &program.delay_info,
         ip: 0,
         env: Env::new_in(arena),
         stack: Vec::with_capacity(64),
@@ -82,6 +84,8 @@ struct Vm<'a, 'b, B: BuiltinCostModel> {
     arena: &'a Arena,
     bytecode: &'a [u8],
     constant_pool: &'a [&'a Constant<'a>],
+    lambda_info: &'a std::collections::HashMap<u32, (&'a DeBruijn, &'a crate::term::Term<'a, DeBruijn>)>,
+    delay_info: &'a std::collections::HashMap<u32, &'a crate::term::Term<'a, DeBruijn>>,
     ip: usize,
     env: &'a Env<'a, DeBruijn>,
     stack: Vec<Frame<'a>>,
@@ -136,7 +140,8 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                 let body_ip = read_u32(self.bytecode, self.ip);
                 self.ip += 4;
                 self.machine.step_and_maybe_spend(StepKind::Lambda)?;
-                let value = Value::lambda_bc(self.arena, body_ip, self.env);
+                let (param, body) = self.lambda_info[&body_ip];
+                let value = Value::lambda_bc(self.arena, body_ip, self.env, param, body);
                 Ok(Phase::Return(value))
             }
 
@@ -155,7 +160,8 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                 let body_ip = read_u32(self.bytecode, self.ip);
                 self.ip += 4;
                 self.machine.step_and_maybe_spend(StepKind::Delay)?;
-                let value = Value::delay_bc(self.arena, body_ip, self.env);
+                let body = self.delay_info[&body_ip];
+                let value = Value::delay_bc(self.arena, body_ip, self.env, body);
                 Ok(Phase::Return(value))
             }
 
@@ -217,10 +223,18 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                 Ok(Phase::Return(value))
             }
 
-            op if op == Op::Constr as u8 => {
-                let tag = self.bytecode[self.ip] as usize;
-                let nfields = self.bytecode[self.ip + 1] as usize;
-                self.ip += 2;
+            op if op == Op::Constr as u8 || op == Op::ConstrBig as u8 => {
+                let tag = if op == Op::Constr as u8 {
+                    let t = self.bytecode[self.ip] as usize;
+                    self.ip += 1;
+                    t
+                } else {
+                    let t = read_u64(self.bytecode, self.ip) as usize;
+                    self.ip += 8;
+                    t
+                };
+                let nfields = self.bytecode[self.ip] as usize;
+                self.ip += 1;
                 self.machine.step_and_maybe_spend(StepKind::Constr)?;
 
                 if nfields == 0 {
@@ -405,7 +419,7 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
         value: &'a Value<'a, DeBruijn>,
     ) -> Result<Phase<'a>, MachineError<'a, DeBruijn>> {
         match value {
-            Value::DelayBC { body_ip, env } => {
+            Value::DelayBC { body_ip, env, .. } => {
                 self.env = env;
                 self.ip = *body_ip as usize;
                 Ok(Phase::Compute)
@@ -437,7 +451,7 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
         argument: &'a Value<'a, DeBruijn>,
     ) -> Result<Phase<'a>, MachineError<'a, DeBruijn>> {
         match function {
-            Value::LambdaBC { body_ip, env } => {
+            Value::LambdaBC { body_ip, env, .. } => {
                 self.env = env.push(self.arena, argument);
                 self.ip = *body_ip as usize;
                 Ok(Phase::Compute)
