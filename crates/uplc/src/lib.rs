@@ -1,4 +1,5 @@
 pub mod arena;
+pub mod bytecode;
 pub mod binder;
 pub mod bls;
 pub mod builtin;
