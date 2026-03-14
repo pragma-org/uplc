@@ -18,8 +18,10 @@ pub enum Op {
     Delay = 0x04,
     /// Force — push FrameForce, compute inner
     Force = 0x05,
-    /// Constr tag:u8 nfields:u8 field_offsets:[u32; nfields] — constructor
+    /// Constr tag:u8 nfields:u8 field_offsets:[u32; nfields] — small-tag constructor
     Constr = 0x06,
+    /// ConstrBig tag:u64 nfields:u8 field_offsets:[u32; nfields] — large-tag constructor
+    ConstrBig = 0x0B,
     /// Case nbranches:u8 branch_offsets:[u32; nbranches] — pattern match
     Case = 0x07,
     /// Const index:u16 — load constant_pool[index], return it
@@ -52,11 +54,18 @@ pub enum Op {
     ConstSmallInt = 0x23,
 }
 
+use std::collections::HashMap;
+use crate::{binder::DeBruijn, term::Term};
+
 /// A compiled UPLC program ready for bytecode execution.
 pub struct CompiledProgram<'a> {
     pub bytecode: Vec<u8>,
     pub constant_pool: Vec<&'a Constant<'a>>,
     pub version: (usize, usize, usize),
+    /// Maps body_ip offset → (parameter, body) for Lambda discharge.
+    pub lambda_info: HashMap<u32, (&'a DeBruijn, &'a Term<'a, DeBruijn>)>,
+    /// Maps body_ip offset → body for Delay discharge.
+    pub delay_info: HashMap<u32, &'a Term<'a, DeBruijn>>,
 }
 
 /// Read a u32 from bytecode at the given offset (little-endian).
@@ -74,6 +83,21 @@ pub fn read_u32(bytecode: &[u8], offset: usize) -> u32 {
 #[inline(always)]
 pub fn read_u16(bytecode: &[u8], offset: usize) -> u16 {
     u16::from_le_bytes([bytecode[offset], bytecode[offset + 1]])
+}
+
+/// Read a u64 from bytecode at the given offset (little-endian).
+#[inline(always)]
+pub fn read_u64(bytecode: &[u8], offset: usize) -> u64 {
+    u64::from_le_bytes([
+        bytecode[offset],
+        bytecode[offset + 1],
+        bytecode[offset + 2],
+        bytecode[offset + 3],
+        bytecode[offset + 4],
+        bytecode[offset + 5],
+        bytecode[offset + 6],
+        bytecode[offset + 7],
+    ])
 }
 
 /// Write a u32 to bytecode at the given offset (little-endian).
