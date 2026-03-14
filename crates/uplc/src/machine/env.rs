@@ -5,7 +5,7 @@ use super::value::Value;
 /// Spine size — number of values stored inline per Env node.
 /// Covers the vast majority of lookups (de Bruijn index 1-8)
 /// in a single cache-friendly array access.
-const SPINE_SIZE: usize = 8;
+const SPINE_SIZE: usize = 4;
 
 #[derive(Debug)]
 pub struct Env<'a, V>
