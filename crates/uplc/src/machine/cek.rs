@@ -116,6 +116,13 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
             Term::Force(body) => {
                 self.step_and_maybe_spend(StepKind::Force)?;
 
+                // Fast path: Force(Delay(body)) → compute body directly
+                // Skips allocating FrameForce, VDelay, and two state transitions
+                if let Term::Delay(inner) = body {
+                    self.step_and_maybe_spend(StepKind::Delay)?;
+                    return Ok(MachineState::Compute(context, env, inner));
+                }
+
                 let frame = Context::frame_force(self.arena, context);
 
                 Ok(MachineState::Compute(frame, env, body))
