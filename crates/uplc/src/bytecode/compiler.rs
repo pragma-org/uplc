@@ -15,6 +15,8 @@ pub fn compile<'a>(
     let mut compiler = Compiler {
         bytecode: Vec::with_capacity(4096),
         constant_pool: Vec::new(),
+        lambda_info: std::collections::HashMap::new(),
+        delay_info: std::collections::HashMap::new(),
     };
 
     compiler.compile_term(term);
@@ -23,12 +25,16 @@ pub fn compile<'a>(
         bytecode: compiler.bytecode,
         constant_pool: compiler.constant_pool,
         version,
+        lambda_info: compiler.lambda_info,
+        delay_info: compiler.delay_info,
     }
 }
 
 struct Compiler<'a> {
     bytecode: Vec<u8>,
     constant_pool: Vec<&'a Constant<'a>>,
+    lambda_info: std::collections::HashMap<u32, (&'a DeBruijn, &'a Term<'a, DeBruijn>)>,
+    delay_info: std::collections::HashMap<u32, &'a Term<'a, DeBruijn>>,
 }
 
 impl<'a> Compiler<'a> {
@@ -39,19 +45,23 @@ impl<'a> Compiler<'a> {
                 self.emit(db.index() as u8);
             }
 
-            Term::Lambda { body, .. } => {
+            Term::Lambda { parameter, body } => {
                 self.emit(Op::Lambda as u8);
                 let hole = self.emit_u32_hole();
-                self.patch_u32(hole, self.bytecode.len() as u32);
+                let body_ip = self.bytecode.len() as u32;
+                self.patch_u32(hole, body_ip);
+                self.lambda_info.insert(body_ip, (*parameter, *body));
                 self.compile_term(body);
             }
 
             // Superinstruction: Apply(Lambda(body), arg)
-            Term::Apply { function: Term::Lambda { body, .. }, argument } => {
+            Term::Apply { function: Term::Lambda { parameter, body }, argument } => {
                 self.emit(Op::ApplyLambda as u8);
                 let body_hole = self.emit_u32_hole();
                 self.compile_term(argument);
-                self.patch_u32(body_hole, self.bytecode.len() as u32);
+                let body_ip = self.bytecode.len() as u32;
+                self.patch_u32(body_hole, body_ip);
+                self.lambda_info.insert(body_ip, (*parameter, *body));
                 self.compile_term(body);
             }
 
@@ -66,7 +76,9 @@ impl<'a> Compiler<'a> {
             Term::Delay(body) => {
                 self.emit(Op::Delay as u8);
                 let hole = self.emit_u32_hole();
-                self.patch_u32(hole, self.bytecode.len() as u32);
+                let body_ip = self.bytecode.len() as u32;
+                self.patch_u32(hole, body_ip);
+                self.delay_info.insert(body_ip, *body);
                 self.compile_term(body);
             }
 
@@ -76,14 +88,14 @@ impl<'a> Compiler<'a> {
                 self.compile_term(body);
             }
 
-            // Superinstruction: Force(Force(Builtin(f)))
-            Term::Force(Term::Force(Term::Builtin(f))) => {
+            // Superinstruction: Force(Force(Builtin(f))) — only if builtin needs 2 forces
+            Term::Force(Term::Force(Term::Builtin(f))) if f.force_count() >= 2 => {
                 self.emit(Op::Force2Builtin as u8);
                 self.emit(**f as u8);
             }
 
-            // Superinstruction: Force(Builtin(f))
-            Term::Force(Term::Builtin(f)) => {
+            // Superinstruction: Force(Builtin(f)) — only if builtin needs forcing
+            Term::Force(Term::Builtin(f)) if f.force_count() >= 1 => {
                 self.emit(Op::ForceBuiltin as u8);
                 self.emit(**f as u8);
             }
@@ -94,8 +106,13 @@ impl<'a> Compiler<'a> {
             }
 
             Term::Constr { tag, fields } => {
-                self.emit(Op::Constr as u8);
-                self.emit(*tag as u8);
+                if *tag <= 255 {
+                    self.emit(Op::Constr as u8);
+                    self.emit(*tag as u8);
+                } else {
+                    self.emit(Op::ConstrBig as u8);
+                    self.bytecode.extend_from_slice(&(*tag as u64).to_le_bytes());
+                }
                 self.emit(fields.len() as u8);
 
                 // Emit field offset holes

@@ -26,14 +26,20 @@ where
     Delay(&'a Term<'a, V>, &'a Env<'a, V>),
     Constr(usize, &'a [&'a Value<'a, V>]),
     /// Bytecode closure: lambda body at bytecode offset, capturing env.
+    /// Stores the original Term for discharge (converting back to AST for output).
     LambdaBC {
         body_ip: u32,
         env: &'a Env<'a, V>,
+        /// Original AST parameter + body for discharge
+        parameter: &'a V,
+        body: &'a Term<'a, V>,
     },
     /// Bytecode thunk: delayed body at bytecode offset, capturing env.
     DelayBC {
         body_ip: u32,
         env: &'a Env<'a, V>,
+        /// Original AST body for discharge
+        body: &'a Term<'a, V>,
     },
 }
 
@@ -77,12 +83,23 @@ where
         arena.alloc(Value::Constr(tag, values))
     }
 
-    pub fn lambda_bc(arena: &'a Arena, body_ip: u32, env: &'a Env<'a, V>) -> &'a Value<'a, V> {
-        arena.alloc(Value::LambdaBC { body_ip, env })
+    pub fn lambda_bc(
+        arena: &'a Arena,
+        body_ip: u32,
+        env: &'a Env<'a, V>,
+        parameter: &'a V,
+        body: &'a Term<'a, V>,
+    ) -> &'a Value<'a, V> {
+        arena.alloc(Value::LambdaBC { body_ip, env, parameter, body })
     }
 
-    pub fn delay_bc(arena: &'a Arena, body_ip: u32, env: &'a Env<'a, V>) -> &'a Value<'a, V> {
-        arena.alloc(Value::DelayBC { body_ip, env })
+    pub fn delay_bc(
+        arena: &'a Arena,
+        body_ip: u32,
+        env: &'a Env<'a, V>,
+        body: &'a Term<'a, V>,
+    ) -> &'a Value<'a, V> {
+        arena.alloc(Value::DelayBC { body_ip, env, body })
     }
 
     pub fn builtin(arena: &'a Arena, runtime: &'a Runtime<'a, V>) -> &'a Value<'a, V> {

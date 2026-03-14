@@ -1,6 +1,6 @@
 mod cek;
 mod context;
-pub(crate) mod cost_model;
+pub mod cost_model;
 pub(crate) mod discharge;
 pub(crate) mod env;
 mod error;
