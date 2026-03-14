@@ -72,6 +72,15 @@ pub fn execute<'a, B: BuiltinCostModel>(
     let val_true: &'a Value<'a, DeBruijn> = Value::con(arena, arena.alloc(Constant::Boolean(true)));
     let val_false: &'a Value<'a, DeBruijn> = Value::con(arena, arena.alloc(Constant::Boolean(false)));
 
+    // Pre-create bare builtin values (no forces/args yet)
+    let mut builtin_values: Vec<&'a Value<'a, DeBruijn>> = Vec::with_capacity(92);
+    for i in 0..92u8 {
+        let fun = arena.alloc(DefaultFunction::from_u8(i));
+        let runtime = Runtime::new(arena, fun);
+        builtin_values.push(Value::builtin(arena, runtime));
+    }
+    let builtin_values = builtin_values;
+
     let mut vm = Vm {
         arena,
         bytecode: &program.bytecode,
@@ -79,6 +88,7 @@ pub fn execute<'a, B: BuiltinCostModel>(
         val_unit,
         val_true,
         val_false,
+        builtin_values: &builtin_values,
         lambdas: &program.lambdas,
         delays: &program.delays,
         ip: 0,
@@ -108,6 +118,7 @@ struct Vm<'a, 'b, B: BuiltinCostModel> {
     val_unit: &'a Value<'a, DeBruijn>,
     val_true: &'a Value<'a, DeBruijn>,
     val_false: &'a Value<'a, DeBruijn>,
+    builtin_values: &'b [&'a Value<'a, DeBruijn>],
     lambdas: &'a [super::LambdaInfo<'a>],
     delays: &'a [super::DelayInfo<'a>],
     ip: usize,
@@ -360,12 +371,10 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
             }
 
             0x09 => {
-                let fun_id = self.bytecode[self.ip];
+                let fun_id = self.bytecode[self.ip] as usize;
                 self.ip += 1;
                 self.machine.step_and_maybe_spend(StepKind::Builtin)?;
-                let fun = self.arena.alloc(DefaultFunction::from_u8(fun_id));
-                let runtime = Runtime::new(self.arena, fun);
-                let value = Value::builtin(self.arena, runtime);
+                let value = self.builtin_values[fun_id];
                 Ok(Phase::Return(value))
             }
 
