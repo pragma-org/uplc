@@ -60,10 +60,17 @@ pub fn execute<'a, B: BuiltinCostModel>(
     // We embed a Machine for builtin dispatch (reuses the 2000+ line call method)
     let mut machine = Machine::new(arena, initial_budget, costs, semantics);
 
+    // Pre-wrap constants as Values to avoid per-opcode arena allocation
+    let pre_wrapped: Vec<&'a Value<'a, DeBruijn>> = program
+        .constant_pool
+        .iter()
+        .map(|c| Value::con(arena, c))
+        .collect();
+
     let mut vm = Vm {
         arena,
         bytecode: &program.bytecode,
-        constant_pool: &program.constant_pool,
+        constant_values: &pre_wrapped,
         lambdas: &program.lambdas,
         delays: &program.delays,
         ip: 0,
@@ -89,7 +96,7 @@ pub fn execute<'a, B: BuiltinCostModel>(
 struct Vm<'a, 'b, B: BuiltinCostModel> {
     arena: &'a Arena,
     bytecode: &'a [u8],
-    constant_pool: &'a [&'a Constant<'a>],
+    constant_values: &'b [&'a Value<'a, DeBruijn>],
     lambdas: &'a [super::LambdaInfo<'a>],
     delays: &'a [super::DelayInfo<'a>],
     ip: usize,
@@ -313,8 +320,7 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                 let idx = read_u16(self.bytecode, self.ip) as usize;
                 self.ip += 2;
                 self.machine.step_and_maybe_spend(StepKind::Constant)?;
-                let constant = self.constant_pool[idx];
-                let value = Value::con(self.arena, constant);
+                let value = self.constant_values[idx];
                 Ok(Phase::Return(value))
             }
 
