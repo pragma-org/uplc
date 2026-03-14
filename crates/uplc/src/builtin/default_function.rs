@@ -132,6 +132,14 @@ pub enum DefaultFunction {
 }
 
 impl DefaultFunction {
+    /// Convert a u8 discriminant back to a DefaultFunction.
+    /// # Safety
+    /// The caller must ensure the value is a valid discriminant.
+    pub fn from_u8(val: u8) -> Self {
+        // SAFETY: DefaultFunction is #[repr(u8)] and we trust the bytecode compiler
+        unsafe { std::mem::transmute(val) }
+    }
+
     pub fn force_count(&self) -> usize {
         match self {
             DefaultFunction::AddInteger => 0,
