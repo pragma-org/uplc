@@ -125,7 +125,7 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
         self.ip += 1;
 
         match op {
-            op if op == Op::Var as u8 => {
+            0x01 => {
                 let idx = self.bytecode[self.ip] as usize;
                 self.ip += 1;
                 self.machine.step_and_maybe_spend(StepKind::Var)?;
@@ -136,7 +136,7 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                 Ok(Phase::Return(value))
             }
 
-            op if op == Op::Lambda as u8 => {
+            0x02 => {
                 let body_ip = read_u32(self.bytecode, self.ip);
                 let lambda_id = read_u16(self.bytecode, self.ip + 4) as usize;
                 self.ip += 6;
@@ -146,7 +146,7 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                 Ok(Phase::Return(value))
             }
 
-            op if op == Op::Apply as u8 => {
+            0x03 => {
                 let arg_ip = read_u32(self.bytecode, self.ip);
                 self.ip += 4;
                 self.machine.step_and_maybe_spend(StepKind::Apply)?;
@@ -157,7 +157,7 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                 Ok(Phase::Compute)
             }
 
-            op if op == Op::Delay as u8 => {
+            0x04 => {
                 let body_ip = read_u32(self.bytecode, self.ip);
                 let delay_id = read_u16(self.bytecode, self.ip + 4) as usize;
                 self.ip += 6;
@@ -167,20 +167,20 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                 Ok(Phase::Return(value))
             }
 
-            op if op == Op::Force as u8 => {
+            0x05 => {
                 self.machine.step_and_maybe_spend(StepKind::Force)?;
                 self.stack.push(Frame::Force);
                 Ok(Phase::Compute)
             }
 
-            op if op == Op::ForceDelay as u8 => {
+            0x10 => {
                 self.machine.step_and_maybe_spend(StepKind::Force)?;
                 self.machine.step_and_maybe_spend(StepKind::Delay)?;
                 // Body follows inline
                 Ok(Phase::Compute)
             }
 
-            op if op == Op::ApplyLambda as u8 => {
+            0x11 => {
                 let body_ip = read_u32(self.bytecode, self.ip);
                 let _lambda_id = read_u16(self.bytecode, self.ip + 4);
                 self.ip += 6;
@@ -193,7 +193,7 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                 Ok(Phase::Compute)
             }
 
-            op if op == Op::ForceBuiltin as u8 => {
+            0x12 => {
                 let fun_id = self.bytecode[self.ip];
                 self.ip += 1;
                 self.machine.step_and_maybe_spend(StepKind::Force)?;
@@ -209,7 +209,7 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                 Ok(Phase::Return(value))
             }
 
-            op if op == Op::Force2Builtin as u8 => {
+            0x13 => {
                 let fun_id = self.bytecode[self.ip];
                 self.ip += 1;
                 self.machine.step_and_maybe_spend(StepKind::Force)?;
@@ -226,8 +226,8 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                 Ok(Phase::Return(value))
             }
 
-            op if op == Op::Constr as u8 || op == Op::ConstrBig as u8 => {
-                let tag = if op == Op::Constr as u8 {
+            0x06 | 0x0B => {
+                let tag = if op == 0x06 {
                     let t = self.bytecode[self.ip] as usize;
                     self.ip += 1;
                     t
@@ -263,7 +263,7 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                 Ok(Phase::Compute)
             }
 
-            op if op == Op::Case as u8 => {
+            0x07 => {
                 let nbranches = self.bytecode[self.ip] as usize;
                 self.ip += 1;
                 self.machine.step_and_maybe_spend(StepKind::Case)?;
@@ -281,7 +281,7 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                 Ok(Phase::Compute)
             }
 
-            op if op == Op::Const as u8 => {
+            0x08 => {
                 let idx = read_u16(self.bytecode, self.ip) as usize;
                 self.ip += 2;
                 self.machine.step_and_maybe_spend(StepKind::Constant)?;
@@ -290,25 +290,25 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                 Ok(Phase::Return(value))
             }
 
-            op if op == Op::ConstUnit as u8 => {
+            0x20 => {
                 self.machine.step_and_maybe_spend(StepKind::Constant)?;
                 let c = self.arena.alloc(Constant::Unit);
                 Ok(Phase::Return(Value::con(self.arena, c)))
             }
 
-            op if op == Op::ConstTrue as u8 => {
+            0x21 => {
                 self.machine.step_and_maybe_spend(StepKind::Constant)?;
                 let c = self.arena.alloc(Constant::Boolean(true));
                 Ok(Phase::Return(Value::con(self.arena, c)))
             }
 
-            op if op == Op::ConstFalse as u8 => {
+            0x22 => {
                 self.machine.step_and_maybe_spend(StepKind::Constant)?;
                 let c = self.arena.alloc(Constant::Boolean(false));
                 Ok(Phase::Return(Value::con(self.arena, c)))
             }
 
-            op if op == Op::ConstSmallInt as u8 => {
+            0x23 => {
                 let val = self.bytecode[self.ip] as i8;
                 self.ip += 1;
                 self.machine.step_and_maybe_spend(StepKind::Constant)?;
@@ -317,7 +317,7 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                 Ok(Phase::Return(Value::con(self.arena, c)))
             }
 
-            op if op == Op::Builtin as u8 => {
+            0x09 => {
                 let fun_id = self.bytecode[self.ip];
                 self.ip += 1;
                 self.machine.step_and_maybe_spend(StepKind::Builtin)?;
@@ -327,7 +327,7 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                 Ok(Phase::Return(value))
             }
 
-            _op if _op == Op::Error as u8 => Err(MachineError::ExplicitErrorTerm),
+            0x0A => Err(MachineError::ExplicitErrorTerm),
 
             _ => Err(MachineError::ExplicitErrorTerm),
         }
