@@ -18,6 +18,8 @@ use crate::{
 use super::{read_u16, read_u32, read_u64, CompiledProgram, Op};
 
 /// Bytecode CEK continuation frame.
+/// All offsets reference positions in the bytecode array directly,
+/// avoiding heap allocation for offset vectors.
 enum Frame<'a> {
     AwaitFunTerm {
         arg_ip: u32,
@@ -33,13 +35,17 @@ enum Frame<'a> {
     Constr {
         env: &'a Env<'a, DeBruijn>,
         tag: usize,
-        field_offsets: Vec<u32>,
+        /// Byte offset in bytecode where the field offset table starts.
+        offsets_start: usize,
+        nfields: usize,
         next_field: usize,
-        values: Vec<&'a Value<'a, DeBruijn>>,
+        values: BumpVec<'a, &'a Value<'a, DeBruijn>>,
     },
     Cases {
         env: &'a Env<'a, DeBruijn>,
-        branch_offsets: Vec<u32>,
+        /// Byte offset in bytecode where the branch offset table starts.
+        offsets_start: usize,
+        nbranches: usize,
     },
 }
 
@@ -112,7 +118,9 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                 Phase::Compute => self.step_compute()?,
                 Phase::Return(value) => self.step_return(value)?,
                 Phase::Done(value) => {
-                    let term = discharge::value_as_term(self.arena, value);
+                    let term = discharge::value_as_term_bc(
+                        self.arena, value, self.lambdas, self.delays,
+                    );
                     return Ok(term);
                 }
             };
@@ -138,11 +146,10 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
 
             0x02 => {
                 let body_ip = read_u32(self.bytecode, self.ip);
-                let lambda_id = read_u16(self.bytecode, self.ip + 4) as usize;
+                let lambda_id = read_u16(self.bytecode, self.ip + 4);
                 self.ip += 6;
                 self.machine.step_and_maybe_spend(StepKind::Lambda)?;
-                let info = &self.lambdas[lambda_id];
-                let value = Value::lambda_bc(self.arena, body_ip, self.env, info.parameter, info.body);
+                let value = Value::lambda_bc(self.arena, body_ip, lambda_id, self.env);
                 Ok(Phase::Return(value))
             }
 
@@ -159,11 +166,10 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
 
             0x04 => {
                 let body_ip = read_u32(self.bytecode, self.ip);
-                let delay_id = read_u16(self.bytecode, self.ip + 4) as usize;
+                let delay_id = read_u16(self.bytecode, self.ip + 4);
                 self.ip += 6;
                 self.machine.step_and_maybe_spend(StepKind::Delay)?;
-                let info = &self.delays[delay_id];
-                let value = Value::delay_bc(self.arena, body_ip, self.env, info.body);
+                let value = Value::delay_bc(self.arena, body_ip, delay_id, self.env);
                 Ok(Phase::Return(value))
             }
 
@@ -245,19 +251,18 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                     return Ok(Phase::Return(value));
                 }
 
-                let mut field_offsets = Vec::with_capacity(nfields);
-                for _ in 0..nfields {
-                    field_offsets.push(read_u32(self.bytecode, self.ip));
-                    self.ip += 4;
-                }
+                // Field offsets are inline in bytecode — just record where they start
+                let offsets_start = self.ip;
+                self.ip += nfields * 4; // skip past the offset table
 
-                let first_ip = field_offsets[0] as usize;
+                let first_ip = read_u32(self.bytecode, offsets_start) as usize;
                 self.stack.push(Frame::Constr {
                     env: self.env,
                     tag,
-                    field_offsets,
+                    offsets_start,
+                    nfields,
                     next_field: 1,
-                    values: Vec::with_capacity(nfields),
+                    values: BumpVec::with_capacity_in(nfields, self.arena.as_bump()),
                 });
                 self.ip = first_ip;
                 Ok(Phase::Compute)
@@ -268,16 +273,15 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                 self.ip += 1;
                 self.machine.step_and_maybe_spend(StepKind::Case)?;
 
-                let mut branch_offsets = Vec::with_capacity(nbranches);
-                for _ in 0..nbranches {
-                    branch_offsets.push(read_u32(self.bytecode, self.ip));
-                    self.ip += 4;
-                }
+                let offsets_start = self.ip;
+                self.ip += nbranches * 4; // skip past the offset table
 
                 self.stack.push(Frame::Cases {
                     env: self.env,
-                    branch_offsets,
+                    offsets_start,
+                    nbranches,
                 });
+                // Scrutinee follows inline
                 Ok(Phase::Compute)
             }
 
@@ -360,18 +364,20 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
             Some(Frame::Constr {
                 env,
                 tag,
-                field_offsets,
+                offsets_start,
+                nfields,
                 next_field,
                 mut values,
             }) => {
                 values.push(value);
 
-                if next_field < field_offsets.len() {
-                    let next_ip = field_offsets[next_field] as usize;
+                if next_field < nfields {
+                    let next_ip = read_u32(self.bytecode, offsets_start + next_field * 4) as usize;
                     self.stack.push(Frame::Constr {
                         env,
                         tag,
-                        field_offsets,
+                        offsets_start,
+                        nfields,
                         next_field: next_field + 1,
                         values,
                     });
@@ -379,28 +385,24 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                     self.ip = next_ip;
                     Ok(Phase::Compute)
                 } else {
-                    let mut arena_values =
-                        BumpVec::with_capacity_in(values.len(), self.arena.as_bump());
-                    for v in &values {
-                        arena_values.push(*v);
-                    }
-                    let arena_values = self.arena.alloc(arena_values);
-                    let constr_value = Value::constr(self.arena, tag, arena_values);
+                    let values = self.arena.alloc(values);
+                    let constr_value = Value::constr(self.arena, tag, values);
                     Ok(Phase::Return(constr_value))
                 }
             }
 
             Some(Frame::Cases {
                 env,
-                branch_offsets,
+                offsets_start,
+                nbranches,
             }) => match value {
                 Value::Constr(tag, fields) => {
-                    if *tag < branch_offsets.len() {
+                    if *tag < nbranches {
                         for field in fields.iter().rev() {
                             self.stack.push(Frame::AwaitFunValue(*field));
                         }
                         self.env = env;
-                        self.ip = branch_offsets[*tag] as usize;
+                        self.ip = read_u32(self.bytecode, offsets_start + *tag * 4) as usize;
                         Ok(Phase::Compute)
                     } else {
                         Err(MachineError::ExplicitErrorTerm)
