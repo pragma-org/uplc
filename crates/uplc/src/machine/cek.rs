@@ -127,10 +127,45 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
                 self.step_and_maybe_spend(StepKind::Force)?;
 
                 // Fast path: Force(Delay(body)) → compute body directly
-                // Skips allocating FrameForce, VDelay, and two state transitions
                 if let Term::Delay(inner) = body {
                     self.step_and_maybe_spend(StepKind::Delay)?;
                     return Ok(MachineState::Compute(context, env, inner));
+                }
+
+                // Fast path: Force(Builtin(b)) → create forced builtin directly
+                if let Term::Builtin(fun) = body {
+                    self.step_and_maybe_spend(StepKind::Builtin)?;
+                    let runtime = Runtime::new(self.arena, fun);
+                    if runtime.needs_force() {
+                        let forced = runtime.force(self.arena);
+                        let value = if forced.is_ready() {
+                            self.call(forced)?
+                        } else {
+                            Value::builtin(self.arena, forced)
+                        };
+                        return Ok(MachineState::Return(context, value));
+                    }
+                }
+
+                // Fast path: Force(Force(Builtin(b))) → double-force builtin
+                if let Term::Force(inner) = body {
+                    if let Term::Builtin(fun) = inner {
+                        self.step_and_maybe_spend(StepKind::Force)?;
+                        self.step_and_maybe_spend(StepKind::Builtin)?;
+                        let runtime = Runtime::new(self.arena, fun);
+                        if runtime.needs_force() {
+                            let forced = runtime.force(self.arena);
+                            if forced.needs_force() {
+                                let forced2 = forced.force(self.arena);
+                                let value = if forced2.is_ready() {
+                                    self.call(forced2)?
+                                } else {
+                                    Value::builtin(self.arena, forced2)
+                                };
+                                return Ok(MachineState::Return(context, value));
+                            }
+                        }
+                    }
                 }
 
                 let frame = Context::frame_force(self.arena, context);
