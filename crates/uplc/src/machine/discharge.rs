@@ -41,11 +41,59 @@ where
 
             Term::constr(arena, *tag, fields)
         }
-        Value::LambdaBC { parameter, body, env, .. } => {
+        Value::LambdaBC { lambda_id, env, .. } => {
+            // Discharge requires AST lookup tables — fall back to error
+            // unless called via value_as_term_bc with context
+            Term::error(arena)
+        }
+        Value::DelayBC { delay_id, env, .. } => {
+            Term::error(arena)
+        }
+    }
+}
+
+/// Discharge a value to a term with bytecode closure support.
+/// Requires lookup tables from the compiled program.
+pub fn value_as_term_bc<'a>(
+    arena: &'a Arena,
+    value: &'a Value<'a, crate::binder::DeBruijn>,
+    lambdas: &[crate::bytecode::LambdaInfo<'a>],
+    delays: &[crate::bytecode::DelayInfo<'a>],
+) -> &'a Term<'a, crate::binder::DeBruijn> {
+    use crate::binder::DeBruijn;
+    use bumpalo::collections::CollectIn;
+
+    match value {
+        Value::Con(x) => arena.alloc(Term::Constant(x)),
+        Value::Builtin(runtime) => {
+            let mut term = Term::builtin(arena, runtime.fun);
+            for _ in 0..runtime.forces {
+                term = term.force(arena);
+            }
+            for i in 0..runtime.arg_count() {
+                term = term.apply(arena, value_as_term_bc(arena, runtime.arg(i), lambdas, delays));
+            }
+            term
+        }
+        Value::Lambda { parameter, body, env } => {
             with_env(arena, 0, env, body.lambda(arena, parameter))
         }
-        Value::DelayBC { body, env, .. } => {
-            with_env(arena, 0, env, body.delay(arena))
+        Value::Delay(body, env) => with_env(arena, 0, env, body.delay(arena)),
+        Value::Constr(tag, fields) => {
+            let fields: BumpVec<'_, _> = fields
+                .iter()
+                .map(|v| value_as_term_bc(arena, v, lambdas, delays))
+                .collect_in(arena.as_bump());
+            let fields = arena.alloc(fields);
+            Term::constr(arena, *tag, fields)
+        }
+        Value::LambdaBC { lambda_id, env, .. } => {
+            let info = &lambdas[*lambda_id as usize];
+            with_env(arena, 0, env, info.body.lambda(arena, info.parameter))
+        }
+        Value::DelayBC { delay_id, env, .. } => {
+            let info = &delays[*delay_id as usize];
+            with_env(arena, 0, env, info.body.delay(arena))
         }
     }
 }
