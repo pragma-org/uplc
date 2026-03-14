@@ -50,3 +50,7 @@ harness = false
 [[bench]]
 name = "turbo"
 harness = false
+
+[[bench]]
+name = "flat_decode"
+harness = false
