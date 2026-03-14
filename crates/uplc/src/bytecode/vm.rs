@@ -58,8 +58,8 @@ pub fn execute<'a, B: BuiltinCostModel>(
         arena,
         bytecode: &program.bytecode,
         constant_pool: &program.constant_pool,
-        lambda_info: &program.lambda_info,
-        delay_info: &program.delay_info,
+        lambdas: &program.lambdas,
+        delays: &program.delays,
         ip: 0,
         env: Env::new_in(arena),
         stack: Vec::with_capacity(64),
@@ -84,8 +84,8 @@ struct Vm<'a, 'b, B: BuiltinCostModel> {
     arena: &'a Arena,
     bytecode: &'a [u8],
     constant_pool: &'a [&'a Constant<'a>],
-    lambda_info: &'a std::collections::HashMap<u32, (&'a DeBruijn, &'a crate::term::Term<'a, DeBruijn>)>,
-    delay_info: &'a std::collections::HashMap<u32, &'a crate::term::Term<'a, DeBruijn>>,
+    lambdas: &'a [super::LambdaInfo<'a>],
+    delays: &'a [super::DelayInfo<'a>],
     ip: usize,
     env: &'a Env<'a, DeBruijn>,
     stack: Vec<Frame<'a>>,
@@ -138,10 +138,11 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
 
             op if op == Op::Lambda as u8 => {
                 let body_ip = read_u32(self.bytecode, self.ip);
-                self.ip += 4;
+                let lambda_id = read_u16(self.bytecode, self.ip + 4) as usize;
+                self.ip += 6;
                 self.machine.step_and_maybe_spend(StepKind::Lambda)?;
-                let (param, body) = self.lambda_info[&body_ip];
-                let value = Value::lambda_bc(self.arena, body_ip, self.env, param, body);
+                let info = &self.lambdas[lambda_id];
+                let value = Value::lambda_bc(self.arena, body_ip, self.env, info.parameter, info.body);
                 Ok(Phase::Return(value))
             }
 
@@ -158,10 +159,11 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
 
             op if op == Op::Delay as u8 => {
                 let body_ip = read_u32(self.bytecode, self.ip);
-                self.ip += 4;
+                let delay_id = read_u16(self.bytecode, self.ip + 4) as usize;
+                self.ip += 6;
                 self.machine.step_and_maybe_spend(StepKind::Delay)?;
-                let body = self.delay_info[&body_ip];
-                let value = Value::delay_bc(self.arena, body_ip, self.env, body);
+                let info = &self.delays[delay_id];
+                let value = Value::delay_bc(self.arena, body_ip, self.env, info.body);
                 Ok(Phase::Return(value))
             }
 
@@ -180,7 +182,8 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
 
             op if op == Op::ApplyLambda as u8 => {
                 let body_ip = read_u32(self.bytecode, self.ip);
-                self.ip += 4;
+                let _lambda_id = read_u16(self.bytecode, self.ip + 4);
+                self.ip += 6;
                 self.machine.step_and_maybe_spend(StepKind::Apply)?;
                 self.machine.step_and_maybe_spend(StepKind::Lambda)?;
                 self.stack.push(Frame::AwaitArgForLambda {
