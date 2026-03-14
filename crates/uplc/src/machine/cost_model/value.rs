@@ -66,6 +66,8 @@ where
         Value::Builtin(_) => 1,
         Value::Delay(_, _) => 1,
         Value::Constr(_, _) => 1,
+        Value::LambdaBC { .. } => 1,
+        Value::DelayBC { .. } => 1,
     }
 }
 

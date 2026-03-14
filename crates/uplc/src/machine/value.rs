@@ -25,6 +25,16 @@ where
     Builtin(&'a Runtime<'a, V>),
     Delay(&'a Term<'a, V>, &'a Env<'a, V>),
     Constr(usize, &'a [&'a Value<'a, V>]),
+    /// Bytecode closure: lambda body at bytecode offset, capturing env.
+    LambdaBC {
+        body_ip: u32,
+        env: &'a Env<'a, V>,
+    },
+    /// Bytecode thunk: delayed body at bytecode offset, capturing env.
+    DelayBC {
+        body_ip: u32,
+        env: &'a Env<'a, V>,
+    },
 }
 
 impl<'a, V> Value<'a, V>
@@ -65,6 +75,14 @@ where
         values: &'a [&'a Value<'a, V>],
     ) -> &'a Value<'a, V> {
         arena.alloc(Value::Constr(tag, values))
+    }
+
+    pub fn lambda_bc(arena: &'a Arena, body_ip: u32, env: &'a Env<'a, V>) -> &'a Value<'a, V> {
+        arena.alloc(Value::LambdaBC { body_ip, env })
+    }
+
+    pub fn delay_bc(arena: &'a Arena, body_ip: u32, env: &'a Env<'a, V>) -> &'a Value<'a, V> {
+        arena.alloc(Value::DelayBC { body_ip, env })
     }
 
     pub fn builtin(arena: &'a Arena, runtime: &'a Runtime<'a, V>) -> &'a Value<'a, V> {
