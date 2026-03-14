@@ -57,3 +57,7 @@ harness = false
 [[bench]]
 name = "flat_decode"
 harness = false
+
+[[bench]]
+name = "bytecode"
+harness = false

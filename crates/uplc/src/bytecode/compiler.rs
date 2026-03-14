@@ -15,8 +15,8 @@ pub fn compile<'a>(
     let mut compiler = Compiler {
         bytecode: Vec::with_capacity(4096),
         constant_pool: Vec::new(),
-        lambda_info: std::collections::HashMap::new(),
-        delay_info: std::collections::HashMap::new(),
+        lambdas: Vec::new(),
+        delays: Vec::new(),
     };
 
     compiler.compile_term(term);
@@ -25,16 +25,16 @@ pub fn compile<'a>(
         bytecode: compiler.bytecode,
         constant_pool: compiler.constant_pool,
         version,
-        lambda_info: compiler.lambda_info,
-        delay_info: compiler.delay_info,
+        lambdas: compiler.lambdas,
+        delays: compiler.delays,
     }
 }
 
 struct Compiler<'a> {
     bytecode: Vec<u8>,
     constant_pool: Vec<&'a Constant<'a>>,
-    lambda_info: std::collections::HashMap<u32, (&'a DeBruijn, &'a Term<'a, DeBruijn>)>,
-    delay_info: std::collections::HashMap<u32, &'a Term<'a, DeBruijn>>,
+    lambdas: Vec<super::LambdaInfo<'a>>,
+    delays: Vec<super::DelayInfo<'a>>,
 }
 
 impl<'a> Compiler<'a> {
@@ -46,22 +46,26 @@ impl<'a> Compiler<'a> {
             }
 
             Term::Lambda { parameter, body } => {
+                let lambda_id = self.lambdas.len() as u16;
+                self.lambdas.push(super::LambdaInfo { parameter, body });
                 self.emit(Op::Lambda as u8);
                 let hole = self.emit_u32_hole();
-                let body_ip = self.bytecode.len() as u32;
-                self.patch_u32(hole, body_ip);
-                self.lambda_info.insert(body_ip, (*parameter, *body));
+                self.emit((lambda_id & 0xFF) as u8);
+                self.emit(((lambda_id >> 8) & 0xFF) as u8);
+                self.patch_u32(hole, self.bytecode.len() as u32);
                 self.compile_term(body);
             }
 
             // Superinstruction: Apply(Lambda(body), arg)
             Term::Apply { function: Term::Lambda { parameter, body }, argument } => {
+                let lambda_id = self.lambdas.len() as u16;
+                self.lambdas.push(super::LambdaInfo { parameter, body });
                 self.emit(Op::ApplyLambda as u8);
                 let body_hole = self.emit_u32_hole();
+                self.emit((lambda_id & 0xFF) as u8);
+                self.emit(((lambda_id >> 8) & 0xFF) as u8);
                 self.compile_term(argument);
-                let body_ip = self.bytecode.len() as u32;
-                self.patch_u32(body_hole, body_ip);
-                self.lambda_info.insert(body_ip, (*parameter, *body));
+                self.patch_u32(body_hole, self.bytecode.len() as u32);
                 self.compile_term(body);
             }
 
@@ -74,11 +78,13 @@ impl<'a> Compiler<'a> {
             }
 
             Term::Delay(body) => {
+                let delay_id = self.delays.len() as u16;
+                self.delays.push(super::DelayInfo { body });
                 self.emit(Op::Delay as u8);
                 let hole = self.emit_u32_hole();
-                let body_ip = self.bytecode.len() as u32;
-                self.patch_u32(hole, body_ip);
-                self.delay_info.insert(body_ip, *body);
+                self.emit((delay_id & 0xFF) as u8);
+                self.emit(((delay_id >> 8) & 0xFF) as u8);
+                self.patch_u32(hole, self.bytecode.len() as u32);
                 self.compile_term(body);
             }
 
