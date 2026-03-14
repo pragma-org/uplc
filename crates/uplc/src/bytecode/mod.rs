@@ -83,18 +83,16 @@ pub struct CompiledProgram<'a> {
 /// Read a u32 from bytecode at the given offset (little-endian).
 #[inline(always)]
 pub fn read_u32(bytecode: &[u8], offset: usize) -> u32 {
-    u32::from_le_bytes([
-        bytecode[offset],
-        bytecode[offset + 1],
-        bytecode[offset + 2],
-        bytecode[offset + 3],
-    ])
+    // Using try_into on a slice allows the compiler to elide individual bounds checks
+    let bytes: [u8; 4] = bytecode[offset..offset + 4].try_into().unwrap();
+    u32::from_le_bytes(bytes)
 }
 
 /// Read a u16 from bytecode at the given offset (little-endian).
 #[inline(always)]
 pub fn read_u16(bytecode: &[u8], offset: usize) -> u16 {
-    u16::from_le_bytes([bytecode[offset], bytecode[offset + 1]])
+    let bytes: [u8; 2] = bytecode[offset..offset + 2].try_into().unwrap();
+    u16::from_le_bytes(bytes)
 }
 
 /// Read a u64 from bytecode at the given offset (little-endian).
