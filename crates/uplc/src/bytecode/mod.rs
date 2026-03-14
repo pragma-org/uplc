@@ -10,11 +10,11 @@ use crate::constant::Constant;
 pub enum Op {
     /// Var index:u8 — lookup env[index], return value
     Var = 0x01,
-    /// Lambda body_offset:u32 — create closure, return it
+    /// Lambda body_offset:u32 lambda_id:u16 — create closure, return it
     Lambda = 0x02,
     /// Apply arg_offset:u32 — push FrameAwaitFunTerm, compute function
     Apply = 0x03,
-    /// Delay body_offset:u32 — create thunk, return it
+    /// Delay body_offset:u32 delay_id:u16 — create thunk, return it
     Delay = 0x04,
     /// Force — push FrameForce, compute inner
     Force = 0x05,
@@ -35,7 +35,7 @@ pub enum Op {
 
     /// Force(Delay(body)) — charge both steps, compute body inline
     ForceDelay = 0x10,
-    /// Apply(Lambda(body), arg) — push FrameAwaitArgForLambda(body_offset), compute arg inline
+    /// Apply(Lambda(body), arg) — push FrameAwaitArgForLambda(body_offset, lambda_id), compute arg inline
     ApplyLambda = 0x11,
     /// Force(Builtin(f)) — create runtime, force once, return
     ForceBuiltin = 0x12,
@@ -54,18 +54,30 @@ pub enum Op {
     ConstSmallInt = 0x23,
 }
 
-use std::collections::HashMap;
 use crate::{binder::DeBruijn, term::Term};
+
+/// Info needed to discharge a bytecode Lambda back to an AST term.
+#[derive(Clone, Copy)]
+pub struct LambdaInfo<'a> {
+    pub parameter: &'a DeBruijn,
+    pub body: &'a Term<'a, DeBruijn>,
+}
+
+/// Info needed to discharge a bytecode Delay back to an AST term.
+#[derive(Clone, Copy)]
+pub struct DelayInfo<'a> {
+    pub body: &'a Term<'a, DeBruijn>,
+}
 
 /// A compiled UPLC program ready for bytecode execution.
 pub struct CompiledProgram<'a> {
     pub bytecode: Vec<u8>,
     pub constant_pool: Vec<&'a Constant<'a>>,
     pub version: (usize, usize, usize),
-    /// Maps body_ip offset → (parameter, body) for Lambda discharge.
-    pub lambda_info: HashMap<u32, (&'a DeBruijn, &'a Term<'a, DeBruijn>)>,
-    /// Maps body_ip offset → body for Delay discharge.
-    pub delay_info: HashMap<u32, &'a Term<'a, DeBruijn>>,
+    /// Lambda discharge info, indexed by lambda_id (u16).
+    pub lambdas: Vec<LambdaInfo<'a>>,
+    /// Delay discharge info, indexed by delay_id (u16).
+    pub delays: Vec<DelayInfo<'a>>,
 }
 
 /// Read a u32 from bytecode at the given offset (little-endian).
