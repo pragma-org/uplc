@@ -25,7 +25,10 @@ use super::{
 pub struct Machine<'a, B: BuiltinCostModel, V: Eval<'a>> {
     pub(super) arena: &'a Arena,
     ex_budget: ExBudget,
-    unbudgeted_steps: [u8; 10],
+    unbudgeted_steps: [u8; 9],
+    /// Countdown to next spend_unbudgeted_steps call.
+    /// Decremented each step; when it hits 0, we spend.
+    steps_until_spend: u8,
     pub(crate) costs: CostModel<B>,
     slippage: u8,
     pub(super) logs: Vec<String>,
@@ -43,7 +46,8 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
         Self {
             arena,
             ex_budget: initial_budget,
-            unbudgeted_steps: [0; 10],
+            unbudgeted_steps: [0; 9],
+            steps_until_spend: 200,
             costs,
             slippage: 200,
             logs: Vec::new(),
@@ -280,7 +284,7 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
                 v => Err(MachineError::NonConstrScrutinized(v)),
             },
             None => {
-                if self.unbudgeted_steps[9] > 0 {
+                if self.steps_until_spend < self.slippage {
                     self.spend_unbudgeted_steps()?;
                 }
 
@@ -452,12 +456,10 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
     }
 
     pub(crate) fn step_and_maybe_spend(&mut self, step: StepKind) -> Result<(), MachineError<'a, V>> {
-        let index = step as usize;
+        self.unbudgeted_steps[step as usize] += 1;
+        self.steps_until_spend -= 1;
 
-        self.unbudgeted_steps[index] += 1;
-        self.unbudgeted_steps[9] += 1;
-
-        if self.unbudgeted_steps[9] >= self.slippage {
+        if self.steps_until_spend == 0 {
             self.spend_unbudgeted_steps()?;
         }
 
@@ -465,14 +467,14 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
     }
 
     pub(crate) fn flush_unbudgeted_steps(&mut self) -> Result<(), MachineError<'a, V>> {
-        if self.unbudgeted_steps[9] > 0 {
+        if self.steps_until_spend < self.slippage {
             self.spend_unbudgeted_steps()?;
         }
         Ok(())
     }
 
     fn spend_unbudgeted_steps(&mut self) -> Result<(), MachineError<'a, V>> {
-        for step_kind in 0..self.unbudgeted_steps.len() - 1 {
+        for step_kind in 0..self.unbudgeted_steps.len() {
             let mut unspent_step_budget = self.costs.machine_costs.get(step_kind);
 
             unspent_step_budget.occurrences(self.unbudgeted_steps[step_kind] as i64);
@@ -482,7 +484,7 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
             self.unbudgeted_steps[step_kind] = 0;
         }
 
-        self.unbudgeted_steps[9] = 0;
+        self.steps_until_spend = self.slippage;
 
         Ok(())
     }
