@@ -3,3 +3,4 @@ fibonacci.uplc
 test.uplc
 *.flat
 turbo.tar.xz
+perf.data
