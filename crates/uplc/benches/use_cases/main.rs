@@ -46,6 +46,20 @@ pub fn bench_plutus_use_cases(c: &mut Criterion) {
 }
 
 fn bench_ast(c: &mut Criterion, file_name: &str, script: &[u8]) {
+    // Pre-check: verify decode + eval succeed before benchmarking
+    {
+        let test_arena = Arena::new();
+        if flat::decode::<DeBruijn>(&test_arena, script).is_err() {
+            eprintln!("EVAL_FAIL: {}", file_name);
+            return;
+        }
+        let program = flat::decode::<DeBruijn>(&test_arena, script).unwrap();
+        if program.eval(&test_arena).term.is_err() {
+            eprintln!("EVAL_FAIL: {}", file_name);
+            return;
+        }
+    }
+
     let mut arena = Arena::from_bump(Bump::with_capacity(1_048_576));
 
     c.bench_function(file_name, |b| {
