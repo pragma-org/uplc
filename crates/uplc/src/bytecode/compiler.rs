@@ -41,8 +41,14 @@ impl<'a> Compiler<'a> {
     fn compile_term(&mut self, term: &'a Term<'a, DeBruijn>) {
         match term {
             Term::Var(db) => {
-                self.emit(Op::Var as u8);
-                self.emit(db.index() as u8);
+                let idx = db.index();
+                if idx <= 255 {
+                    self.emit(Op::Var as u8);
+                    self.emit(idx as u8);
+                } else {
+                    self.emit(Op::VarBig as u8);
+                    self.bytecode.extend_from_slice(&(idx as u32).to_le_bytes());
+                }
             }
 
             Term::Lambda { parameter, body } => {
@@ -72,11 +78,47 @@ impl<'a> Compiler<'a> {
             // Superinstruction: Apply(Var(idx), arg)
             // Var lookup is immediate, so skip FrameAwaitFunTerm — directly
             // push FrameAwaitArg with the looked-up value, then compute arg.
-            Term::Apply { function: Term::Var(db), argument } => {
+            Term::Apply { function: Term::Var(db), argument } if db.index() <= 255 => {
                 self.emit(Op::ApplyVar as u8);
                 self.emit(db.index() as u8);
                 // arg bytecode follows inline
                 self.compile_term(argument);
+            }
+
+            // Superinstruction: Apply(Apply(Apply(f, arg1), arg2), arg3) — depth 3
+            Term::Apply {
+                function: Term::Apply {
+                    function: Term::Apply { function: inner_fun, argument: arg1 },
+                    argument: arg2,
+                },
+                argument: arg3,
+            } if !matches!(inner_fun, Term::Lambda { .. }) => {
+                self.emit(Op::Apply3 as u8);
+                let arg1_hole = self.emit_u32_hole();
+                let arg2_hole = self.emit_u32_hole();
+                let arg3_hole = self.emit_u32_hole();
+                self.compile_term(inner_fun);
+                self.patch_u32(arg1_hole, self.bytecode.len() as u32);
+                self.compile_term(arg1);
+                self.patch_u32(arg2_hole, self.bytecode.len() as u32);
+                self.compile_term(arg2);
+                self.patch_u32(arg3_hole, self.bytecode.len() as u32);
+                self.compile_term(arg3);
+            }
+
+            // Superinstruction: Apply(Apply(f, arg1), arg2) — depth 2
+            Term::Apply {
+                function: Term::Apply { function: inner_fun, argument: arg1 },
+                argument: arg2,
+            } if !matches!(inner_fun, Term::Lambda { .. }) => {
+                self.emit(Op::Apply2 as u8);
+                let arg1_hole = self.emit_u32_hole();
+                let arg2_hole = self.emit_u32_hole();
+                self.compile_term(inner_fun);
+                self.patch_u32(arg1_hole, self.bytecode.len() as u32);
+                self.compile_term(arg1);
+                self.patch_u32(arg2_hole, self.bytecode.len() as u32);
+                self.compile_term(arg2);
             }
 
             Term::Apply { function, argument } => {
@@ -117,7 +159,7 @@ impl<'a> Compiler<'a> {
             }
 
             // Superinstruction: Force(Var(idx))
-            Term::Force(Term::Var(db)) => {
+            Term::Force(Term::Var(db)) if db.index() <= 255 => {
                 self.emit(Op::ForceVar as u8);
                 self.emit(db.index() as u8);
             }
