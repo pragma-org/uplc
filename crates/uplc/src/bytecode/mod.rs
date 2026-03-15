@@ -8,8 +8,10 @@ use crate::constant::Constant;
 #[repr(u8)]
 #[allow(dead_code)]
 pub enum Op {
-    /// Var index:u8 — lookup env[index], return value
+    /// Var index:u8 — lookup env[index], return value (index <= 255)
     Var = 0x01,
+    /// VarBig index:u32 — lookup env[index], return value (index > 255)
+    VarBig = 0x16,
     /// Lambda body_offset:u32 lambda_id:u16 — create closure, return it
     Lambda = 0x02,
     /// Apply arg_offset:u32 — push FrameAwaitFunTerm, compute function
@@ -47,6 +49,12 @@ pub enum Op {
     /// Force(Var(idx)) — look up var, force it directly
     /// Skips FrameForce + value allocation cycle
     ForceVar = 0x15,
+
+    /// Apply(Apply(f, arg1), arg2) — push two arg frames, compute f
+    /// Eliminates one Apply dispatch + one FrameAwaitFunTerm push/pop cycle
+    Apply2 = 0x17,
+    /// Apply(Apply(Apply(f, arg1), arg2), arg3) — push three arg frames, compute f
+    Apply3 = 0x18,
 
     // === Specialized constants ===
 

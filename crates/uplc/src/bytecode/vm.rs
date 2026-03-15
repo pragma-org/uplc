@@ -33,12 +33,13 @@ enum Frame<'a> {
         env: &'a Env<'a, DeBruijn>,
     },
     Constr(Box<ConstrFrame<'a>>),
-    Cases {
-        env: &'a Env<'a, DeBruijn>,
-        /// Byte offset in bytecode where the branch offset table starts.
-        offsets_start: usize,
-        nbranches: usize,
-    },
+    Cases(Box<CasesFrame<'a>>),
+}
+
+struct CasesFrame<'a> {
+    env: &'a Env<'a, DeBruijn>,
+    offsets_start: usize,
+    nbranches: usize,
 }
 
 struct ConstrFrame<'a> {
@@ -74,8 +75,9 @@ pub fn execute<'a, B: BuiltinCostModel>(
     let val_false: &'a Value<'a, DeBruijn> = Value::con(arena, arena.alloc(Constant::Boolean(false)));
 
     // Pre-create bare builtin values (no forces/args yet)
-    let mut builtin_values: Vec<&'a Value<'a, DeBruijn>> = Vec::with_capacity(92);
-    for i in 0..92u8 {
+    let num_builtins = 101u8; // DefaultFunction variants: 0..=100
+    let mut builtin_values: Vec<&'a Value<'a, DeBruijn>> = Vec::with_capacity(num_builtins as usize);
+    for i in 0..num_builtins {
         let fun = arena.alloc(DefaultFunction::from_u8(i));
         let runtime = Runtime::new(arena, fun);
         builtin_values.push(Value::builtin(arena, runtime));
@@ -125,7 +127,7 @@ struct Vm<'a, 'b, B: BuiltinCostModel> {
     ip: usize,
     env: &'a Env<'a, DeBruijn>,
     stack: Vec<Frame<'a>>,
-    machine: &'b mut Machine<'a, B>,
+    machine: &'b mut Machine<'a, B, DeBruijn>,
 }
 
 /// Phase tag — are we computing (reading bytecode) or returning (processing a value)?
@@ -141,19 +143,26 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
     ) -> Result<&'a crate::term::Term<'a, DeBruijn>, MachineError<'a, DeBruijn>> {
         self.machine.spend_budget(self.machine.costs.machine_startup)?;
 
-        let mut phase = Phase::Compute;
-
         loop {
-            phase = match phase {
-                Phase::Compute => self.step_compute()?,
-                Phase::Return(value) => self.step_return(value)?,
-                Phase::Done(value) => {
-                    let term = discharge::value_as_term_bc(
-                        self.arena, value, self.lambdas, self.delays,
-                    );
-                    return Ok(term);
+            // Compute phase: read and execute an opcode
+            let mut phase = self.step_compute()?;
+
+            // Drain return chain: step_return can produce more returns
+            // (e.g., Constr field completion → Return → AwaitArg → apply → Return)
+            loop {
+                match phase {
+                    Phase::Compute => break, // back to outer compute loop
+                    Phase::Return(value) => {
+                        phase = self.step_return(value)?;
+                    }
+                    Phase::Done(value) => {
+                        let term = discharge::value_as_term_bc(
+                            self.arena, value, self.lambdas, self.delays,
+                        );
+                        return Ok(term);
+                    }
                 }
-            };
+            }
         }
     }
 
@@ -166,6 +175,17 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
             0x01 => {
                 let idx = self.bytecode[self.ip] as usize;
                 self.ip += 1;
+                self.machine.step_and_maybe_spend(StepKind::Var)?;
+                let value = self
+                    .env
+                    .lookup(idx)
+                    .ok_or(MachineError::ExplicitErrorTerm)?;
+                Ok(Phase::Return(value))
+            }
+
+            0x16 => {
+                let idx = read_u32(self.bytecode, self.ip) as usize;
+                self.ip += 4;
                 self.machine.step_and_maybe_spend(StepKind::Var)?;
                 let value = self
                     .env
@@ -191,6 +211,39 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                     arg_ip,
                     env: self.env,
                 });
+                Ok(Phase::Compute)
+            }
+
+            // Apply2: Apply(Apply(f, arg1), arg2)
+            // Push frames for arg2 then arg1 (arg1 on top so it's processed first)
+            0x17 => {
+                let arg1_ip = read_u32(self.bytecode, self.ip);
+                let arg2_ip = read_u32(self.bytecode, self.ip + 4);
+                self.ip += 8;
+                self.machine.step_and_maybe_spend(StepKind::Apply)?;
+                self.machine.step_and_maybe_spend(StepKind::Apply)?;
+                let env = self.env;
+                // arg2 frame goes first (deeper in stack), arg1 on top
+                self.stack.push(Frame::AwaitFunTerm { arg_ip: arg2_ip, env });
+                self.stack.push(Frame::AwaitFunTerm { arg_ip: arg1_ip, env });
+                // function bytecode follows inline
+                Ok(Phase::Compute)
+            }
+
+            // Apply3: Apply(Apply(Apply(f, arg1), arg2), arg3)
+            0x18 => {
+                let arg1_ip = read_u32(self.bytecode, self.ip);
+                let arg2_ip = read_u32(self.bytecode, self.ip + 4);
+                let arg3_ip = read_u32(self.bytecode, self.ip + 8);
+                self.ip += 12;
+                self.machine.step_and_maybe_spend(StepKind::Apply)?;
+                self.machine.step_and_maybe_spend(StepKind::Apply)?;
+                self.machine.step_and_maybe_spend(StepKind::Apply)?;
+                let env = self.env;
+                self.stack.push(Frame::AwaitFunTerm { arg_ip: arg3_ip, env });
+                self.stack.push(Frame::AwaitFunTerm { arg_ip: arg2_ip, env });
+                self.stack.push(Frame::AwaitFunTerm { arg_ip: arg1_ip, env });
+                // function bytecode follows inline
                 Ok(Phase::Compute)
             }
 
@@ -330,11 +383,11 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                 let offsets_start = self.ip;
                 self.ip += nbranches * 4; // skip past the offset table
 
-                self.stack.push(Frame::Cases {
+                self.stack.push(Frame::Cases(Box::new(CasesFrame {
                     env: self.env,
                     offsets_start,
                     nbranches,
-                });
+                })));
                 // Scrutinee follows inline
                 Ok(Phase::Compute)
             }
@@ -427,11 +480,11 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                 }
             }
 
-            Some(Frame::Cases {
-                env,
-                offsets_start,
-                nbranches,
-            }) => match value {
+            Some(Frame::Cases(cf)) => {
+                let env = cf.env;
+                let offsets_start = cf.offsets_start;
+                let nbranches = cf.nbranches;
+                match value {
                 Value::Constr(tag, fields) => {
                     if *tag < nbranches {
                         for field in fields.iter().rev() {
@@ -444,26 +497,108 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                         Err(MachineError::ExplicitErrorTerm)
                     }
                 }
-                // In Plutus V3, Bool is matchable via case:
-                // False = tag 0, True = tag 1
-                Value::Con(Constant::Boolean(b)) => {
-                    let tag = if *b { 1 } else { 0 };
-                    if tag < nbranches {
-                        self.env = env;
-                        self.ip = read_u32(self.bytecode, offsets_start + tag * 4) as usize;
-                        Ok(Phase::Compute)
-                    } else {
-                        Err(MachineError::ExplicitErrorTerm)
-                    }
+                Value::Con(constant) => {
+                    self.case_on_constant(constant, env, offsets_start, nbranches)
                 }
                 _ => Err(MachineError::ExplicitErrorTerm),
-            },
+                }
+            }
 
             None => {
                 // Stack empty — done
                 self.machine.flush_unbudgeted_steps()?;
                 Ok(Phase::Done(value))
             }
+        }
+    }
+
+    fn case_on_constant(
+        &mut self,
+        constant: &'a Constant<'a>,
+        env: &'a Env<'a, DeBruijn>,
+        offsets_start: usize,
+        nbranches: usize,
+    ) -> Result<Phase<'a>, MachineError<'a, DeBruijn>> {
+        match constant {
+            Constant::Boolean(b) => {
+                if nbranches == 0 || nbranches > 2 {
+                    return Err(MachineError::ExplicitErrorTerm);
+                }
+                let tag = if *b { 1 } else { 0 };
+                if tag < nbranches {
+                    self.env = env;
+                    self.ip = read_u32(self.bytecode, offsets_start + tag * 4) as usize;
+                    Ok(Phase::Compute)
+                } else {
+                    Err(MachineError::ExplicitErrorTerm)
+                }
+            }
+            Constant::Unit => {
+                if nbranches != 1 {
+                    return Err(MachineError::ExplicitErrorTerm);
+                }
+                self.env = env;
+                self.ip = read_u32(self.bytecode, offsets_start) as usize;
+                Ok(Phase::Compute)
+            }
+            Constant::Integer(int_val) => {
+                use num::ToPrimitive;
+                let tag = int_val
+                    .to_usize()
+                    .ok_or(MachineError::ExplicitErrorTerm)?;
+                if tag >= nbranches {
+                    return Err(MachineError::ExplicitErrorTerm);
+                }
+                self.env = env;
+                self.ip = read_u32(self.bytecode, offsets_start + tag * 4) as usize;
+                Ok(Phase::Compute)
+            }
+            Constant::ProtoList(typ, items) => {
+                if !items.is_empty() {
+                    // Non-empty list: branch 0, with head and tail as arguments
+                    if nbranches == 0 {
+                        return Err(MachineError::ExplicitErrorTerm);
+                    }
+                    let head_val: &'a Value<'a, DeBruijn> =
+                        Value::con(self.arena, items[0]);
+                    let tail_const = Constant::proto_list(self.arena, typ, &items[1..]);
+                    let tail_val: &'a Value<'a, DeBruijn> =
+                        Value::con(self.arena, tail_const);
+
+                    // Push fields in reverse (tail first, head second)
+                    self.stack.push(Frame::AwaitFunValue(tail_val));
+                    self.stack.push(Frame::AwaitFunValue(head_val));
+
+                    self.env = env;
+                    self.ip = read_u32(self.bytecode, offsets_start) as usize;
+                    Ok(Phase::Compute)
+                } else {
+                    // Empty list: branch 1
+                    if nbranches >= 2 {
+                        self.env = env;
+                        self.ip = read_u32(self.bytecode, offsets_start + 4) as usize;
+                        Ok(Phase::Compute)
+                    } else {
+                        Err(MachineError::ExplicitErrorTerm)
+                    }
+                }
+            }
+            Constant::ProtoPair(_t1, _t2, fst, snd) => {
+                if nbranches != 1 {
+                    return Err(MachineError::ExplicitErrorTerm);
+                }
+                let fst_val: &'a Value<'a, DeBruijn> = Value::con(self.arena, fst);
+                let snd_val: &'a Value<'a, DeBruijn> = Value::con(self.arena, snd);
+
+                // Push fields in reverse (snd first, fst second)
+                self.stack.push(Frame::AwaitFunValue(snd_val));
+                self.stack.push(Frame::AwaitFunValue(fst_val));
+
+                self.env = env;
+                self.ip = read_u32(self.bytecode, offsets_start) as usize;
+                Ok(Phase::Compute)
+            }
+            _ => Err(MachineError::ExplicitErrorTerm),
         }
     }
 
