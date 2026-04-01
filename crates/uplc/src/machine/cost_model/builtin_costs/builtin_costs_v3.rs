@@ -141,25 +141,25 @@ impl Default for BuiltinCostsV3 {
             divide_integer: TwoArgumentsCosting::new(
                 TwoArgumentsCosting::subtracted_sizes(0, 1, 1),
                 TwoArgumentsCosting::const_above_diagonal_into_quadratic_x_and_y(
-                    85848, 85848, 123203, 7305, -900, 1716, 549, 57,
+                    85848, 85848, 123203, 7305, -900, 1716, 960, 57,
                 ),
             ),
             quotient_integer: TwoArgumentsCosting::new(
                 TwoArgumentsCosting::subtracted_sizes(0, 1, 1),
                 TwoArgumentsCosting::const_above_diagonal_into_quadratic_x_and_y(
-                    85848, 85848, 123203, 7305, -900, 1716, 549, 57,
+                    85848, 85848, 123203, 7305, -900, 1716, 960, 57,
                 ),
             ),
             remainder_integer: TwoArgumentsCosting::new(
                 TwoArgumentsCosting::linear_in_y(0, 1),
                 TwoArgumentsCosting::const_above_diagonal_into_quadratic_x_and_y(
-                    85848, 85848, 123203, 7305, -900, 1716, 549, 57,
+                    85848, 85848, 123203, 7305, -900, 1716, 960, 57,
                 ),
             ),
             mod_integer: TwoArgumentsCosting::new(
                 TwoArgumentsCosting::linear_in_y(0, 1),
                 TwoArgumentsCosting::const_above_diagonal_into_quadratic_x_and_y(
-                    85848, 85848, 123203, 7305, -900, 1716, 549, 57,
+                    85848, 85848, 123203, 7305, -900, 1716, 960, 57,
                 ),
             ),
             equals_integer: TwoArgumentsCosting::new(
