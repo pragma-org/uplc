@@ -142,6 +142,28 @@ where
 
             body.force(arena)
         }
+        Term::Case { constr, branches } => {
+            let constr = with_env(arena, lam_cnt, env, constr);
+
+            let branches: BumpVec<'_, _> = branches
+                .iter()
+                .map(|b| with_env(arena, lam_cnt, env, b))
+                .collect_in(arena.as_bump());
+
+            let branches = arena.alloc(branches);
+
+            Term::case(arena, constr, branches)
+        }
+        Term::Constr { tag, fields } => {
+            let fields: BumpVec<'_, _> = fields
+                .iter()
+                .map(|f| with_env(arena, lam_cnt, env, f))
+                .collect_in(arena.as_bump());
+
+            let fields = arena.alloc(fields);
+
+            Term::constr(arena, *tag, fields)
+        }
         rest => rest,
     }
 }
