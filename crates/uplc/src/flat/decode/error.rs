@@ -32,4 +32,6 @@ pub enum FlatDecodeError {
     MissingTypeTag,
     #[error("BLS type not supported")]
     BlsTypeNotSupported,
+    #[error("Trailing bytes after script: {0} bytes remaining")]
+    TrailingBytes(usize),
 }

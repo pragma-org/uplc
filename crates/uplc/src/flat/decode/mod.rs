@@ -26,6 +26,31 @@ pub fn decode<'a, V>(arena: &'a Arena, bytes: &[u8]) -> Result<&'a Program<'a, V
 where
     V: Binder<'a>,
 {
+    let (program, _remainder) = decode_with_remainder(arena, bytes)?;
+    Ok(program)
+}
+
+pub fn decode_strict<'a, V>(
+    arena: &'a Arena,
+    bytes: &[u8],
+) -> Result<&'a Program<'a, V>, FlatDecodeError>
+where
+    V: Binder<'a>,
+{
+    let (program, remainder) = decode_with_remainder(arena, bytes)?;
+    if remainder > 0 {
+        return Err(FlatDecodeError::TrailingBytes(remainder));
+    }
+    Ok(program)
+}
+
+fn decode_with_remainder<'a, V>(
+    arena: &'a Arena,
+    bytes: &[u8],
+) -> Result<(&'a Program<'a, V>, usize), FlatDecodeError>
+where
+    V: Binder<'a>,
+{
     let mut decoder = Decoder::new(bytes);
 
     let major = decoder.word()?;
@@ -40,7 +65,9 @@ where
 
     decoder.filler()?;
 
-    Ok(Program::new(arena, version, term))
+    let remainder = decoder.buffer.len() - decoder.pos;
+
+    Ok((Program::new(arena, version, term), remainder))
 }
 
 fn decode_term<'a, V>(
