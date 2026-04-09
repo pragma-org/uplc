@@ -111,8 +111,8 @@ impl std::ops::Sub for ExBudget {
 
     fn sub(self, rhs: Self) -> Self::Output {
         ExBudget {
-            mem: self.mem - rhs.mem,
-            cpu: self.cpu - rhs.cpu,
+            mem: self.mem.saturating_sub(rhs.mem),
+            cpu: self.cpu.saturating_sub(rhs.cpu),
         }
     }
 }
