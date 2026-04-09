@@ -1,0 +1,11 @@
+(program 1.1.0
+  [(lam a
+      (delay
+        (case (force
+            [(con unit ())
+              [(builtin bls12_381_G2_hashToGroup) (con string "]VL2TC7ARpJ<")]])
+          (case (force (builtin unConstrData))
+            a)
+          (builtin writeBits))))
+    (constr 2
+      (lam b (force (con string "K$Lv*A{+U:GB=L"))))])
