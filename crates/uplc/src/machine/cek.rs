@@ -363,18 +363,16 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
     ) -> Result<MachineState<'a, V>, MachineError<'a, V>> {
         match constant {
             Constant::Boolean(b) => {
-                if branches.is_empty() || branches.len() > 2 {
-                    return Err(MachineError::NonConstrScrutinized(Value::con(
-                        self.arena, constant,
-                    )));
-                }
+                // Haskell: False with 1 or 2 branches, True with exactly 2
                 let tag: usize = if *b { 1 } else { 0 };
-                if tag >= branches.len() {
-                    return Err(MachineError::NonConstrScrutinized(Value::con(
+                match (b, branches.len()) {
+                    (false, 1) | (false, 2) | (true, 2) => {
+                        Ok(MachineState::Compute(env, branches[tag]))
+                    }
+                    _ => Err(MachineError::NonConstrScrutinized(Value::con(
                         self.arena, constant,
-                    )));
+                    ))),
                 }
-                Ok(MachineState::Compute(env, branches[tag]))
             }
             Constant::Unit => {
                 if branches.len() != 1 {
@@ -397,31 +395,26 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
                 Ok(MachineState::Compute(env, branches[tag]))
             }
             Constant::ProtoList(typ, items) => {
-                if !items.is_empty() {
-                    // Non-empty list: branch 0, with head and tail as arguments
-                    if branches.is_empty() {
-                        return Err(MachineError::NonConstrScrutinized(Value::con(
-                            self.arena, constant,
-                        )));
+                match (items.is_empty(), branches.len()) {
+                    // Non-empty list with 1 or 2 branches: take branch 0, push head+tail
+                    (false, 1) | (false, 2) => {
+                        let head_val: &'a Value<'a, V> = Value::con(self.arena, items[0]);
+                        let tail_const = Constant::proto_list(self.arena, typ, &items[1..]);
+                        let tail_val: &'a Value<'a, V> = Value::con(self.arena, tail_const);
+
+                        let fields: &'a [&'a Value<'a, V>] =
+                            self.arena.alloc([head_val, tail_val]);
+                        self.transfer_arg_stack(stack, fields);
+
+                        Ok(MachineState::Compute(env, branches[0]))
                     }
-
-                    let head_val: &'a Value<'a, V> = Value::con(self.arena, items[0]);
-                    let tail_const = Constant::proto_list(self.arena, typ, &items[1..]);
-                    let tail_val: &'a Value<'a, V> = Value::con(self.arena, tail_const);
-
-                    let fields: &'a [&'a Value<'a, V>] = self.arena.alloc([head_val, tail_val]);
-                    self.transfer_arg_stack(stack, fields);
-
-                    Ok(MachineState::Compute(env, branches[0]))
-                } else {
-                    // Empty list: branch 1
-                    if branches.len() >= 2 {
-                        Ok(MachineState::Compute(env, branches[1]))
-                    } else {
-                        Err(MachineError::NonConstrScrutinized(Value::con(
-                            self.arena, constant,
-                        )))
-                    }
+                    // Empty list with exactly 2 branches: take branch 1
+                    (true, 2) => Ok(MachineState::Compute(env, branches[1])),
+                    // Empty list with 1 branch (Cons-only): error
+                    // Any other branch count: error
+                    _ => Err(MachineError::NonConstrScrutinized(Value::con(
+                        self.arena, constant,
+                    ))),
                 }
             }
             Constant::ProtoPair(_t1, _t2, fst, snd) => {
