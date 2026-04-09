@@ -27,8 +27,8 @@ pub fn bench_plutus_use_cases(c: &mut Criterion) {
 
             c.bench_function(&file_name, |b| {
                 b.iter(|| {
-                    let program =
-                        flat::decode::<DeBruijn>(&arena, &script, PlutusVersion::V3, 10).expect("Failed to decode");
+                    let program = flat::decode::<DeBruijn>(&arena, &script, PlutusVersion::V3, 10)
+                        .expect("Failed to decode");
 
                     let result = program.eval(&arena);
 
