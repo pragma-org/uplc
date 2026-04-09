@@ -1,16 +1,15 @@
-use bumpalo::Bump;
 use chumsky::{extra::SimpleState, input, prelude::*};
 
-use crate::program::Version;
+use crate::{arena::Arena, program::Version};
 
 pub struct State<'a> {
-    pub arena: &'a Bump,
+    pub arena: &'a Arena,
     pub env: Vec<&'a str>,
     pub version: Option<Version<'a>>,
 }
 
 impl<'a> State<'a> {
-    pub fn new(arena: &'a Bump) -> Self {
+    pub fn new(arena: &'a Arena) -> Self {
         Self {
             arena,
             env: Vec::new(),

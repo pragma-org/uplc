@@ -1,10 +1,8 @@
-use bumpalo::Bump;
-
-use crate::builtin::DefaultFunction;
+use crate::{arena::Arena, builtin::DefaultFunction};
 
 use super::decode::FlatDecodeError;
 
-pub fn try_from_tag(arena: &Bump, v: u8) -> Result<&DefaultFunction, FlatDecodeError> {
+pub fn try_from_tag(arena: &Arena, v: u8) -> Result<&DefaultFunction, FlatDecodeError> {
     match v {
         v if v == DefaultFunction::AddInteger as u8 => Ok(arena.alloc(DefaultFunction::AddInteger)),
         v if v == DefaultFunction::SubtractInteger as u8 => {

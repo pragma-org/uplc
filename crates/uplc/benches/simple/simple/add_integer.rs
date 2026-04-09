@@ -1,15 +1,12 @@
-use bumpalo::Bump;
-use criterion::{criterion_group, Criterion};
-
-use uplc_turbo::term::Term;
-
 use super::utils;
+use criterion::{criterion_group, Criterion};
+use uplc_turbo::{arena::Arena, term::Term};
 
 pub fn run(c: &mut Criterion) {
     c.bench_function("add_integer", |b| {
         b.iter_with_setup(
             || {
-                utils::setup_term(|arena: &Bump| {
+                utils::setup_term(|arena: &Arena| {
                     Term::add_integer(arena)
                         .apply(arena, Term::integer_from(arena, 1))
                         .apply(arena, Term::integer_from(arena, 3))
