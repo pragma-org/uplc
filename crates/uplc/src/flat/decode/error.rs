@@ -34,4 +34,6 @@ pub enum FlatDecodeError {
     BlsTypeNotSupported,
     #[error("Trailing bytes after script: {0} bytes remaining")]
     TrailingBytes(usize),
+    #[error("Builtin function {1} (tag {0}) is not available in the given language version")]
+    BuiltinNotAvailable(u8, String),
 }

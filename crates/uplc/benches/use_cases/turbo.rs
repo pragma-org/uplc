@@ -134,7 +134,7 @@ fn bench_turbo(c: &mut Criterion) {
             group.bench_function(&file_name, |b| {
                 b.iter(|| {
                     let program =
-                        flat::decode::<DeBruijn>(&arena, &flat).expect("Failed to decode");
+                        flat::decode::<DeBruijn>(&arena, &flat, plutus_version, 10).expect("Failed to decode");
 
                     let result = program.eval_version(&arena, plutus_version);
 
