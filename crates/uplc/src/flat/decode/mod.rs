@@ -9,6 +9,7 @@ use bumpalo::collections::Vec as BumpVec;
 
 use crate::arena::Arena;
 use crate::binder::Binder;
+use crate::machine::PlutusVersion;
 use crate::typ::Type;
 use crate::{
     constant::Constant,
@@ -22,7 +23,45 @@ use super::{
     tag::{BUILTIN_TAG_WIDTH, CONST_TAG_WIDTH, TERM_TAG_WIDTH},
 };
 
-pub fn decode<'a, V>(arena: &'a Arena, bytes: &[u8]) -> Result<&'a Program<'a, V>, FlatDecodeError>
+/// Decode a flat-encoded UPLC program, validating builtins against the given
+/// Plutus language version and protocol version. Allows trailing bytes.
+pub fn decode<'a, V>(
+    arena: &'a Arena,
+    bytes: &[u8],
+    plutus_version: PlutusVersion,
+    protocol_version_major: u32,
+) -> Result<&'a Program<'a, V>, FlatDecodeError>
+where
+    V: Binder<'a>,
+{
+    let (program, _remainder) = decode_inner(arena, bytes, plutus_version, protocol_version_major)?;
+    Ok(program)
+}
+
+/// Decode a flat-encoded UPLC program, validating builtins and rejecting
+/// trailing bytes after the filler.
+pub fn decode_strict<'a, V>(
+    arena: &'a Arena,
+    bytes: &[u8],
+    plutus_version: PlutusVersion,
+    protocol_version: u32,
+) -> Result<&'a Program<'a, V>, FlatDecodeError>
+where
+    V: Binder<'a>,
+{
+    let (program, remainder) = decode_inner(arena, bytes, plutus_version, protocol_version)?;
+    if remainder > 0 {
+        return Err(FlatDecodeError::TrailingBytes(remainder));
+    }
+    Ok(program)
+}
+
+fn decode_inner<'a, V>(
+    arena: &'a Arena,
+    bytes: &[u8],
+    plutus_version: PlutusVersion,
+    protocol_version_major: u32,
+) -> Result<(&'a Program<'a, V>, usize), FlatDecodeError>
 where
     V: Binder<'a>,
 {
@@ -36,16 +75,23 @@ where
 
     let mut ctx = Ctx { arena };
 
-    let term = decode_term(&mut ctx, &mut decoder)?;
+    let term = decode_term(
+        &mut ctx,
+        &mut decoder,
+        (plutus_version, protocol_version_major),
+    )?;
 
     decoder.filler()?;
 
-    Ok(Program::new(arena, version, term))
+    let remainder = decoder.buffer.len() - decoder.pos;
+
+    Ok((Program::new(arena, version, term), remainder))
 }
 
 fn decode_term<'a, V>(
     ctx: &mut Ctx<'a>,
     decoder: &mut Decoder<'_>,
+    version_check: (PlutusVersion, u32),
 ) -> Result<&'a Term<'a, V>, FlatDecodeError>
 where
     V: Binder<'a>,
@@ -57,7 +103,7 @@ where
         tag::VAR => Ok(Term::var(ctx.arena, V::var_decode(ctx.arena, decoder)?)),
         // Delay
         tag::DELAY => {
-            let term = decode_term(ctx, decoder)?;
+            let term = decode_term(ctx, decoder, version_check)?;
 
             Ok(term.delay(ctx.arena))
         }
@@ -65,14 +111,14 @@ where
         tag::LAMBDA => {
             let param = V::parameter_decode(ctx.arena, decoder)?;
 
-            let term = decode_term(ctx, decoder)?;
+            let term = decode_term(ctx, decoder, version_check)?;
 
             Ok(term.lambda(ctx.arena, param))
         }
         // Apply
         tag::APPLY => {
-            let function = decode_term(ctx, decoder)?;
-            let argument = decode_term(ctx, decoder)?;
+            let function = decode_term(ctx, decoder, version_check)?;
+            let argument = decode_term(ctx, decoder, version_check)?;
 
             let term = function.apply(ctx.arena, argument);
 
@@ -86,7 +132,7 @@ where
         }
         // Force
         tag::FORCE => {
-            let term = decode_term(ctx, decoder)?;
+            let term = decode_term(ctx, decoder, version_check)?;
 
             Ok(term.force(ctx.arena))
         }
@@ -98,6 +144,14 @@ where
 
             let function = builtin::try_from_tag(ctx.arena, builtin_tag)?;
 
+            let (plutus_version, protocol_version_major) = version_check;
+            if !function.is_available_in(plutus_version, protocol_version_major) {
+                return Err(FlatDecodeError::BuiltinNotAvailable(
+                    builtin_tag,
+                    format!("{:?}", function),
+                ));
+            }
+
             let term = Term::builtin(ctx.arena, function);
 
             Ok(term)
@@ -105,7 +159,7 @@ where
         // Constr
         tag::CONSTR => {
             let tag = decoder.word()?;
-            let fields = decoder.list_with(ctx, decode_term)?;
+            let fields = decoder.list_with(ctx, |ctx, d| decode_term(ctx, d, version_check))?;
             let fields = ctx.arena.alloc(fields);
 
             let term = Term::constr(ctx.arena, tag, fields);
@@ -114,8 +168,8 @@ where
         }
         // Case
         tag::CASE => {
-            let constr = decode_term(ctx, decoder)?;
-            let branches = decoder.list_with(ctx, decode_term)?;
+            let constr = decode_term(ctx, decoder, version_check)?;
+            let branches = decoder.list_with(ctx, |ctx, d| decode_term(ctx, d, version_check))?;
             let branches = ctx.arena.alloc(branches);
 
             Ok(Term::case(ctx.arena, constr, branches))
@@ -318,7 +372,7 @@ mod tests {
         //   ])
         let bytes = hex::decode("0101003370090011aab9d375498109d8668218809f0001ff0001").unwrap();
         let arena = Arena::new();
-        let program: Result<&Program<DeBruijn>, _> = decode(&arena, &bytes);
+        let program: Result<&Program<DeBruijn>, _> = decode(&arena, &bytes, PlutusVersion::V3, 9);
         match program {
             Ok(program) => {
                 let eval_result = program.eval(&arena);
@@ -357,7 +411,7 @@ mod tests {
         )
         .unwrap();
         let arena = Arena::new();
-        let program: Result<&Program<DeBruijn>, _> = decode(&arena, &bytes);
+        let program: Result<&Program<DeBruijn>, _> = decode(&arena, &bytes, PlutusVersion::V3, 9);
         match program {
             Ok(program) => {
                 let eval_result = program.eval(&arena);
@@ -395,7 +449,7 @@ mod tests {
         //   ])
         let bytes = hex::decode("0101003370490021bad357426ae88dd62601049f070eff0001").unwrap();
         let arena = Arena::new();
-        let program: Result<&Program<DeBruijn>, _> = decode(&arena, &bytes);
+        let program: Result<&Program<DeBruijn>, _> = decode(&arena, &bytes, PlutusVersion::V3, 9);
         match program {
             Ok(program) => {
                 let eval_result = program.eval(&arena);

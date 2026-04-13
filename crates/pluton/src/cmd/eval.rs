@@ -13,6 +13,8 @@ pub struct Args {
     args: Vec<String>,
     #[clap(short = 'v', long)]
     plutus_version: Option<String>,
+    #[clap(short = 'p', long, default_value = "10")]
+    protocol_version: u32,
 }
 
 fn parse_plutus_version(s: &str) -> Result<PlutusVersion, String> {
@@ -42,6 +44,12 @@ impl Args {
         let bump = uplc_turbo::bumpalo::Bump::with_capacity(1_024_000);
         let arena = uplc_turbo::arena::Arena::from_bump(bump);
 
+        let plutus_version = match &self.plutus_version {
+            Some(v) => parse_plutus_version(v).map_err(|e| miette::miette!("{}", e))?,
+            None => PlutusVersion::V3,
+        };
+        let protocol_version = self.protocol_version;
+
         let program = if let Some(file_path) = self.file {
             std::fs::read(file_path).into_diagnostic()?
         } else {
@@ -55,7 +63,8 @@ impl Args {
         let mut program_string = String::new();
 
         let program = if self.flat {
-            uplc_turbo::flat::decode(&arena, &program).into_diagnostic()?
+            uplc_turbo::flat::decode(&arena, &program, plutus_version, protocol_version)
+                .into_diagnostic()?
         } else {
             {
                 let temp = String::from_utf8(program).into_diagnostic()?;
