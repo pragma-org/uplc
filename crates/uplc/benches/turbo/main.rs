@@ -111,6 +111,7 @@ fn collect_scripts(files: &[PathBuf]) -> Vec<(String, Vec<u8>, PlutusVersion)> {
 
 fn bench_turbo(arena: &mut Arena) -> impl FnMut(Vec<u8>, PlutusVersion) + use<'_> {
     move |flat, plutus_version| {
+        // TODO: We are hardcoding 10, the current mainnet protocol version. This should be an argument
         let program =
             flat::decode::<DeBruijn>(arena, &flat, plutus_version, 10).expect("Failed to decode");
 

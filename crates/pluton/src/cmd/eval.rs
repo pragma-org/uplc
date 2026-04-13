@@ -48,7 +48,7 @@ impl Args {
             Some(v) => parse_plutus_version(v).map_err(|e| miette::miette!("{}", e))?,
             None => PlutusVersion::V3,
         };
-        let pv = self.protocol_version;
+        let protocol_version = self.protocol_version;
 
         let program = if let Some(file_path) = self.file {
             std::fs::read(file_path).into_diagnostic()?
@@ -63,7 +63,8 @@ impl Args {
         let mut program_string = String::new();
 
         let program = if self.flat {
-            uplc_turbo::flat::decode(&arena, &program, plutus_version, pv).into_diagnostic()?
+            uplc_turbo::flat::decode(&arena, &program, plutus_version, protocol_version)
+                .into_diagnostic()?
         } else {
             {
                 let temp = String::from_utf8(program).into_diagnostic()?;

@@ -29,12 +29,12 @@ pub fn decode<'a, V>(
     arena: &'a Arena,
     bytes: &[u8],
     plutus_version: PlutusVersion,
-    pv: u32,
+    protocol_version_major: u32,
 ) -> Result<&'a Program<'a, V>, FlatDecodeError>
 where
     V: Binder<'a>,
 {
-    let (program, _remainder) = decode_inner(arena, bytes, plutus_version, pv)?;
+    let (program, _remainder) = decode_inner(arena, bytes, plutus_version, protocol_version_major)?;
     Ok(program)
 }
 
@@ -44,12 +44,12 @@ pub fn decode_strict<'a, V>(
     arena: &'a Arena,
     bytes: &[u8],
     plutus_version: PlutusVersion,
-    pv: u32,
+    protocol_version: u32,
 ) -> Result<&'a Program<'a, V>, FlatDecodeError>
 where
     V: Binder<'a>,
 {
-    let (program, remainder) = decode_inner(arena, bytes, plutus_version, pv)?;
+    let (program, remainder) = decode_inner(arena, bytes, plutus_version, protocol_version)?;
     if remainder > 0 {
         return Err(FlatDecodeError::TrailingBytes(remainder));
     }
@@ -60,7 +60,7 @@ fn decode_inner<'a, V>(
     arena: &'a Arena,
     bytes: &[u8],
     plutus_version: PlutusVersion,
-    pv: u32,
+    protocol_version_major: u32,
 ) -> Result<(&'a Program<'a, V>, usize), FlatDecodeError>
 where
     V: Binder<'a>,
@@ -75,7 +75,11 @@ where
 
     let mut ctx = Ctx { arena };
 
-    let term = decode_term(&mut ctx, &mut decoder, (plutus_version, pv))?;
+    let term = decode_term(
+        &mut ctx,
+        &mut decoder,
+        (plutus_version, protocol_version_major),
+    )?;
 
     decoder.filler()?;
 
@@ -140,8 +144,8 @@ where
 
             let function = builtin::try_from_tag(ctx.arena, builtin_tag)?;
 
-            let (plutus_version, pv) = version_check;
-            if !function.is_available_in(plutus_version, pv) {
+            let (plutus_version, protocol_version_major) = version_check;
+            if !function.is_available_in(plutus_version, protocol_version_major) {
                 return Err(FlatDecodeError::BuiltinNotAvailable(
                     builtin_tag,
                     format!("{:?}", function),
