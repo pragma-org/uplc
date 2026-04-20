@@ -99,14 +99,12 @@ impl<'a, 'b> minicbor::decode::Decode<'b, Ctx<'a>> for &'a PlutusData<'a> {
                             bytes.extend_from_slice(chunk);
                         }
 
-                        let integer = ctx.arena.alloc_integer(num::BigInt::from_bytes_be(
-                            if x == IanaTag::PosBignum {
-                                num_bigint::Sign::Plus
-                            } else {
-                                num_bigint::Sign::Minus
-                            },
-                            &bytes,
-                        ));
+                        let big_num = num::BigInt::from_bytes_be(num_bigint::Sign::Plus, &bytes);
+                        let integer = ctx.arena.alloc_integer(match x {
+                            IanaTag::PosBignum => big_num,
+                            IanaTag::NegBignum => num::BigInt::from(-1) - big_num,
+                            _ => unreachable!(),
+                        });
 
                         Ok(PlutusData::integer(ctx.arena, integer))
                     }
