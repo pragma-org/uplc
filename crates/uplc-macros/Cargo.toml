@@ -1,5 +1,5 @@
 [package]
-name = "uplc_macros"
+name = "amaru-uplc-macros"
 version.workspace = true
 edition.workspace = true
 description.workspace = true
@@ -8,13 +8,13 @@ authors.workspace = true
 repository.workspace = true
 homepage.workspace = true
 documentation.workspace = true
-publish = true 
+publish = true
 
 [lib]
 proc-macro = true
 
 [dependencies]
-proc-macro2 = "1.0.86"
-quote = "1.0.37"
-syn = { version = "2.0.77", features = ["full"] }
-walkdir = "2.5.0"
+proc-macro2.workspace = true
+quote.workspace = true
+syn = { workspace = true, features = ["full"] }
+walkdir.workspace = true
