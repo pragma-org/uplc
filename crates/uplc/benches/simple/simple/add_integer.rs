@@ -1,6 +1,6 @@
 use super::utils;
+use amaru_uplc::{arena::Arena, term::Term};
 use criterion::{criterion_group, Criterion};
-use uplc_turbo::{arena::Arena, term::Term};
 
 pub fn run(c: &mut Criterion) {
     c.bench_function("add_integer", |b| {

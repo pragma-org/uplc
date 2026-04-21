@@ -1,3 +1,9 @@
+use amaru_uplc::{
+    arena::Arena,
+    binder::DeBruijn,
+    flat,
+    machine::{ExBudget, PlutusVersion},
+};
 use bumpalo::Bump;
 use divan::Bencher;
 use itertools::Itertools;
@@ -7,12 +13,6 @@ use std::{
     path::{Path, PathBuf},
     sync::LazyLock,
     time::{Duration, Instant},
-};
-use uplc_turbo::{
-    arena::Arena,
-    binder::DeBruijn,
-    flat,
-    machine::{ExBudget, PlutusVersion},
 };
 
 #[cfg(feature = "alloc_profiler")]

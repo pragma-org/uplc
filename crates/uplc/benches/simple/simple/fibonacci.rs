@@ -1,8 +1,6 @@
-use criterion::{criterion_group, Criterion};
-
-use uplc_turbo::{arena::Arena, binder::DeBruijn, term::Term};
-
 use super::utils;
+use amaru_uplc::{arena::Arena, binder::DeBruijn, term::Term};
+use criterion::{criterion_group, Criterion};
 
 pub fn run(c: &mut Criterion) {
     c.bench_function("fibonacci", |b| {
