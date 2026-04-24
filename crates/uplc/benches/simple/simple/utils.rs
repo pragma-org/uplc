@@ -1,11 +1,10 @@
-use ouroboros::self_referencing;
-
-use uplc_turbo::{
+use amaru_uplc::{
     arena::Arena,
     binder::DeBruijn,
     program::{Program, Version},
     term::Term,
 };
+use ouroboros::self_referencing;
 
 #[self_referencing]
 pub struct BenchState {
