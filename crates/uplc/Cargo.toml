@@ -1,5 +1,6 @@
 [package]
 name = "amaru-uplc"
+build = "build.rs"
 version.workspace = true
 edition.workspace = true
 description.workspace = true
@@ -9,6 +10,9 @@ repository.workspace = true
 homepage.workspace = true
 documentation.workspace = true
 publish = true
+
+[build-dependencies]
+walkdir.workspace = true
 
 [dependencies]
 append-only-vec.workspace = true
@@ -28,7 +32,6 @@ secp256k1.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
-amaru-uplc-macros.workspace = true
 criterion = { workspace = true, features = ["html_reports"] }
 insta.workspace = true
 itertools.workspace = true

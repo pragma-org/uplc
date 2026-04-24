@@ -27,7 +27,6 @@ checksum = "5c6cb57a04249c6480766f7f7cef5467412af1490f8d1e243141daddada3264f"
 name = "amaru-uplc"
 version = "0.1.0"
 dependencies = [
- "amaru-uplc-macros",
  "append-only-vec",
  "blst",
  "bumpalo",
@@ -49,15 +48,6 @@ dependencies = [
  "rayon",
  "secp256k1",
  "thiserror",
-]
-
-[[package]]
-name = "amaru-uplc-macros"
-version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
  "walkdir",
 ]
 

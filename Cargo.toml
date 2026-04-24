@@ -15,7 +15,6 @@ documentation = "https://docs.rs/amaru-uplc"
 [workspace.dependencies]
 # Internal
 amaru-uplc = { version = "0.1.0", path = "./crates/uplc" }
-amaru-uplc-macros = { version = "0.1.0", path = "./crates/uplc-macros" }
 # External
 append-only-vec = "0.1.8"
 blst = "0.3.13"

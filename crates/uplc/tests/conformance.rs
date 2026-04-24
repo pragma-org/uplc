@@ -1,7 +1,6 @@
 use amaru_uplc::{arena::Arena, machine::PlutusVersion, syn::parse_program};
-use amaru_uplc_macros::generate_tests;
 
-fn run_test(file_contents: &str, expected_output: &str, expected_budget: &str) {
+fn run_conformance_test(file_contents: &str, expected_output: &str, expected_budget: &str) {
     let arena = Arena::new();
 
     let Ok(program) = parse_program(&arena, file_contents).into_result() else {
@@ -36,4 +35,4 @@ fn run_test(file_contents: &str, expected_output: &str, expected_budget: &str) {
     pretty_assertions::assert_eq!(consumed_budget, expected_budget);
 }
 
-generate_tests!("conformance");
+include!(concat!(env!("OUT_DIR"), "/generated_tests.rs"));
