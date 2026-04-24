@@ -1,3 +1,9 @@
+use amaru_uplc::{
+    arena::Arena,
+    binder::DeBruijn,
+    flat,
+    machine::{ExBudget, PlutusVersion},
+};
 use bumpalo::Bump;
 use divan::Bencher;
 use itertools::Itertools;
@@ -7,12 +13,6 @@ use std::{
     path::{Path, PathBuf},
     sync::LazyLock,
     time::{Duration, Instant},
-};
-use uplc_turbo::{
-    arena::Arena,
-    binder::DeBruijn,
-    flat,
-    machine::{ExBudget, PlutusVersion},
 };
 
 #[cfg(feature = "alloc_profiler")]
@@ -111,7 +111,9 @@ fn collect_scripts(files: &[PathBuf]) -> Vec<(String, Vec<u8>, PlutusVersion)> {
 
 fn bench_turbo(arena: &mut Arena) -> impl FnMut(Vec<u8>, PlutusVersion) + use<'_> {
     move |flat, plutus_version| {
-        let program = flat::decode::<DeBruijn>(arena, &flat).expect("Failed to decode");
+        // TODO: We are hardcoding 10, the current mainnet protocol version. This should be an argument
+        let program =
+            flat::decode::<DeBruijn>(arena, &flat, plutus_version, 10).expect("Failed to decode");
 
         let result = program.eval_version_budget(arena, plutus_version, ExBudget::max());
 
@@ -128,7 +130,8 @@ fn analyze_turbo(
 ) -> (Duration, Duration, Duration) {
     let instant = Instant::now();
 
-    let program = flat::decode::<DeBruijn>(arena, &flat).expect("Failed to decode");
+    let program =
+        flat::decode::<DeBruijn>(arena, &flat, plutus_version, 10).expect("Failed to decode");
     let elapsed_unflat = instant.elapsed();
 
     let result = program.eval_version_budget(arena, plutus_version, ExBudget::max());

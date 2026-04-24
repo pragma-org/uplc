@@ -1,8 +1,8 @@
+use amaru_uplc::{arena::Arena, binder::DeBruijn, flat, machine::PlutusVersion};
 use bumpalo::Bump;
 use criterion::{criterion_group, criterion_main, Criterion};
 use itertools::Itertools;
 use std::{fs, time::Duration};
-use uplc_turbo::{arena::Arena, binder::DeBruijn, flat};
 
 pub fn bench_plutus_use_cases(c: &mut Criterion) {
     let data_dir = std::path::Path::new("benches/use_cases/plutus_use_cases");
@@ -27,8 +27,8 @@ pub fn bench_plutus_use_cases(c: &mut Criterion) {
 
             c.bench_function(&file_name, |b| {
                 b.iter(|| {
-                    let program =
-                        flat::decode::<DeBruijn>(&arena, &script).expect("Failed to decode");
+                    let program = flat::decode::<DeBruijn>(&arena, &script, PlutusVersion::V3, 10)
+                        .expect("Failed to decode");
 
                     let result = program.eval(&arena);
 

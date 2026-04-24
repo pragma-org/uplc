@@ -1,3 +1,4 @@
+use amaru_uplc::{arena::Arena, binder::DeBruijn, flat, machine::PlutusVersion};
 use bumpalo::Bump;
 use criterion::{criterion_group, Criterion};
 use itertools::Itertools;
@@ -7,7 +8,6 @@ use std::{
     path::{Path, PathBuf},
     time::Duration,
 };
-use uplc_turbo::{arena::Arena, binder::DeBruijn, flat, machine::PlutusVersion};
 
 const TURBO_DATA_DIR: &str = "benches/benchmarks/turbo";
 const TURBO_ARCHIVE_URL: &str = "https://pub-2239d82d9a074482b2eb2c886191cb4e.r2.dev/turbo.tar.xz";
@@ -133,8 +133,8 @@ fn bench_turbo(c: &mut Criterion) {
 
             group.bench_function(&file_name, |b| {
                 b.iter(|| {
-                    let program =
-                        flat::decode::<DeBruijn>(&arena, &flat).expect("Failed to decode");
+                    let program = flat::decode::<DeBruijn>(&arena, &flat, plutus_version, 10)
+                        .expect("Failed to decode");
 
                     let result = program.eval_version(&arena, plutus_version);
 
