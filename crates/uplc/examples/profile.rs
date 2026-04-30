@@ -1,5 +1,5 @@
 use bumpalo::Bump;
-use uplc_turbo::{arena::Arena, binder::DeBruijn, flat, machine::ExBudget};
+use amaru_uplc::{arena::Arena, binder::DeBruijn, flat, machine::ExBudget};
 
 fn main() {
     let script_path = std::env::args()
@@ -11,7 +11,7 @@ fn main() {
 
     // Warmup
     for _ in 0..5 {
-        let program = flat::decode::<DeBruijn>(&arena, &script).expect("Failed to decode");
+        let program = flat::decode_ungated::<DeBruijn>(&arena, &script).expect("Failed to decode");
         let result = program.eval(&arena);
         let _term = result.term.expect("Failed to evaluate");
         arena.reset();
@@ -24,7 +24,7 @@ fn main() {
         .unwrap_or(100);
 
     for _ in 0..iterations {
-        let program = flat::decode::<DeBruijn>(&arena, &script).expect("Failed to decode");
+        let program = flat::decode_ungated::<DeBruijn>(&arena, &script).expect("Failed to decode");
         let result = program.eval(&arena);
         let _term = result.term.expect("Failed to evaluate");
         arena.reset();

@@ -1,4 +1,4 @@
-use uplc_turbo::{arena::Arena, machine::PlutusVersion, syn};
+use amaru_uplc::{arena::Arena, machine::PlutusVersion, syn};
 
 fn main() {
     let path = std::env::args().nth(1).expect("provide a .uplc file");

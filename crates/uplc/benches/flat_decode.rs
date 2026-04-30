@@ -1,7 +1,7 @@
 use bumpalo::Bump;
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use std::{fs, time::Duration};
-use uplc_turbo::{arena::Arena, binder::DeBruijn, flat};
+use amaru_uplc::{arena::Arena, binder::DeBruijn, flat};
 
 /// Benchmark FLAT decoding only (no evaluation).
 pub fn bench_flat_decode(c: &mut Criterion) {
@@ -24,7 +24,7 @@ pub fn bench_flat_decode(c: &mut Criterion) {
 
         // Only include scripts that decode successfully
         let arena = Arena::new();
-        if flat::decode::<DeBruijn>(&arena, &bytes).is_ok() {
+        if flat::decode_ungated::<DeBruijn>(&arena, &bytes).is_ok() {
             scripts.push((name, bytes));
         }
     }
@@ -39,7 +39,7 @@ pub fn bench_flat_decode(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::new("decode", name), bytes, |b, script| {
             let mut arena = Arena::from_bump(Bump::with_capacity(1_048_576));
             b.iter(|| {
-                let _program = flat::decode::<DeBruijn>(&arena, script).unwrap();
+                let _program = flat::decode_ungated::<DeBruijn>(&arena, script).unwrap();
                 arena.reset();
             });
         });
@@ -55,7 +55,7 @@ pub fn bench_flat_decode(c: &mut Criterion) {
         group2.bench_with_input(BenchmarkId::new("decode+eval", name), bytes, |b, script| {
             let mut arena = Arena::from_bump(Bump::with_capacity(1_048_576));
             b.iter(|| {
-                let program = flat::decode::<DeBruijn>(&arena, script).unwrap();
+                let program = flat::decode_ungated::<DeBruijn>(&arena, script).unwrap();
                 let result = program.eval(&arena);
                 let _ = result.term;
                 arena.reset();

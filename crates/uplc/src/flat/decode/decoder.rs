@@ -1,6 +1,13 @@
 use bumpalo::collections::{String as BumpString, Vec as BumpVec};
 
-use crate::{arena::Arena, constant::Integer, flat::zigzag::ZigZag};
+use crate::{
+    arena::Arena,
+    builtin::DefaultFunction,
+    constant::Integer,
+    flat::zigzag::ZigZag,
+    machine::PlutusVersion,
+    program::Version,
+};
 
 use super::FlatDecodeError;
 
@@ -22,6 +29,28 @@ pub struct Decoder<'b> {
 
 pub struct Ctx<'a> {
     pub arena: &'a Arena,
+    pub version: Option<&'a Version<'a>>,
+    pub plutus_version: Option<PlutusVersion>,
+    pub protocol_version: Option<u32>,
+}
+
+impl<'a> Ctx<'a> {
+    /// Returns true if gating is active and the program version is pre-1.1.0.
+    pub fn program_is_pre_1_1_0(&self) -> bool {
+        match self.version {
+            Some(v) => v.is_less_than_1_1_0(),
+            None => false,
+        }
+    }
+
+    /// Returns true if the given builtin is NOT available under the current
+    /// plutus_version / protocol_version combination.
+    pub fn is_builtin_gated(&self, func: &DefaultFunction) -> bool {
+        match (self.plutus_version, self.protocol_version) {
+            (Some(pv), Some(proto)) => !func.is_available_in(pv, proto),
+            _ => false,
+        }
+    }
 }
 
 impl<'b> Decoder<'b> {

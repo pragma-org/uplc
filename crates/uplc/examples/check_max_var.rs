@@ -1,4 +1,4 @@
-use uplc_turbo::{
+use amaru_uplc::{
     arena::Arena,
     binder::{DeBruijn, Eval},
     flat,
@@ -26,7 +26,7 @@ fn main() {
     let path = std::env::args().nth(1).expect("provide a .flat file");
     let script = std::fs::read(&path).unwrap();
     let arena = Arena::new();
-    let program = flat::decode::<DeBruijn>(&arena, &script).expect("decode failed");
+    let program = flat::decode_ungated::<DeBruijn>(&arena, &script).expect("decode failed");
     let max = max_var_index(program.term);
     eprintln!("Max De Bruijn index: {}", max);
     if max > 255 {

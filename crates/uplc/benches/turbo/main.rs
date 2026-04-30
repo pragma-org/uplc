@@ -204,7 +204,7 @@ fn analyze_slow_evals(threshold: Duration) {
 }
 
 fn main() {
-    match std::env::var("UPLC_TURBO_ANALYZE_SLOW") {
+    match std::env::var("amaru_uplc_ANALYZE_SLOW") {
         Ok(threshold) => analyze_slow_evals(Duration::from_millis(
             threshold.parse().expect("invalid time limit"),
         )),

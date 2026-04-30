@@ -332,8 +332,7 @@ mod tests {
     use super::*;
     use crate::arena::Arena;
     use crate::binder::DeBruijn;
-    use crate::flat::decode;
-    use crate::machine::PlutusVersion;
+    use crate::flat::decode_ungated as decode;
 
     #[test]
     fn roundtrip_program_big_constr_tag() {
@@ -352,7 +351,7 @@ mod tests {
         let bytes_hex = "0101003370090011aab9d37549810cd8668218809f4100420101ff0001";
         let bytes = hex::decode(bytes_hex).unwrap();
         let arena = Arena::new();
-        let program: Result<&Program<DeBruijn>, _> = decode(&arena, &bytes, PlutusVersion::V3, 9);
+        let program: Result<&Program<DeBruijn>, _> = decode(&arena, &bytes);
         match program {
             Ok(program) => {
                 let encoded = encode(program);
@@ -393,7 +392,7 @@ mod tests {
             "0101003370090011bad357426aae78dd526112d8799fc24c033b2e3c9fd0803ce7ffffffff0001";
         let bytes = hex::decode(bytes_hex).unwrap();
         let arena = Arena::new();
-        let program: Result<&Program<DeBruijn>, _> = decode(&arena, &bytes, PlutusVersion::V3, 9);
+        let program: Result<&Program<DeBruijn>, _> = decode(&arena, &bytes);
         match program {
             Ok(program) => {
                 let encoded = encode(program);
@@ -433,7 +432,7 @@ mod tests {
         let bytes_hex = "0101003370490021bad357426ae88dd62601049f070eff0001";
         let bytes = hex::decode(bytes_hex).unwrap();
         let arena = Arena::new();
-        let program: Result<&Program<DeBruijn>, _> = decode(&arena, &bytes, PlutusVersion::V3, 9);
+        let program: Result<&Program<DeBruijn>, _> = decode(&arena, &bytes);
         match program {
             Ok(program) => {
                 let encoded = encode(program);

@@ -1,4 +1,4 @@
-use uplc_turbo::{arena::Arena, binder::DeBruijn, flat, syn};
+use amaru_uplc::{arena::Arena, binder::DeBruijn, flat, syn};
 
 /// Parse a UPLC program from text, encode to FLAT, decode back, and verify
 /// the result matches.
@@ -12,7 +12,7 @@ fn roundtrip(source: &str) {
         .unwrap_or_else(|e| panic!("Failed to encode: {e:?}\nSource: {source}"));
 
     let arena2 = Arena::new();
-    let decoded = flat::decode::<DeBruijn>(&arena2, &encoded)
+    let decoded = flat::decode_ungated::<DeBruijn>(&arena2, &encoded)
         .unwrap_or_else(|e| panic!("Failed to decode: {e:?}\nSource: {source}"));
 
     assert_eq!(
@@ -32,7 +32,7 @@ fn roundtrip_eval(source: &str) {
         .unwrap_or_else(|e| panic!("Failed to encode: {e:?}\nSource: {source}"));
 
     let arena2 = Arena::new();
-    let decoded = flat::decode::<DeBruijn>(&arena2, &encoded)
+    let decoded = flat::decode_ungated::<DeBruijn>(&arena2, &encoded)
         .unwrap_or_else(|e| panic!("Failed to decode: {e:?}\nSource: {source}"));
 
     let result = decoded.eval(&arena2);
@@ -236,7 +236,7 @@ fn flat_decode_benchmark_scripts() {
                 let script = std::fs::read(&path).unwrap();
 
                 let arena = Arena::new();
-                let program = flat::decode::<DeBruijn>(&arena, &script)
+                let program = flat::decode_ungated::<DeBruijn>(&arena, &script)
                     .unwrap_or_else(|e| panic!("Failed to decode {file_name}: {e:?}"));
 
                 // We don't care if eval succeeds (some scripts need args),
@@ -270,7 +270,7 @@ fn flat_roundtrip_benchmark_scripts() {
                 let script = std::fs::read(&path).unwrap();
 
                 let arena = Arena::new();
-                let program = match flat::decode::<DeBruijn>(&arena, &script) {
+                let program = match flat::decode_ungated::<DeBruijn>(&arena, &script) {
                     Ok(p) => p,
                     Err(_) => continue, // Skip scripts that fail to decode
                 };
@@ -281,7 +281,7 @@ fn flat_roundtrip_benchmark_scripts() {
 
                 // Re-decode
                 let arena2 = Arena::new();
-                let re_decoded = flat::decode::<DeBruijn>(&arena2, &re_encoded)
+                let re_decoded = flat::decode_ungated::<DeBruijn>(&arena2, &re_encoded)
                     .unwrap_or_else(|e| panic!("Failed to re-decode {file_name}: {e:?}"));
 
                 assert_eq!(

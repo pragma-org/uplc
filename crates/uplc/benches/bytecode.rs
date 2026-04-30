@@ -2,7 +2,7 @@ use bumpalo::Bump;
 use criterion::{criterion_group, criterion_main, Criterion};
 use itertools::Itertools;
 use std::{fs, time::Duration};
-use uplc_turbo::{
+use amaru_uplc::{
     arena::Arena,
     binder::DeBruijn,
     bytecode::{compiler, vm},
@@ -36,7 +36,7 @@ pub fn bench_bytecode_aot(c: &mut Criterion) {
 
             // Pre-compile once: decode FLAT → AST → bytecode
             let compile_arena = Box::leak(Box::new(Arena::new()));
-            let program = match flat::decode::<DeBruijn>(compile_arena, &script) {
+            let program = match flat::decode_ungated::<DeBruijn>(compile_arena, &script) {
                 Ok(p) => p,
                 Err(_) => continue,
             };

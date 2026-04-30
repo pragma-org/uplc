@@ -1,5 +1,5 @@
 use bumpalo::Bump;
-use uplc_turbo::{
+use amaru_uplc::{
     arena::Arena,
     binder::DeBruijn,
     bytecode::{compiler, vm},
@@ -19,7 +19,7 @@ fn main() {
 
     // Compile once (AOT)
     let compile_arena = Box::leak(Box::new(Arena::new()));
-    let program = flat::decode::<DeBruijn>(compile_arena, &script).expect("Failed to decode");
+    let program = flat::decode_ungated::<DeBruijn>(compile_arena, &script).expect("Failed to decode");
     let compiled = Box::leak(Box::new(compiler::compile(
         (
             program.version.major(),

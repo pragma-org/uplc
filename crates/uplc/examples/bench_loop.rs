@@ -1,5 +1,5 @@
 use bumpalo::Bump;
-use uplc_turbo::{
+use amaru_uplc::{
     arena::Arena,
     binder::DeBruijn,
     bytecode::{compiler, vm},
@@ -23,7 +23,7 @@ fn main() {
 
     if mode == "bc" {
         let compile_arena = Box::leak(Box::new(Arena::new()));
-        let program = flat::decode::<DeBruijn>(compile_arena, &script).expect("decode failed");
+        let program = flat::decode_ungated::<DeBruijn>(compile_arena, &script).expect("decode failed");
         let compiled = Box::leak(Box::new(compiler::compile(
             (
                 program.version.major(),
@@ -48,7 +48,7 @@ fn main() {
     } else {
         let mut arena = Arena::from_bump(Bump::with_capacity(1_048_576));
         for _ in 0..iters {
-            let program = flat::decode::<DeBruijn>(&arena, &script).expect("decode failed");
+            let program = flat::decode_ungated::<DeBruijn>(&arena, &script).expect("decode failed");
             let result = program.eval(&arena);
             let _ = result.term.expect("eval failed");
             arena.reset();

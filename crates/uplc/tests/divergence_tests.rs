@@ -7,13 +7,13 @@
 
 use std::str::FromStr;
 
-use uplc_turbo::arena::Arena;
-use uplc_turbo::binder::DeBruijn;
-use uplc_turbo::constant::{Constant, Integer};
-use uplc_turbo::machine::cost_model::{pair_ex_mem, proto_list_ex_mem};
-use uplc_turbo::machine::ExBudget;
-use uplc_turbo::program::{Program, Version};
-use uplc_turbo::term::Term;
+use amaru_uplc::arena::Arena;
+use amaru_uplc::binder::DeBruijn;
+use amaru_uplc::constant::{Constant, Integer};
+use amaru_uplc::machine::cost_model::{pair_ex_mem, proto_list_ex_mem};
+use amaru_uplc::machine::ExBudget;
+use amaru_uplc::program::{Program, Version};
+use amaru_uplc::term::Term;
 
 // ---------------------------------------------------------------------------
 // BUG 1 (FIXED): XorByteString now uses its own cost function
@@ -129,7 +129,7 @@ fn index_byte_string_huge_index_no_panic() {
          (con bytestring #00) \
          (con integer 1606938044258990275541962092341162602522202993782792835301376)])";
 
-    let parsed = uplc_turbo::syn::parse_program(&arena, huge_program)
+    let parsed = amaru_uplc::syn::parse_program(&arena, huge_program)
         .into_result()
         .expect("should parse");
 
