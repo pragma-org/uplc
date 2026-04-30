@@ -649,7 +649,7 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
 
                 self.spend_budget(budget)?;
 
-                let index: i128 = arg2.try_into().unwrap();
+                let index: i128 = arg2.try_into().unwrap_or(i128::MAX);
 
                 if 0 <= index && (index as usize) < arg1.len() {
                     let result: Integer = arg1[index as usize].into();
