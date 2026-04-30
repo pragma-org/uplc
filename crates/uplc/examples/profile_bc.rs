@@ -1,4 +1,3 @@
-use bumpalo::Bump;
 use amaru_uplc::{
     arena::Arena,
     binder::DeBruijn,
@@ -9,6 +8,7 @@ use amaru_uplc::{
         ExBudget,
     },
 };
+use bumpalo::Bump;
 
 fn main() {
     let script_path = std::env::args()
@@ -19,7 +19,8 @@ fn main() {
 
     // Compile once (AOT)
     let compile_arena = Box::leak(Box::new(Arena::new()));
-    let program = flat::decode_ungated::<DeBruijn>(compile_arena, &script).expect("Failed to decode");
+    let program =
+        flat::decode_ungated::<DeBruijn>(compile_arena, &script).expect("Failed to decode");
     let compiled = Box::leak(Box::new(compiler::compile(
         (
             program.version.major(),

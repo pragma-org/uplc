@@ -1,4 +1,3 @@
-use bumpalo::Bump;
 use amaru_uplc::{
     arena::Arena,
     binder::DeBruijn,
@@ -9,6 +8,7 @@ use amaru_uplc::{
         ExBudget,
     },
 };
+use bumpalo::Bump;
 
 fn main() {
     let path = std::env::args().nth(1).expect("provide a .flat file");
@@ -23,7 +23,8 @@ fn main() {
 
     if mode == "bc" {
         let compile_arena = Box::leak(Box::new(Arena::new()));
-        let program = flat::decode_ungated::<DeBruijn>(compile_arena, &script).expect("decode failed");
+        let program =
+            flat::decode_ungated::<DeBruijn>(compile_arena, &script).expect("decode failed");
         let compiled = Box::leak(Box::new(compiler::compile(
             (
                 program.version.major(),

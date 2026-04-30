@@ -1,12 +1,8 @@
 use bumpalo::collections::{String as BumpString, Vec as BumpVec};
 
 use crate::{
-    arena::Arena,
-    builtin::DefaultFunction,
-    constant::Integer,
-    flat::zigzag::ZigZag,
-    machine::PlutusVersion,
-    program::Version,
+    arena::Arena, builtin::DefaultFunction, constant::Integer, flat::zigzag::ZigZag,
+    machine::PlutusVersion, program::Version,
 };
 
 use super::FlatDecodeError;

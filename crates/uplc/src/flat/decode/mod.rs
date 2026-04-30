@@ -212,7 +212,10 @@ fn type_from_tags<'a>(
         }
         [tag::VALUE, ..] => {
             if ctx.program_is_pre_1_1_0() {
-                return Err(FlatDecodeError::ConstantTypeNotAvailable(tag::VALUE, "Value"));
+                return Err(FlatDecodeError::ConstantTypeNotAvailable(
+                    tag::VALUE,
+                    "Value",
+                ));
             }
             Ok((Type::value(ctx.arena), 1))
         }

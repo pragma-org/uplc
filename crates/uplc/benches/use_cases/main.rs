@@ -64,7 +64,8 @@ fn bench_ast(c: &mut Criterion, file_name: &str, script: &[u8]) {
 
     c.bench_function(file_name, |b| {
         b.iter(|| {
-            let program = flat::decode_ungated::<DeBruijn>(&arena, script).expect("Failed to decode");
+            let program =
+                flat::decode_ungated::<DeBruijn>(&arena, script).expect("Failed to decode");
 
             let result = program.eval(&arena);
 

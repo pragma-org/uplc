@@ -1,7 +1,7 @@
+use amaru_uplc::{arena::Arena, binder::DeBruijn, flat};
 use bumpalo::Bump;
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use std::{fs, time::Duration};
-use amaru_uplc::{arena::Arena, binder::DeBruijn, flat};
 
 /// Benchmark FLAT decoding only (no evaluation).
 pub fn bench_flat_decode(c: &mut Criterion) {

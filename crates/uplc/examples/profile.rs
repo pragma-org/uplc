@@ -1,5 +1,5 @@
-use bumpalo::Bump;
 use amaru_uplc::{arena::Arena, binder::DeBruijn, flat, machine::ExBudget};
+use bumpalo::Bump;
 
 fn main() {
     let script_path = std::env::args()

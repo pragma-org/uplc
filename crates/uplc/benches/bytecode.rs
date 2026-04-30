@@ -1,7 +1,3 @@
-use bumpalo::Bump;
-use criterion::{criterion_group, criterion_main, Criterion};
-use itertools::Itertools;
-use std::{fs, time::Duration};
 use amaru_uplc::{
     arena::Arena,
     binder::DeBruijn,
@@ -12,6 +8,10 @@ use amaru_uplc::{
         ExBudget,
     },
 };
+use bumpalo::Bump;
+use criterion::{criterion_group, criterion_main, Criterion};
+use itertools::Itertools;
+use std::{fs, time::Duration};
 
 /// Benchmark: pre-compiled bytecode execution only (AOT).
 /// Compilation happens once outside the measurement loop.
