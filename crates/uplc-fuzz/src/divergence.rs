@@ -33,9 +33,7 @@ pub enum DivergenceKind {
     /// The bytecode compiler or VM panicked.
     Panic(String),
     /// An external engine diverged from the internal engines.
-    ExternalMismatch {
-        external_output: String,
-    },
+    ExternalMismatch { external_output: String },
 }
 
 /// Compare CEK and bytecode results, returning a divergence if they differ.
@@ -124,9 +122,17 @@ impl DivergenceCatalog {
         if let Ok(mut f) = fs::File::create(&uplc_path) {
             let _ = writeln!(f, "-- Divergence: {:?}", divergence.kind);
             let _ = writeln!(f, "-- CEK outcome: {:?}", divergence.cek_outcome);
-            let _ = writeln!(f, "-- CEK budget: cpu={} mem={}", divergence.cek_budget.cpu, divergence.cek_budget.mem);
+            let _ = writeln!(
+                f,
+                "-- CEK budget: cpu={} mem={}",
+                divergence.cek_budget.cpu, divergence.cek_budget.mem
+            );
             let _ = writeln!(f, "-- BC outcome: {:?}", divergence.bc_outcome);
-            let _ = writeln!(f, "-- BC budget: cpu={} mem={}", divergence.bc_budget.cpu, divergence.bc_budget.mem);
+            let _ = writeln!(
+                f,
+                "-- BC budget: cpu={} mem={}",
+                divergence.bc_budget.cpu, divergence.bc_budget.mem
+            );
             let _ = writeln!(f, "{}", divergence.program);
         }
 

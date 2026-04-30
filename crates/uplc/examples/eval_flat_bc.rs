@@ -65,7 +65,10 @@ fn main() {
         let limited = program4.eval_version_budget(
             &arena4,
             PlutusVersion::V3,
-            ExBudget { cpu: bc_budget.cpu as i64, mem: bc_budget.mem as i64 },
+            ExBudget {
+                cpu: bc_budget.cpu as i64,
+                mem: bc_budget.mem as i64,
+            },
         );
         match &limited.term {
             Ok(term) => eprintln!("AST with BC budget: OK: {term:?}"),

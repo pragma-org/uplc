@@ -21,7 +21,11 @@ impl Default for RandomStructural {
 }
 
 impl Generator for RandomStructural {
-    fn generate_batch(&self, rng: &mut rand_xoshiro::Xoshiro256PlusPlus, batch_size: usize) -> Vec<ProgramSeed> {
+    fn generate_batch(
+        &self,
+        rng: &mut rand_xoshiro::Xoshiro256PlusPlus,
+        batch_size: usize,
+    ) -> Vec<ProgramSeed> {
         (0..batch_size)
             .map(|_| ProgramSeed {
                 version: self.version,

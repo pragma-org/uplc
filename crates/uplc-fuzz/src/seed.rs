@@ -169,8 +169,7 @@ impl TermSeed {
             }
             TermSeed::Apply(f, a) => 1 + f.node_count() + a.node_count(),
             TermSeed::Case { constr, branches } => {
-                1 + constr.node_count()
-                    + branches.iter().map(|b| b.node_count()).sum::<usize>()
+                1 + constr.node_count() + branches.iter().map(|b| b.node_count()).sum::<usize>()
             }
             TermSeed::Constr { fields, .. } => {
                 1 + fields.iter().map(|f| f.node_count()).sum::<usize>()
@@ -227,7 +226,10 @@ impl ConstantSeed {
             Constant::Data(d) => ConstantSeed::Data(DataSeed::from_plutus_data(d)),
             Constant::ProtoList(ty, items) => ConstantSeed::List(
                 TypeSeed::from_type(ty),
-                items.iter().map(|c| ConstantSeed::from_constant(c)).collect(),
+                items
+                    .iter()
+                    .map(|c| ConstantSeed::from_constant(c))
+                    .collect(),
             ),
             Constant::ProtoPair(ty1, ty2, fst, snd) => ConstantSeed::Pair(
                 TypeSeed::from_type(ty1),
@@ -308,21 +310,25 @@ impl DataSeed {
 
     fn from_plutus_data(d: &PlutusData<'_>) -> Self {
         match d {
-            PlutusData::Constr { tag, fields } => {
-                DataSeed::Constr(
-                    *tag,
-                    fields.iter().map(|f| DataSeed::from_plutus_data(f)).collect(),
-                )
-            }
+            PlutusData::Constr { tag, fields } => DataSeed::Constr(
+                *tag,
+                fields
+                    .iter()
+                    .map(|f| DataSeed::from_plutus_data(f))
+                    .collect(),
+            ),
             PlutusData::Map(entries) => DataSeed::Map(
                 entries
                     .iter()
                     .map(|(k, v)| (DataSeed::from_plutus_data(k), DataSeed::from_plutus_data(v)))
                     .collect(),
             ),
-            PlutusData::List(items) => {
-                DataSeed::List(items.iter().map(|i| DataSeed::from_plutus_data(i)).collect())
-            }
+            PlutusData::List(items) => DataSeed::List(
+                items
+                    .iter()
+                    .map(|i| DataSeed::from_plutus_data(i))
+                    .collect(),
+            ),
             PlutusData::Integer(i) => {
                 let val: i128 = i128::try_from(*i).unwrap_or(0);
                 DataSeed::Integer(val)
@@ -625,13 +631,12 @@ pub fn builtin_force_count(id: u8) -> usize {
 /// Get arity for a builtin by ID (mirrors DefaultFunction::arity).
 pub fn builtin_arity(id: u8) -> usize {
     match id {
-        13 | 18 | 19 | 20 | 24 | 25 | 29 | 30 | 33 | 34 | 35 | 38 | 39 | 40 | 41 | 42
-        | 43 | 44 | 45 | 46 | 49 | 50 | 51 | 55 | 58 | 59 | 62 | 65 | 66 | 71 | 72 | 78
-        | 84 | 85 | 86 | 89 | 90 | 98 | 99 => 1,
-        0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 14 | 15 | 16 | 17 | 22 | 23
-        | 27 | 28 | 32 | 37 | 47 | 48 | 54 | 56 | 57 | 60 | 61 | 63 | 64 | 67 | 68 | 69
-        | 70 | 74 | 75 | 76 | 77 | 79 | 82 | 83 | 88 | 91 | 92 | 93 | 94 | 95 | 96 | 97
-        | 100 => 2,
+        13 | 18 | 19 | 20 | 24 | 25 | 29 | 30 | 33 | 34 | 35 | 38 | 39 | 40 | 41 | 42 | 43 | 44
+        | 45 | 46 | 49 | 50 | 51 | 55 | 58 | 59 | 62 | 65 | 66 | 71 | 72 | 78 | 84 | 85 | 86
+        | 89 | 90 | 98 | 99 => 1,
+        0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 14 | 15 | 16 | 17 | 22 | 23 | 27 | 28
+        | 32 | 37 | 47 | 48 | 54 | 56 | 57 | 60 | 61 | 63 | 64 | 67 | 68 | 69 | 70 | 74 | 75
+        | 76 | 77 | 79 | 82 | 83 | 88 | 91 | 92 | 93 | 94 | 95 | 96 | 97 | 100 => 2,
         12 | 21 | 26 | 31 | 52 | 53 | 73 | 80 => 3,
         36 => 6,
         _ => 1,

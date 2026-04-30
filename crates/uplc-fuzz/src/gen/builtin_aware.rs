@@ -18,14 +18,16 @@ pub struct BuiltinAware {
 
 impl Default for BuiltinAware {
     fn default() -> Self {
-        Self {
-            version: (1, 1, 0),
-        }
+        Self { version: (1, 1, 0) }
     }
 }
 
 impl Generator for BuiltinAware {
-    fn generate_batch(&self, rng: &mut rand_xoshiro::Xoshiro256PlusPlus, batch_size: usize) -> Vec<ProgramSeed> {
+    fn generate_batch(
+        &self,
+        rng: &mut rand_xoshiro::Xoshiro256PlusPlus,
+        batch_size: usize,
+    ) -> Vec<ProgramSeed> {
         (0..batch_size)
             .map(|_| ProgramSeed {
                 version: self.version,
@@ -78,28 +80,17 @@ fn pick_builtin(rng: &mut impl Rng) -> u8 {
     // Weighted selection: prefer simpler builtins that are more likely to succeed
     let builtins: &[u8] = &[
         // Integer arithmetic (very high weight)
-        0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 4, 5, 6,
-        // Integer comparison
-        7, 8, 9,
-        // ByteString ops
-        10, 11, 12, 13, 14, 15, 16, 17,
-        // String ops
-        22, 23, 24, 25,
-        // Control flow
-        26, 26, 26,
-        // Data operations
-        37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47,
-        // Bool/unit
-        27, 28,
-        // Pairs and lists
-        29, 30, 31, 32, 33, 34, 35,
-        // Misc constructors
-        48, 49, 50, 51,
-        // Hashing
-        18, 19, 20, 71, 72, 86,
-        // Bitwise
-        73, 74, 75, 76, 77, 78, 79, 81, 82, 83, 84, 85,
-        // Advanced
+        0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 4, 5, 6, // Integer comparison
+        7, 8, 9, // ByteString ops
+        10, 11, 12, 13, 14, 15, 16, 17, // String ops
+        22, 23, 24, 25, // Control flow
+        26, 26, 26, // Data operations
+        37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, // Bool/unit
+        27, 28, // Pairs and lists
+        29, 30, 31, 32, 33, 34, 35, // Misc constructors
+        48, 49, 50, 51, // Hashing
+        18, 19, 20, 71, 72, 86, // Bitwise
+        73, 74, 75, 76, 77, 78, 79, 81, 82, 83, 84, 85, // Advanced
         87, 88, 89, 90, 91,
     ];
     builtins[rng.gen_range(0..builtins.len())]
@@ -123,9 +114,7 @@ fn gen_arg(rng: &mut impl Rng, arg_type: &ArgType) -> TermSeed {
     TermSeed::Constant(match arg_type {
         ArgType::Integer => ConstantSeed::Integer(gen_integer(rng)),
         ArgType::ByteString => ConstantSeed::ByteString(gen_bytestring(rng)),
-        ArgType::String => {
-            gen_constant_of_type(rng, &TypeSeed::String, 2)
-        }
+        ArgType::String => gen_constant_of_type(rng, &TypeSeed::String, 2),
         ArgType::Bool => ConstantSeed::Boolean(rng.gen()),
         ArgType::Unit => ConstantSeed::Unit,
         ArgType::Data => gen_constant_of_type(rng, &TypeSeed::Data, 3),
@@ -158,7 +147,11 @@ fn get_arg_types(builtin_id: u8) -> Vec<ArgType> {
         18..=20 | 71 | 72 | 86 => vec![ArgType::ByteString],
         // Signature verification
         21 | 52 | 53 => {
-            vec![ArgType::ByteString, ArgType::ByteString, ArgType::ByteString]
+            vec![
+                ArgType::ByteString,
+                ArgType::ByteString,
+                ArgType::ByteString,
+            ]
         }
         // String ops
         22 => vec![ArgType::String, ArgType::String],

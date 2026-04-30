@@ -9,10 +9,7 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use ratatui::{
-    prelude::*,
-    widgets::*,
-};
+use ratatui::{prelude::*, widgets::*};
 
 use crate::{divergence::DivergenceKind, stats::Stats};
 
@@ -133,7 +130,12 @@ impl Tui {
         false
     }
 
-    pub fn draw(&mut self, stats: &Stats, state: &TuiState, catalog_count: usize) -> io::Result<()> {
+    pub fn draw(
+        &mut self,
+        stats: &Stats,
+        state: &TuiState,
+        catalog_count: usize,
+    ) -> io::Result<()> {
         self.terminal.draw(|frame| {
             let area = frame.area();
 
@@ -141,10 +143,10 @@ impl Tui {
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([
-                    Constraint::Length(3),  // header
-                    Constraint::Length(6),  // sparkline
-                    Constraint::Length(5),  // big numbers
-                    Constraint::Length(9),  // divergence breakdown
+                    Constraint::Length(3), // header
+                    Constraint::Length(6), // sparkline
+                    Constraint::Length(5), // big numbers
+                    Constraint::Length(9), // divergence breakdown
                     Constraint::Min(4),    // recent log
                 ])
                 .split(area);
@@ -160,22 +162,37 @@ impl Tui {
 }
 
 fn draw_header(frame: &mut Frame, area: Rect, state: &TuiState) {
-    let text = vec![
-        Line::from(vec![
-            Span::styled(" uplc-fuzz ", Style::default().fg(Color::Black).bg(Color::Cyan).bold()),
-            Span::raw("  "),
-            Span::styled(format!("{} workers", state.workers), Style::default().fg(Color::White)),
-            Span::raw("  |  "),
-            Span::styled(format!("Plutus {}", state.plutus_version), Style::default().fg(Color::Yellow)),
-            Span::raw("  |  "),
-            Span::styled(format!("seed {}", state.base_seed), Style::default().fg(Color::DarkGray)),
-            Span::raw("  |  "),
-            Span::styled(format!("output: {}", state.output_dir), Style::default().fg(Color::DarkGray)),
-            Span::raw("  "),
-            Span::styled("[q] quit", Style::default().fg(Color::DarkGray)),
-        ]),
-    ];
-    let block = Block::default().borders(Borders::BOTTOM).border_style(Style::default().fg(Color::DarkGray));
+    let text = vec![Line::from(vec![
+        Span::styled(
+            " uplc-fuzz ",
+            Style::default().fg(Color::Black).bg(Color::Cyan).bold(),
+        ),
+        Span::raw("  "),
+        Span::styled(
+            format!("{} workers", state.workers),
+            Style::default().fg(Color::White),
+        ),
+        Span::raw("  |  "),
+        Span::styled(
+            format!("Plutus {}", state.plutus_version),
+            Style::default().fg(Color::Yellow),
+        ),
+        Span::raw("  |  "),
+        Span::styled(
+            format!("seed {}", state.base_seed),
+            Style::default().fg(Color::DarkGray),
+        ),
+        Span::raw("  |  "),
+        Span::styled(
+            format!("output: {}", state.output_dir),
+            Style::default().fg(Color::DarkGray),
+        ),
+        Span::raw("  "),
+        Span::styled("[q] quit", Style::default().fg(Color::DarkGray)),
+    ])];
+    let block = Block::default()
+        .borders(Borders::BOTTOM)
+        .border_style(Style::default().fg(Color::DarkGray));
     let paragraph = Paragraph::new(text).block(block).alignment(Alignment::Left);
     frame.render_widget(paragraph, area);
 }
@@ -183,7 +200,10 @@ fn draw_header(frame: &mut Frame, area: Rect, state: &TuiState) {
 fn draw_sparkline(frame: &mut Frame, area: Rect, state: &TuiState) {
     let block = Block::default()
         .title(Span::styled(
-            format!(" Throughput (peak: {}/s) ", format_number(state.peak_throughput)),
+            format!(
+                " Throughput (peak: {}/s) ",
+                format_number(state.peak_throughput)
+            ),
             Style::default().fg(Color::Cyan).bold(),
         ))
         .borders(Borders::ALL)
@@ -201,10 +221,20 @@ fn draw_sparkline(frame: &mut Frame, area: Rect, state: &TuiState) {
     frame.render_widget(sparkline, area);
 }
 
-fn draw_big_numbers(frame: &mut Frame, area: Rect, stats: &Stats, _state: &TuiState, catalog_count: usize) {
+fn draw_big_numbers(
+    frame: &mut Frame,
+    area: Rect,
+    stats: &Stats,
+    _state: &TuiState,
+    catalog_count: usize,
+) {
     let elapsed = stats.start_time.elapsed().as_secs_f64();
     let iters = stats.iterations.load(Ordering::Relaxed);
-    let rate = if elapsed > 0.0 { iters as f64 / elapsed } else { 0.0 };
+    let rate = if elapsed > 0.0 {
+        iters as f64 / elapsed
+    } else {
+        0.0
+    };
 
     let cols = Layout::default()
         .direction(Direction::Horizontal)
@@ -219,9 +249,25 @@ fn draw_big_numbers(frame: &mut Frame, area: Rect, stats: &Stats, _state: &TuiSt
 
     let items: Vec<(&str, String, Color)> = vec![
         ("Programs", format_number(iters), Color::White),
-        ("Rate", format!("{}/s", format_number(rate as u64)), Color::Green),
-        ("Divergences", format_number(catalog_count as u64), if catalog_count > 0 { Color::Red } else { Color::Green }),
-        ("Success", format_number(stats.successes.load(Ordering::Relaxed)), Color::Cyan),
+        (
+            "Rate",
+            format!("{}/s", format_number(rate as u64)),
+            Color::Green,
+        ),
+        (
+            "Divergences",
+            format_number(catalog_count as u64),
+            if catalog_count > 0 {
+                Color::Red
+            } else {
+                Color::Green
+            },
+        ),
+        (
+            "Success",
+            format_number(stats.successes.load(Ordering::Relaxed)),
+            Color::Cyan,
+        ),
         ("Elapsed", format_duration(elapsed), Color::Yellow),
     ];
 
@@ -229,7 +275,10 @@ fn draw_big_numbers(frame: &mut Frame, area: Rect, stats: &Stats, _state: &TuiSt
         let block = Block::default()
             .borders(Borders::ALL)
             .border_style(Style::default().fg(Color::DarkGray))
-            .title(Span::styled(format!(" {label} "), Style::default().fg(Color::DarkGray)));
+            .title(Span::styled(
+                format!(" {label} "),
+                Style::default().fg(Color::DarkGray),
+            ));
         let text = Paragraph::new(Line::from(Span::styled(
             value.clone(),
             Style::default().fg(*color).bold(),
@@ -242,46 +291,65 @@ fn draw_big_numbers(frame: &mut Frame, area: Rect, stats: &Stats, _state: &TuiSt
 
 fn draw_breakdown(frame: &mut Frame, area: Rect, state: &TuiState, catalog_count: usize) {
     let block = Block::default()
-        .title(Span::styled(" Divergence Breakdown ", Style::default().fg(Color::Red).bold()))
+        .title(Span::styled(
+            " Divergence Breakdown ",
+            Style::default().fg(Color::Red).bold(),
+        ))
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::DarkGray));
 
     let rows = vec![
         Row::new(vec![
             Cell::from("Result Mismatch").style(Style::default().fg(Color::Red)),
-            Cell::from(format_number(state.result_mismatches)).style(Style::default().fg(Color::White)),
-            Cell::from(bar(state.result_mismatches, catalog_count)).style(Style::default().fg(Color::Red)),
+            Cell::from(format_number(state.result_mismatches))
+                .style(Style::default().fg(Color::White)),
+            Cell::from(bar(state.result_mismatches, catalog_count))
+                .style(Style::default().fg(Color::Red)),
         ]),
         Row::new(vec![
             Cell::from("Budget Mismatch").style(Style::default().fg(Color::Yellow)),
-            Cell::from(format_number(state.budget_mismatches)).style(Style::default().fg(Color::White)),
-            Cell::from(bar(state.budget_mismatches, catalog_count)).style(Style::default().fg(Color::Yellow)),
+            Cell::from(format_number(state.budget_mismatches))
+                .style(Style::default().fg(Color::White)),
+            Cell::from(bar(state.budget_mismatches, catalog_count))
+                .style(Style::default().fg(Color::Yellow)),
         ]),
         Row::new(vec![
             Cell::from("Result+Budget").style(Style::default().fg(Color::Magenta)),
-            Cell::from(format_number(state.result_and_budget)).style(Style::default().fg(Color::White)),
-            Cell::from(bar(state.result_and_budget, catalog_count)).style(Style::default().fg(Color::Magenta)),
+            Cell::from(format_number(state.result_and_budget))
+                .style(Style::default().fg(Color::White)),
+            Cell::from(bar(state.result_and_budget, catalog_count))
+                .style(Style::default().fg(Color::Magenta)),
         ]),
         Row::new(vec![
             Cell::from("Panics").style(Style::default().fg(Color::LightRed)),
             Cell::from(format_number(state.panics_count)).style(Style::default().fg(Color::White)),
-            Cell::from(bar(state.panics_count, catalog_count)).style(Style::default().fg(Color::LightRed)),
+            Cell::from(bar(state.panics_count, catalog_count))
+                .style(Style::default().fg(Color::LightRed)),
         ]),
         Row::new(vec![
             Cell::from("External").style(Style::default().fg(Color::Blue)),
-            Cell::from(format_number(state.external_mismatches)).style(Style::default().fg(Color::White)),
-            Cell::from(bar(state.external_mismatches, catalog_count)).style(Style::default().fg(Color::Blue)),
+            Cell::from(format_number(state.external_mismatches))
+                .style(Style::default().fg(Color::White)),
+            Cell::from(bar(state.external_mismatches, catalog_count))
+                .style(Style::default().fg(Color::Blue)),
         ]),
     ];
 
-    let widths = [Constraint::Length(18), Constraint::Length(10), Constraint::Min(10)];
+    let widths = [
+        Constraint::Length(18),
+        Constraint::Length(10),
+        Constraint::Min(10),
+    ];
     let table = Table::new(rows, widths).block(block);
     frame.render_widget(table, area);
 }
 
 fn draw_log(frame: &mut Frame, area: Rect, state: &TuiState) {
     let block = Block::default()
-        .title(Span::styled(" Recent Divergences ", Style::default().fg(Color::Yellow).bold()))
+        .title(Span::styled(
+            " Recent Divergences ",
+            Style::default().fg(Color::Yellow).bold(),
+        ))
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::DarkGray));
 

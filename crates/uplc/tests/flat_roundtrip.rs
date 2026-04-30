@@ -8,14 +8,12 @@ fn roundtrip(source: &str) {
         .into_result()
         .unwrap_or_else(|_| panic!("Failed to parse: {source}"));
 
-    let encoded = flat::encode(program).unwrap_or_else(|e| {
-        panic!("Failed to encode: {e:?}\nSource: {source}")
-    });
+    let encoded = flat::encode(program)
+        .unwrap_or_else(|e| panic!("Failed to encode: {e:?}\nSource: {source}"));
 
     let arena2 = Arena::new();
-    let decoded = flat::decode::<DeBruijn>(&arena2, &encoded).unwrap_or_else(|e| {
-        panic!("Failed to decode: {e:?}\nSource: {source}")
-    });
+    let decoded = flat::decode::<DeBruijn>(&arena2, &encoded)
+        .unwrap_or_else(|e| panic!("Failed to decode: {e:?}\nSource: {source}"));
 
     assert_eq!(
         program.term, decoded.term,
@@ -30,14 +28,12 @@ fn roundtrip_eval(source: &str) {
         .into_result()
         .unwrap_or_else(|_| panic!("Failed to parse: {source}"));
 
-    let encoded = flat::encode(program).unwrap_or_else(|e| {
-        panic!("Failed to encode: {e:?}\nSource: {source}")
-    });
+    let encoded = flat::encode(program)
+        .unwrap_or_else(|e| panic!("Failed to encode: {e:?}\nSource: {source}"));
 
     let arena2 = Arena::new();
-    let decoded = flat::decode::<DeBruijn>(&arena2, &encoded).unwrap_or_else(|e| {
-        panic!("Failed to decode: {e:?}\nSource: {source}")
-    });
+    let decoded = flat::decode::<DeBruijn>(&arena2, &encoded)
+        .unwrap_or_else(|e| panic!("Failed to decode: {e:?}\nSource: {source}"));
 
     let result = decoded.eval(&arena2);
     result
@@ -205,23 +201,17 @@ fn flat_roundtrip_append_string() {
 
 #[test]
 fn flat_roundtrip_encode_utf8() {
-    roundtrip_eval(
-        r#"(program 1.0.0 [(builtin encodeUtf8) (con string "hello")])"#,
-    );
+    roundtrip_eval(r#"(program 1.0.0 [(builtin encodeUtf8) (con string "hello")])"#);
 }
 
 #[test]
 fn flat_roundtrip_decode_utf8() {
-    roundtrip_eval(
-        r#"(program 1.0.0 [(builtin decodeUtf8) (con bytestring #68656c6c6f)])"#,
-    );
+    roundtrip_eval(r#"(program 1.0.0 [(builtin decodeUtf8) (con bytestring #68656c6c6f)])"#);
 }
 
 #[test]
 fn flat_roundtrip_sha2() {
-    roundtrip_eval(
-        r#"(program 1.0.0 [(builtin sha2_256) (con bytestring #deadbeef)])"#,
-    );
+    roundtrip_eval(r#"(program 1.0.0 [(builtin sha2_256) (con bytestring #deadbeef)])"#);
 }
 
 // --- Benchmark script round-trip (binary files) ---

@@ -1,8 +1,8 @@
 pub mod arena;
-pub mod bytecode;
 pub mod binder;
 pub mod bls;
 pub mod builtin;
+pub mod bytecode;
 pub mod constant;
 pub mod data;
 pub mod flat;

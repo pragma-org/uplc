@@ -37,7 +37,11 @@ impl Mutator {
 }
 
 impl Generator for Mutator {
-    fn generate_batch(&self, rng: &mut rand_xoshiro::Xoshiro256PlusPlus, batch_size: usize) -> Vec<ProgramSeed> {
+    fn generate_batch(
+        &self,
+        rng: &mut rand_xoshiro::Xoshiro256PlusPlus,
+        batch_size: usize,
+    ) -> Vec<ProgramSeed> {
         if self.corpus.is_empty() {
             return Vec::new();
         }
@@ -75,9 +79,7 @@ fn mutate_term(rng: &mut impl Rng, term: &TermSeed, depth: usize) -> TermSeed {
 
     // Descend into a random child
     match term {
-        TermSeed::Lambda(body) => {
-            TermSeed::Lambda(Box::new(mutate_term(rng, body, depth + 1)))
-        }
+        TermSeed::Lambda(body) => TermSeed::Lambda(Box::new(mutate_term(rng, body, depth + 1))),
         TermSeed::Apply(fun, arg) => {
             if rng.gen() {
                 TermSeed::Apply(Box::new(mutate_term(rng, fun, depth + 1)), arg.clone())
@@ -85,12 +87,8 @@ fn mutate_term(rng: &mut impl Rng, term: &TermSeed, depth: usize) -> TermSeed {
                 TermSeed::Apply(fun.clone(), Box::new(mutate_term(rng, arg, depth + 1)))
             }
         }
-        TermSeed::Delay(body) => {
-            TermSeed::Delay(Box::new(mutate_term(rng, body, depth + 1)))
-        }
-        TermSeed::Force(body) => {
-            TermSeed::Force(Box::new(mutate_term(rng, body, depth + 1)))
-        }
+        TermSeed::Delay(body) => TermSeed::Delay(Box::new(mutate_term(rng, body, depth + 1))),
+        TermSeed::Force(body) => TermSeed::Force(Box::new(mutate_term(rng, body, depth + 1))),
         TermSeed::Case { constr, branches } => {
             if branches.is_empty() || rng.gen_range(0..3) == 0 {
                 TermSeed::Case {
@@ -114,10 +112,7 @@ fn mutate_term(rng: &mut impl Rng, term: &TermSeed, depth: usize) -> TermSeed {
                 let idx = rng.gen_range(0..fields.len());
                 let mut fields = fields.clone();
                 fields[idx] = mutate_term(rng, &fields[idx], depth + 1);
-                TermSeed::Constr {
-                    tag: *tag,
-                    fields,
-                }
+                TermSeed::Constr { tag: *tag, fields }
             }
         }
         // Leaf nodes: always mutate
@@ -191,9 +186,9 @@ fn apply_mutation(rng: &mut impl Rng, term: &TermSeed) -> TermSeed {
         }
         // Unwrap one layer
         9 => match term {
-            TermSeed::Force(inner)
-            | TermSeed::Delay(inner)
-            | TermSeed::Lambda(inner) => *inner.clone(),
+            TermSeed::Force(inner) | TermSeed::Delay(inner) | TermSeed::Lambda(inner) => {
+                *inner.clone()
+            }
             TermSeed::Apply(fun, _) => *fun.clone(),
             _ => term.clone(),
         },

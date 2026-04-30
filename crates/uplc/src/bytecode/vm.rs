@@ -72,11 +72,13 @@ pub fn execute<'a, B: BuiltinCostModel>(
     // Pre-wrap specialized constants
     let val_unit: &'a Value<'a, DeBruijn> = Value::con(arena, arena.alloc(Constant::Unit));
     let val_true: &'a Value<'a, DeBruijn> = Value::con(arena, arena.alloc(Constant::Boolean(true)));
-    let val_false: &'a Value<'a, DeBruijn> = Value::con(arena, arena.alloc(Constant::Boolean(false)));
+    let val_false: &'a Value<'a, DeBruijn> =
+        Value::con(arena, arena.alloc(Constant::Boolean(false)));
 
     // Pre-create bare builtin values (no forces/args yet)
     let num_builtins = 101u8; // DefaultFunction variants: 0..=100
-    let mut builtin_values: Vec<&'a Value<'a, DeBruijn>> = Vec::with_capacity(num_builtins as usize);
+    let mut builtin_values: Vec<&'a Value<'a, DeBruijn>> =
+        Vec::with_capacity(num_builtins as usize);
     for i in 0..num_builtins {
         let fun = arena.alloc(DefaultFunction::from_u8(i));
         let runtime = Runtime::new(arena, fun);
@@ -138,10 +140,9 @@ enum Phase<'a> {
 }
 
 impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
-    fn run(
-        &mut self,
-    ) -> Result<&'a crate::term::Term<'a, DeBruijn>, MachineError<'a, DeBruijn>> {
-        self.machine.spend_budget(self.machine.costs.machine_startup)?;
+    fn run(&mut self) -> Result<&'a crate::term::Term<'a, DeBruijn>, MachineError<'a, DeBruijn>> {
+        self.machine
+            .spend_budget(self.machine.costs.machine_startup)?;
 
         loop {
             // Compute phase: read and execute an opcode
@@ -157,7 +158,10 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                     }
                     Phase::Done(value) => {
                         let term = discharge::value_as_term_bc(
-                            self.arena, value, self.lambdas, self.delays,
+                            self.arena,
+                            value,
+                            self.lambdas,
+                            self.delays,
                         );
                         return Ok(term);
                     }
@@ -224,8 +228,14 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                 self.machine.step_and_maybe_spend(StepKind::Apply)?;
                 let env = self.env;
                 // arg2 frame goes first (deeper in stack), arg1 on top
-                self.stack.push(Frame::AwaitFunTerm { arg_ip: arg2_ip, env });
-                self.stack.push(Frame::AwaitFunTerm { arg_ip: arg1_ip, env });
+                self.stack.push(Frame::AwaitFunTerm {
+                    arg_ip: arg2_ip,
+                    env,
+                });
+                self.stack.push(Frame::AwaitFunTerm {
+                    arg_ip: arg1_ip,
+                    env,
+                });
                 // function bytecode follows inline
                 Ok(Phase::Compute)
             }
@@ -240,9 +250,18 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                 self.machine.step_and_maybe_spend(StepKind::Apply)?;
                 self.machine.step_and_maybe_spend(StepKind::Apply)?;
                 let env = self.env;
-                self.stack.push(Frame::AwaitFunTerm { arg_ip: arg3_ip, env });
-                self.stack.push(Frame::AwaitFunTerm { arg_ip: arg2_ip, env });
-                self.stack.push(Frame::AwaitFunTerm { arg_ip: arg1_ip, env });
+                self.stack.push(Frame::AwaitFunTerm {
+                    arg_ip: arg3_ip,
+                    env,
+                });
+                self.stack.push(Frame::AwaitFunTerm {
+                    arg_ip: arg2_ip,
+                    env,
+                });
+                self.stack.push(Frame::AwaitFunTerm {
+                    arg_ip: arg1_ip,
+                    env,
+                });
                 // function bytecode follows inline
                 Ok(Phase::Compute)
             }
@@ -321,7 +340,9 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                 self.ip += 1;
                 self.machine.step_and_maybe_spend(StepKind::Force)?;
                 self.machine.step_and_maybe_spend(StepKind::Var)?;
-                let value = self.env.lookup(idx)
+                let value = self
+                    .env
+                    .lookup(idx)
                     .ok_or(MachineError::ExplicitErrorTerm)?;
                 return self.force_evaluate(value);
             }
@@ -332,7 +353,9 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                 self.ip += 1;
                 self.machine.step_and_maybe_spend(StepKind::Apply)?;
                 self.machine.step_and_maybe_spend(StepKind::Var)?;
-                let fun_value = self.env.lookup(idx)
+                let fun_value = self
+                    .env
+                    .lookup(idx)
                     .ok_or(MachineError::ExplicitErrorTerm)?;
                 self.stack.push(Frame::AwaitArg(fun_value));
                 // arg follows inline
@@ -466,7 +489,8 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                 cf.values.push(value);
 
                 if cf.next_field < cf.nfields {
-                    let next_ip = read_u32(self.bytecode, cf.offsets_start + cf.next_field * 4) as usize;
+                    let next_ip =
+                        read_u32(self.bytecode, cf.offsets_start + cf.next_field * 4) as usize;
                     let env = cf.env;
                     cf.next_field += 1;
                     self.stack.push(Frame::Constr(cf));
@@ -485,22 +509,22 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                 let offsets_start = cf.offsets_start;
                 let nbranches = cf.nbranches;
                 match value {
-                Value::Constr(tag, fields) => {
-                    if *tag < nbranches {
-                        for field in fields.iter().rev() {
-                            self.stack.push(Frame::AwaitFunValue(*field));
+                    Value::Constr(tag, fields) => {
+                        if *tag < nbranches {
+                            for field in fields.iter().rev() {
+                                self.stack.push(Frame::AwaitFunValue(*field));
+                            }
+                            self.env = env;
+                            self.ip = read_u32(self.bytecode, offsets_start + *tag * 4) as usize;
+                            Ok(Phase::Compute)
+                        } else {
+                            Err(MachineError::ExplicitErrorTerm)
                         }
-                        self.env = env;
-                        self.ip = read_u32(self.bytecode, offsets_start + *tag * 4) as usize;
-                        Ok(Phase::Compute)
-                    } else {
-                        Err(MachineError::ExplicitErrorTerm)
                     }
-                }
-                Value::Con(constant) => {
-                    self.case_on_constant(constant, env, offsets_start, nbranches)
-                }
-                _ => Err(MachineError::ExplicitErrorTerm),
+                    Value::Con(constant) => {
+                        self.case_on_constant(constant, env, offsets_start, nbranches)
+                    }
+                    _ => Err(MachineError::ExplicitErrorTerm),
                 }
             }
 
@@ -543,9 +567,7 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
             }
             Constant::Integer(int_val) => {
                 use num::ToPrimitive;
-                let tag = int_val
-                    .to_usize()
-                    .ok_or(MachineError::ExplicitErrorTerm)?;
+                let tag = int_val.to_usize().ok_or(MachineError::ExplicitErrorTerm)?;
                 if tag >= nbranches {
                     return Err(MachineError::ExplicitErrorTerm);
                 }
@@ -673,8 +695,8 @@ mod tests {
         arena::Arena,
         bytecode::compiler,
         machine::{
-            cost_model::builtin_costs::builtin_costs_v3::BuiltinCostsV3,
-            CostModel, ExBudget, BuiltinSemantics,
+            cost_model::builtin_costs::builtin_costs_v3::BuiltinCostsV3, BuiltinSemantics,
+            CostModel, ExBudget,
         },
         syn,
     };
@@ -688,7 +710,11 @@ mod tests {
             .expect("parse failed");
 
         let compiled = compiler::compile(
-            (program.version.major(), program.version.minor(), program.version.patch()),
+            (
+                program.version.major(),
+                program.version.minor(),
+                program.version.patch(),
+            ),
             program.term,
         );
         let compiled: &'static CompiledProgram = Box::leak(Box::new(compiled));
@@ -730,7 +756,10 @@ mod tests {
     #[test]
     fn bc_eval_true() {
         let result = eval_source("(program 1.0.0 (con bool True))");
-        assert!(result.contains("true") || result.contains("True"), "got: {result}");
+        assert!(
+            result.contains("true") || result.contains("True"),
+            "got: {result}"
+        );
     }
 
     #[test]
@@ -747,9 +776,8 @@ mod tests {
 
     #[test]
     fn bc_eval_add_integer() {
-        let result = eval_source(
-            "(program 1.0.0 [(builtin addInteger) (con integer 3) (con integer 4)])",
-        );
+        let result =
+            eval_source("(program 1.0.0 [(builtin addInteger) (con integer 3) (con integer 4)])");
         assert!(result.contains("7"), "got: {result}");
     }
 

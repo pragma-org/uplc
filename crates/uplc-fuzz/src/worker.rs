@@ -3,16 +3,15 @@ use std::panic;
 use crossbeam_channel::Sender;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
-use uplc_turbo::{arena::Arena, machine::{ExBudget, PlutusVersion}};
+use uplc_turbo::{
+    arena::Arena,
+    machine::{ExBudget, PlutusVersion},
+};
 
 use crate::{
     divergence::{compare_results, Divergence, DivergenceKind},
     eval::internal::{eval_bytecode, eval_cek, Budget, Outcome},
-    gen::{
-        builtin_aware::BuiltinAware,
-        random::RandomStructural,
-        Generator,
-    },
+    gen::{builtin_aware::BuiltinAware, random::RandomStructural, Generator},
     seed::ProgramSeed,
 };
 
@@ -57,10 +56,7 @@ pub fn run_worker(config: WorkerConfig, tx: Sender<WorkerMessage>) {
         version: config.version,
     };
 
-    let generators: Vec<(&dyn Generator, u32)> = vec![
-        (&random_gen, 2),
-        (&builtin_gen, 4),
-    ];
+    let generators: Vec<(&dyn Generator, u32)> = vec![(&random_gen, 2), (&builtin_gen, 4)];
     let total_weight: u32 = generators.iter().map(|(_, w)| w).sum();
 
     let mut arena = Arena::new();

@@ -87,7 +87,11 @@ where
         lambda_id: u16,
         env: &'a Env<'a, V>,
     ) -> &'a Value<'a, V> {
-        arena.alloc(Value::LambdaBC { body_ip, lambda_id, env })
+        arena.alloc(Value::LambdaBC {
+            body_ip,
+            lambda_id,
+            env,
+        })
     }
 
     pub fn delay_bc(
@@ -96,7 +100,11 @@ where
         delay_id: u16,
         env: &'a Env<'a, V>,
     ) -> &'a Value<'a, V> {
-        arena.alloc(Value::DelayBC { body_ip, delay_id, env })
+        arena.alloc(Value::DelayBC {
+            body_ip,
+            delay_id,
+            env,
+        })
     }
 
     pub fn builtin(arena: &'a Arena, runtime: &'a Runtime<'a, V>) -> &'a Value<'a, V> {

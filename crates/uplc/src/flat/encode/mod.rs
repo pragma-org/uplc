@@ -169,13 +169,17 @@ fn encode_constant<'a>(e: &mut Encoder, constant: &'a Constant<'a>) -> Result<()
         Constant::Bls12_381G1Element(g1) => {
             e.list_with(&[tag::BLS12_381_G1_ELEMENT], encode_constant_tag)?;
             let mut out = [0u8; 48];
-            unsafe { blst::blst_p1_compress(out.as_mut_ptr(), *g1); }
+            unsafe {
+                blst::blst_p1_compress(out.as_mut_ptr(), *g1);
+            }
             e.bytes(&out)?;
         }
         Constant::Bls12_381G2Element(g2) => {
             e.list_with(&[tag::BLS12_381_G2_ELEMENT], encode_constant_tag)?;
             let mut out = [0u8; 96];
-            unsafe { blst::blst_p2_compress(out.as_mut_ptr(), *g2); }
+            unsafe {
+                blst::blst_p2_compress(out.as_mut_ptr(), *g2);
+            }
             e.bytes(&out)?;
         }
         Constant::Bls12_381MlResult(_) => {
@@ -262,8 +266,8 @@ fn encode_constant_value<'a>(e: &mut Encoder, x: &'a &Constant<'a>) -> Result<()
         }
         Constant::Data(data) => {
             // Data is CBOR-encoded, then the CBOR bytes are written as a FLAT bytestring
-            let cbor_bytes = minicbor::to_vec(data)
-                .map_err(|_| FlatEncodeError::BlsElementNotSupported)?; // reuse error variant for now
+            let cbor_bytes =
+                minicbor::to_vec(data).map_err(|_| FlatEncodeError::BlsElementNotSupported)?; // reuse error variant for now
             e.bytes(&cbor_bytes)?;
         }
         Constant::Value(v) => {
@@ -271,12 +275,16 @@ fn encode_constant_value<'a>(e: &mut Encoder, x: &'a &Constant<'a>) -> Result<()
         }
         Constant::Bls12_381G1Element(g1) => {
             let mut out = [0u8; 48];
-            unsafe { blst::blst_p1_compress(out.as_mut_ptr(), *g1); }
+            unsafe {
+                blst::blst_p1_compress(out.as_mut_ptr(), *g1);
+            }
             e.bytes(&out)?;
         }
         Constant::Bls12_381G2Element(g2) => {
             let mut out = [0u8; 96];
-            unsafe { blst::blst_p2_compress(out.as_mut_ptr(), *g2); }
+            unsafe {
+                blst::blst_p2_compress(out.as_mut_ptr(), *g2);
+            }
             e.bytes(&out)?;
         }
         Constant::Bls12_381MlResult(_) => {

@@ -46,9 +46,7 @@ where
             // unless called via value_as_term_bc with context
             Term::error(arena)
         }
-        Value::DelayBC { delay_id, env, .. } => {
-            Term::error(arena)
-        }
+        Value::DelayBC { delay_id, env, .. } => Term::error(arena),
     }
 }
 
@@ -71,13 +69,25 @@ pub fn value_as_term_bc<'a>(
                 term = term.force(arena);
             }
             for i in 0..runtime.arg_count() {
-                term = term.apply(arena, value_as_term_bc(arena, runtime.arg(i), lambdas, delays));
+                term = term.apply(
+                    arena,
+                    value_as_term_bc(arena, runtime.arg(i), lambdas, delays),
+                );
             }
             term
         }
-        Value::Lambda { parameter, body, env } => {
-            with_env_bc(arena, 0, env, body.lambda(arena, parameter), lambdas, delays)
-        }
+        Value::Lambda {
+            parameter,
+            body,
+            env,
+        } => with_env_bc(
+            arena,
+            0,
+            env,
+            body.lambda(arena, parameter),
+            lambdas,
+            delays,
+        ),
         Value::Delay(body, env) => with_env_bc(arena, 0, env, body.delay(arena), lambdas, delays),
         Value::Constr(tag, fields) => {
             let fields: BumpVec<'_, _> = fields
@@ -89,7 +99,14 @@ pub fn value_as_term_bc<'a>(
         }
         Value::LambdaBC { lambda_id, env, .. } => {
             let info = &lambdas[*lambda_id as usize];
-            with_env_bc(arena, 0, env, info.body.lambda(arena, info.parameter), lambdas, delays)
+            with_env_bc(
+                arena,
+                0,
+                env,
+                info.body.lambda(arena, info.parameter),
+                lambdas,
+                delays,
+            )
         }
         Value::DelayBC { delay_id, env, .. } => {
             let info = &delays[*delay_id as usize];
