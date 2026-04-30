@@ -20,8 +20,8 @@ impl ExBudget {
     }
 
     pub fn occurrences(&mut self, n: i64) {
-        self.mem *= n;
-        self.cpu *= n;
+        self.mem = self.mem.saturating_mul(n);
+        self.cpu = self.cpu.saturating_mul(n);
     }
 
     pub fn machine() -> Self {

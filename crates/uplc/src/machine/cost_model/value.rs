@@ -46,14 +46,12 @@ pub fn string_ex_mem(s: &str) -> i64 {
     s.chars().count() as i64
 }
 
-pub fn pair_ex_mem(l: &Constant, r: &Constant) -> i64 {
-    constant_ex_mem(l) + constant_ex_mem(r)
+pub fn pair_ex_mem(_l: &Constant, _r: &Constant) -> i64 {
+    i64::MAX
 }
 
 pub fn proto_list_ex_mem(items: &[&Constant]) -> i64 {
-    items
-        .iter()
-        .fold(0, |acc, constant| acc + constant_ex_mem(constant))
+    items.len() as i64
 }
 
 pub fn value_ex_mem<'a, V>(v: &'a Value<'a, V>) -> i64
