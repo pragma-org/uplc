@@ -21,5 +21,8 @@ fn main() {
     }
 
     // Print budget to stderr
-    eprintln!("({{cpu: {}\n| mem: {}}})", info.consumed_budget.cpu, info.consumed_budget.mem);
+    eprintln!(
+        "({{cpu: {}\n| mem: {}}})",
+        info.consumed_budget.cpu, info.consumed_budget.mem
+    );
 }

@@ -1506,7 +1506,8 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
                 Ok(value)
             }
             DefaultFunction::UnConstrData => {
-                let (tag, fields) = runtime.arg(0)
+                let (tag, fields) = runtime
+                    .arg(0)
                     .unwrap_constant()?
                     .unwrap_data()?
                     .unwrap_constr()?;
@@ -1543,7 +1544,8 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
                 Ok(value)
             }
             DefaultFunction::UnMapData => {
-                let map = runtime.arg(0)
+                let map = runtime
+                    .arg(0)
                     .unwrap_constant()?
                     .unwrap_data()?
                     .unwrap_map()?;
@@ -1584,7 +1586,8 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
                 Ok(value)
             }
             DefaultFunction::UnListData => {
-                let list = runtime.arg(0)
+                let list = runtime
+                    .arg(0)
                     .unwrap_constant()?
                     .unwrap_data()?
                     .unwrap_list()?;
@@ -1613,7 +1616,8 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
                 Ok(value)
             }
             DefaultFunction::UnIData => {
-                let i = runtime.arg(0)
+                let i = runtime
+                    .arg(0)
                     .unwrap_constant()?
                     .unwrap_data()?
                     .unwrap_integer()?;
@@ -1634,7 +1638,8 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
                 Ok(value)
             }
             DefaultFunction::UnBData => {
-                let bs = runtime.arg(0)
+                let bs = runtime
+                    .arg(0)
                     .unwrap_constant()?
                     .unwrap_data()?
                     .unwrap_byte_string()?;

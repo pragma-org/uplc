@@ -63,7 +63,10 @@ impl<'a> Compiler<'a> {
             }
 
             // Superinstruction: Apply(Lambda(body), arg)
-            Term::Apply { function: Term::Lambda { parameter, body }, argument } => {
+            Term::Apply {
+                function: Term::Lambda { parameter, body },
+                argument,
+            } => {
                 let lambda_id = self.lambdas.len() as u16;
                 self.lambdas.push(super::LambdaInfo { parameter, body });
                 self.emit(Op::ApplyLambda as u8);
@@ -78,7 +81,10 @@ impl<'a> Compiler<'a> {
             // Superinstruction: Apply(Var(idx), arg)
             // Var lookup is immediate, so skip FrameAwaitFunTerm — directly
             // push FrameAwaitArg with the looked-up value, then compute arg.
-            Term::Apply { function: Term::Var(db), argument } if db.index() <= 255 => {
+            Term::Apply {
+                function: Term::Var(db),
+                argument,
+            } if db.index() <= 255 => {
                 self.emit(Op::ApplyVar as u8);
                 self.emit(db.index() as u8);
                 // arg bytecode follows inline
@@ -87,10 +93,15 @@ impl<'a> Compiler<'a> {
 
             // Superinstruction: Apply(Apply(Apply(f, arg1), arg2), arg3) — depth 3
             Term::Apply {
-                function: Term::Apply {
-                    function: Term::Apply { function: inner_fun, argument: arg1 },
-                    argument: arg2,
-                },
+                function:
+                    Term::Apply {
+                        function:
+                            Term::Apply {
+                                function: inner_fun,
+                                argument: arg1,
+                            },
+                        argument: arg2,
+                    },
                 argument: arg3,
             } if !matches!(inner_fun, Term::Lambda { .. }) => {
                 self.emit(Op::Apply3 as u8);
@@ -108,7 +119,11 @@ impl<'a> Compiler<'a> {
 
             // Superinstruction: Apply(Apply(f, arg1), arg2) — depth 2
             Term::Apply {
-                function: Term::Apply { function: inner_fun, argument: arg1 },
+                function:
+                    Term::Apply {
+                        function: inner_fun,
+                        argument: arg1,
+                    },
                 argument: arg2,
             } if !matches!(inner_fun, Term::Lambda { .. }) => {
                 self.emit(Op::Apply2 as u8);
@@ -175,14 +190,13 @@ impl<'a> Compiler<'a> {
                     self.emit(*tag as u8);
                 } else {
                     self.emit(Op::ConstrBig as u8);
-                    self.bytecode.extend_from_slice(&(*tag as u64).to_le_bytes());
+                    self.bytecode
+                        .extend_from_slice(&(*tag as u64).to_le_bytes());
                 }
                 self.emit(fields.len() as u8);
 
                 // Emit field offset holes
-                let holes: Vec<usize> = (0..fields.len())
-                    .map(|_| self.emit_u32_hole())
-                    .collect();
+                let holes: Vec<usize> = (0..fields.len()).map(|_| self.emit_u32_hole()).collect();
 
                 // Compile each field and patch its offset
                 for (i, field) in fields.iter().enumerate() {
@@ -196,9 +210,7 @@ impl<'a> Compiler<'a> {
                 self.emit(branches.len() as u8);
 
                 // Emit branch offset holes
-                let holes: Vec<usize> = (0..branches.len())
-                    .map(|_| self.emit_u32_hole())
-                    .collect();
+                let holes: Vec<usize> = (0..branches.len()).map(|_| self.emit_u32_hole()).collect();
 
                 // Compile scrutinee (follows inline after offset table)
                 self.compile_term(constr);
@@ -281,7 +293,7 @@ fn small_int_value(i: &Integer) -> i8 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{arena::Arena, syn, bytecode::read_u32};
+    use crate::{arena::Arena, bytecode::read_u32, syn};
 
     fn compile_source(source: &str) -> CompiledProgram<'static> {
         let source: &'static str = Box::leak(source.to_string().into_boxed_str());
@@ -290,7 +302,11 @@ mod tests {
             .into_result()
             .expect("parse failed");
         compile(
-            (program.version.major(), program.version.minor(), program.version.patch()),
+            (
+                program.version.major(),
+                program.version.minor(),
+                program.version.patch(),
+            ),
             program.term,
         )
     }

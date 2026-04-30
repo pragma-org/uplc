@@ -11,7 +11,11 @@ fn main() {
     let arena = Arena::new();
     let program = flat::decode::<DeBruijn>(&arena, &script).expect("decode failed");
     let compiled = compiler::compile(
-        (program.version.major(), program.version.minor(), program.version.patch()),
+        (
+            program.version.major(),
+            program.version.minor(),
+            program.version.patch(),
+        ),
         program.term,
     );
     // Write raw bytecode to stdout

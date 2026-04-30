@@ -2,9 +2,9 @@ use bumpalo::Bump;
 use uplc_turbo::{arena::Arena, binder::DeBruijn, flat, machine::ExBudget};
 
 fn main() {
-    let script_path = std::env::args().nth(1).unwrap_or_else(|| {
-        "benches/use_cases/plutus_use_cases/auction_1-2.flat".to_string()
-    });
+    let script_path = std::env::args()
+        .nth(1)
+        .unwrap_or_else(|| "benches/use_cases/plutus_use_cases/auction_1-2.flat".to_string());
 
     let script = std::fs::read(&script_path).expect("Failed to read script");
     let mut arena = Arena::from_bump(Bump::with_capacity(1_048_576));

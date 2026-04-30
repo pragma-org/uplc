@@ -11,18 +11,21 @@ use uplc_turbo::{
 };
 
 fn main() {
-    let script_path = std::env::args().nth(1).unwrap_or_else(|| {
-        "benches/use_cases/plutus_use_cases/auction_1-2.flat".to_string()
-    });
+    let script_path = std::env::args()
+        .nth(1)
+        .unwrap_or_else(|| "benches/use_cases/plutus_use_cases/auction_1-2.flat".to_string());
 
     let script = std::fs::read(&script_path).expect("Failed to read script");
 
     // Compile once (AOT)
     let compile_arena = Box::leak(Box::new(Arena::new()));
-    let program =
-        flat::decode::<DeBruijn>(compile_arena, &script).expect("Failed to decode");
+    let program = flat::decode::<DeBruijn>(compile_arena, &script).expect("Failed to decode");
     let compiled = Box::leak(Box::new(compiler::compile(
-        (program.version.major(), program.version.minor(), program.version.patch()),
+        (
+            program.version.major(),
+            program.version.minor(),
+            program.version.patch(),
+        ),
         program.term,
     )));
 

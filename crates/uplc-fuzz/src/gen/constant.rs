@@ -113,9 +113,7 @@ fn gen_data(rng: &mut impl Rng, depth: usize) -> DataSeed {
         0 => {
             let tag = rng.gen_range(0u64..=5);
             let nfields = rng.gen_range(0..=3);
-            let fields = (0..nfields)
-                .map(|_| gen_data(rng, depth - 1))
-                .collect();
+            let fields = (0..nfields).map(|_| gen_data(rng, depth - 1)).collect();
             DataSeed::Constr(tag, fields)
         }
         1 => {

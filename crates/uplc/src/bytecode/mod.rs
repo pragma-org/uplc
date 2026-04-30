@@ -34,7 +34,6 @@ pub enum Op {
     Error = 0x0A,
 
     // === Superinstructions ===
-
     /// Force(Delay(body)) — charge both steps, compute body inline
     ForceDelay = 0x10,
     /// Apply(Lambda(body), arg) — push FrameAwaitArgForLambda(body_offset, lambda_id), compute arg inline
@@ -57,7 +56,6 @@ pub enum Op {
     Apply3 = 0x18,
 
     // === Specialized constants ===
-
     /// Unit constant
     ConstUnit = 0x20,
     /// Boolean true

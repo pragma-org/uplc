@@ -237,9 +237,7 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
 
                 Ok(MachineState::Compute(arg_env, argument))
             }
-            Some(Frame::FrameAwaitArg(function)) => {
-                self.apply_evaluate(stack, function, value)
-            }
+            Some(Frame::FrameAwaitArg(function)) => self.apply_evaluate(stack, function, value),
             Some(Frame::FrameAwaitArgForLambda(body, env)) => {
                 let new_env = env.push(self.arena, value);
                 Ok(MachineState::Compute(new_env, body))
@@ -402,8 +400,7 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
                         let tail_const = Constant::proto_list(self.arena, typ, &items[1..]);
                         let tail_val: &'a Value<'a, V> = Value::con(self.arena, tail_const);
 
-                        let fields: &'a [&'a Value<'a, V>] =
-                            self.arena.alloc([head_val, tail_val]);
+                        let fields: &'a [&'a Value<'a, V>] = self.arena.alloc([head_val, tail_val]);
                         self.transfer_arg_stack(stack, fields);
 
                         Ok(MachineState::Compute(env, branches[0]))
@@ -448,7 +445,10 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
         }
     }
 
-    pub(crate) fn step_and_maybe_spend(&mut self, step: StepKind) -> Result<(), MachineError<'a, V>> {
+    pub(crate) fn step_and_maybe_spend(
+        &mut self,
+        step: StepKind,
+    ) -> Result<(), MachineError<'a, V>> {
         self.unbudgeted_steps[step as usize] += 1;
         self.steps_until_spend -= 1;
 

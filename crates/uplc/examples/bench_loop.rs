@@ -25,7 +25,11 @@ fn main() {
         let compile_arena = Box::leak(Box::new(Arena::new()));
         let program = flat::decode::<DeBruijn>(compile_arena, &script).expect("decode failed");
         let compiled = Box::leak(Box::new(compiler::compile(
-            (program.version.major(), program.version.minor(), program.version.patch()),
+            (
+                program.version.major(),
+                program.version.minor(),
+                program.version.patch(),
+            ),
             program.term,
         )));
 

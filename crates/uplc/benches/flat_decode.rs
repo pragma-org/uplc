@@ -9,10 +9,7 @@ pub fn bench_flat_decode(c: &mut Criterion) {
 
     let mut scripts: Vec<(String, Vec<u8>)> = Vec::new();
 
-    for entry in fs::read_dir(data_dir)
-        .unwrap()
-        .map(|e| e.unwrap())
-    {
+    for entry in fs::read_dir(data_dir).unwrap().map(|e| e.unwrap()) {
         let path = entry.path();
         if !path.is_file() {
             continue;

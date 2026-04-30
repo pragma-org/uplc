@@ -64,8 +64,7 @@ fn bench_ast(c: &mut Criterion, file_name: &str, script: &[u8]) {
 
     c.bench_function(file_name, |b| {
         b.iter(|| {
-            let program =
-                flat::decode::<DeBruijn>(&arena, script).expect("Failed to decode");
+            let program = flat::decode::<DeBruijn>(&arena, script).expect("Failed to decode");
 
             let result = program.eval(&arena);
 
@@ -80,8 +79,8 @@ fn bench_bytecode(c: &mut Criterion, file_name: &str, script: &[u8]) {
     use uplc_turbo::{
         bytecode::{compiler, vm},
         machine::{
-            cost_model::builtin_costs::builtin_costs_v3::BuiltinCostsV3,
-            BuiltinSemantics, CostModel, ExBudget,
+            cost_model::builtin_costs::builtin_costs_v3::BuiltinCostsV3, BuiltinSemantics,
+            CostModel, ExBudget,
         },
     };
 
@@ -95,7 +94,11 @@ fn bench_bytecode(c: &mut Criterion, file_name: &str, script: &[u8]) {
         }
     };
     let compiled = Box::leak(Box::new(compiler::compile(
-        (program.version.major(), program.version.minor(), program.version.patch()),
+        (
+            program.version.major(),
+            program.version.minor(),
+            program.version.patch(),
+        ),
         program.term,
     )));
 
