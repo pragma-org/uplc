@@ -2,7 +2,7 @@ use bumpalo::collections::Vec as BumpVec;
 
 use crate::{
     arena::Arena,
-    binder::{DeBruijn, Eval},
+    binder::DeBruijn,
     builtin::DefaultFunction,
     constant::{Constant, Integer},
     machine::{
@@ -15,7 +15,7 @@ use crate::{
     },
 };
 
-use super::{read_u16, read_u32, read_u64, CompiledProgram, Op};
+use super::{read_u16, read_u32, read_u64, CompiledProgram};
 
 /// Bytecode CEK continuation frame.
 /// All offsets reference positions in the bytecode array directly,
@@ -554,16 +554,18 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                 Ok(Phase::Compute)
             }
             Constant::ProtoList(typ, items) => {
+                // Mirror CEK semantics:
+                // - Non-empty list: allowed with 1 or 2 branches → take branch 0, passing head and tail.
+                // - Empty list: allowed only with exactly 2 branches → take branch 1.
+                // Any other branch count is a non-exhaustive / malformed match and must fail.
                 if !items.is_empty() {
-                    // Non-empty list: branch 0, with head and tail as arguments
-                    if nbranches == 0 {
+                    if nbranches != 1 && nbranches != 2 {
                         return Err(MachineError::ExplicitErrorTerm);
                     }
-                    let head_val: &'a Value<'a, DeBruijn> =
-                        Value::con(self.arena, items[0]);
+
+                    let head_val: &'a Value<'a, DeBruijn> = Value::con(self.arena, items[0]);
                     let tail_const = Constant::proto_list(self.arena, typ, &items[1..]);
-                    let tail_val: &'a Value<'a, DeBruijn> =
-                        Value::con(self.arena, tail_const);
+                    let tail_val: &'a Value<'a, DeBruijn> = Value::con(self.arena, tail_const);
 
                     // Push fields in reverse (tail first, head second)
                     self.stack.push(Frame::AwaitFunValue(tail_val));
@@ -573,14 +575,12 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                     self.ip = read_u32(self.bytecode, offsets_start) as usize;
                     Ok(Phase::Compute)
                 } else {
-                    // Empty list: branch 1
-                    if nbranches >= 2 {
-                        self.env = env;
-                        self.ip = read_u32(self.bytecode, offsets_start + 4) as usize;
-                        Ok(Phase::Compute)
-                    } else {
-                        Err(MachineError::ExplicitErrorTerm)
+                    if nbranches != 2 {
+                        return Err(MachineError::ExplicitErrorTerm);
                     }
+                    self.env = env;
+                    self.ip = read_u32(self.bytecode, offsets_start + 4) as usize;
+                    Ok(Phase::Compute)
                 }
             }
             Constant::ProtoPair(_t1, _t2, fst, snd) => {
@@ -717,6 +717,14 @@ mod tests {
     fn bc_eval_unit() {
         let result = eval_source("(program 1.0.0 (con unit ()))");
         assert!(result.contains("Unit"), "got: {result}");
+    }
+
+    #[test]
+    fn bc_case_empty_list_one_branch_errors() {
+        // In Plutus semantics, a single-branch match on a list is a "cons-only" match.
+        // Scrutinizing an empty list should therefore fail.
+        let result = eval_source("(program 1.1.0 (case (con (list integer) []) (con integer 0)))");
+        assert!(result.starts_with("ERROR:"), "got: {result}");
     }
 
     #[test]
