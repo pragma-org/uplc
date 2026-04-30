@@ -12,19 +12,19 @@ cargo build --bin uplc-fuzz --release
 
 ```bash
 # Run with defaults (all cores, Plutus V3, TUI dashboard, unlimited duration)
-uplc-fuzz
+cargo run --bin uplc-fuzz
 
 # Run for 10 minutes with 4 workers
-uplc-fuzz -j 4 -d 600
+cargo run --bin uplc-fuzz -j 4 -d 600
 
 # Plain output (no TUI, suitable for CI)
-uplc-fuzz --no-tui -d 300
+cargo run --bin uplc-fuzz --no-tui -d 300
 
 # Reproducible run with fixed seed
-uplc-fuzz --seed 42 -d 3600
+cargo run --bin uplc-fuzz --seed 42 -d 3600
 
 # Fuzz Plutus V1 with tight budgets
-uplc-fuzz --version v1 --budget-cpu 1000000 --budget-mem 1000000
+cargo run --bin uplc-fuzz --version v1 --budget-cpu 1000000 --budget-mem 1000000
 ```
 
 ### CLI flags
@@ -41,6 +41,7 @@ uplc-fuzz --version v1 --budget-cpu 1000000 --budget-mem 1000000
 | `--batch-size` | 64 | Programs generated per batch |
 | `--no-tui` | off | Disable TUI, use plain stderr output |
 | `--replay` | — | Replay a single divergence file |
+| `--debug` | off | Print debug info during replay (top-level term variants) |
 
 ## Output
 
@@ -64,17 +65,17 @@ Example `.uplc` file:
 
 ```bash
 # Replay a saved divergence
-uplc-fuzz --replay fuzz-output/divergence_0001.uplc
+cargo run --bin uplc-fuzz --replay fuzz-output/divergence_0001.uplc
 
 # With debug output (prints top-level term variant)
-UPLC_FUZZ_DEBUG_REPLAY=1 uplc-fuzz --replay fuzz-output/divergence_0001.uplc
+cargo run -bin uplc-fuzz --replay fuzz-output/divergence_0001.uplc --debug
 ```
 
 Replay exits with code 1 on divergence, making it usable in scripts:
 
 ```bash
 for f in fuzz-output/divergence_*.uplc; do
-    uplc-fuzz --replay "$f" || echo "DIVERGING: $f"
+    cargo run -bin uplc-fuzz --replay "$f" || echo "DIVERGING: $f"
 done
 ```
 
