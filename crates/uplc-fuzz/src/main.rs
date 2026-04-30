@@ -1,5 +1,5 @@
 use std::{
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::{atomic::Ordering, Arc},
     thread,
     time::{Duration, Instant},
@@ -11,6 +11,7 @@ use uplc_turbo::machine::{ExBudget, PlutusVersion};
 
 use uplc_fuzz::{
     divergence::DivergenceCatalog,
+    eval::internal::Outcome,
     seed::ProgramSeed,
     stats::Stats,
     tui::{Tui, TuiState},
@@ -18,7 +19,10 @@ use uplc_fuzz::{
 };
 
 #[derive(Parser)]
-#[command(name = "uplc-fuzz", about = "Differential fuzzer for UPLC virtual machines")]
+#[command(
+    name = "uplc-fuzz",
+    about = "Differential fuzzer for UPLC virtual machines"
+)]
 struct Cli {
     /// Number of worker threads [default: number of CPUs]
     #[arg(short = 'j', long)]
@@ -65,6 +69,14 @@ struct Cli {
     no_tui: bool,
 }
 
+fn parse_plutus_version(s: &str) -> PlutusVersion {
+    match s {
+        "v1" => PlutusVersion::V1,
+        "v2" => PlutusVersion::V2,
+        _ => PlutusVersion::V3,
+    }
+}
+
 fn main() {
     let cli = Cli::parse();
 
@@ -74,11 +86,7 @@ fn main() {
     }
 
     let num_workers = cli.jobs.unwrap_or_else(num_cpus::get);
-    let plutus_version = match cli.version.as_str() {
-        "v1" => PlutusVersion::V1,
-        "v2" => PlutusVersion::V2,
-        _ => PlutusVersion::V3,
-    };
+    let plutus_version = parse_plutus_version(&cli.version);
     let program_version = match plutus_version {
         PlutusVersion::V1 | PlutusVersion::V2 => (1, 0, 0),
         PlutusVersion::V3 => (1, 1, 0),
@@ -130,7 +138,16 @@ fn main() {
     if cli.no_tui {
         run_plain(&rx, &stats, &catalog, duration);
     } else {
-        run_tui(&rx, &stats, &catalog, duration, num_workers, &cli.version, &cli.output, base_seed);
+        run_tui(
+            &rx,
+            &stats,
+            &catalog,
+            duration,
+            num_workers,
+            &cli.version,
+            &cli.output,
+            base_seed,
+        );
     }
 }
 
@@ -141,7 +158,7 @@ fn run_tui(
     duration: Duration,
     num_workers: usize,
     plutus_version: &str,
-    output_dir: &PathBuf,
+    output_dir: &Path,
     base_seed: u64,
 ) {
     let mut tui = match Tui::new() {
@@ -194,7 +211,9 @@ fn run_tui(
                     if corpus.len() < corpus_max {
                         corpus.push(seed);
                     }
-                    stats.corpus_size.store(corpus.len() as u64, Ordering::Relaxed);
+                    stats
+                        .corpus_size
+                        .store(corpus.len() as u64, Ordering::Relaxed);
                 }
                 WorkerMessage::Stats(ws) => {
                     stats.iterations.fetch_add(ws.iterations, Ordering::Relaxed);
@@ -265,7 +284,9 @@ fn run_plain(
                 if corpus.len() < corpus_max {
                     corpus.push(seed);
                 }
-                stats.corpus_size.store(corpus.len() as u64, Ordering::Relaxed);
+                stats
+                    .corpus_size
+                    .store(corpus.len() as u64, Ordering::Relaxed);
             }
             Ok(WorkerMessage::Stats(ws)) => {
                 stats.iterations.fetch_add(ws.iterations, Ordering::Relaxed);
@@ -290,15 +311,11 @@ fn run_plain(
     eprintln!("\nTotal divergences found: {}", catalog.count());
 }
 
-fn replay(path: &PathBuf, cli: &Cli) {
+fn replay(path: &Path, cli: &Cli) {
     use uplc_fuzz::eval::internal::{eval_bytecode, eval_cek};
     use uplc_turbo::arena::Arena;
 
-    let plutus_version = match cli.version.as_str() {
-        "v1" => PlutusVersion::V1,
-        "v2" => PlutusVersion::V2,
-        _ => PlutusVersion::V3,
-    };
+    let plutus_version = parse_plutus_version(&cli.version);
     let budget = ExBudget::new(cli.budget_mem, cli.budget_cpu);
 
     let contents = std::fs::read_to_string(path).expect("failed to read file");
@@ -308,38 +325,93 @@ fn replay(path: &PathBuf, cli: &Cli) {
         .collect::<Vec<_>>()
         .join("\n");
 
+    let debug_replay = std::env::var("UPLC_FUZZ_DEBUG_REPLAY").is_ok();
+
     let arena = Arena::new();
     let program = uplc_turbo::syn::parse_program(&arena, &uplc_text)
         .into_result()
         .expect("failed to parse UPLC program");
 
     eprintln!("Replaying: {}", path.display());
+    if debug_replay {
+        eprintln!("CEK top-level: {}", term_variant_name(program.term));
+    }
 
     let cek_result = eval_cek(&arena, program, plutus_version, budget);
     eprintln!("CEK outcome:  {:?}", cek_result.outcome);
-    eprintln!("CEK budget:   cpu={} mem={}", cek_result.budget.cpu, cek_result.budget.mem);
+    eprintln!(
+        "CEK budget:   cpu={} mem={}",
+        cek_result.budget.cpu, cek_result.budget.mem
+    );
 
     let arena2 = Arena::new();
     let program2 = uplc_turbo::syn::parse_program(&arena2, &uplc_text)
         .into_result()
         .unwrap();
+    if debug_replay {
+        eprintln!("BC top-level:  {}", term_variant_name(program2.term));
+    }
+
     let bc_result = eval_bytecode(&arena2, program2, plutus_version, budget);
     eprintln!("BC outcome:   {:?}", bc_result.outcome);
-    eprintln!("BC budget:    cpu={} mem={}", bc_result.budget.cpu, bc_result.budget.mem);
+    eprintln!(
+        "BC budget:    cpu={} mem={}",
+        bc_result.budget.cpu, bc_result.budget.mem
+    );
 
-    if cek_result.outcome == bc_result.outcome && cek_result.budget == bc_result.budget {
+    let result_matches = match (&cek_result.outcome, &bc_result.outcome) {
+        (Outcome::Success(a), Outcome::Success(b)) => a == b,
+        (Outcome::EvaluationFailure(_), Outcome::EvaluationFailure(_)) => true,
+        (Outcome::BudgetExceeded, Outcome::BudgetExceeded) => true,
+        _ => false,
+    };
+
+    let budget_matches = cek_result.budget == bc_result.budget;
+
+    if result_matches && budget_matches {
         eprintln!("\nResults MATCH.");
     } else {
         eprintln!("\nResults DIVERGE!");
-        if cek_result.outcome != bc_result.outcome {
+        if !result_matches {
             eprintln!("  Outcome differs.");
+        } else if let (Outcome::EvaluationFailure(a), Outcome::EvaluationFailure(b)) =
+            (&cek_result.outcome, &bc_result.outcome)
+        {
+            if a != b {
+                eprintln!("  Both failed (different errors):");
+                eprintln!("    CEK: {a}");
+                eprintln!("    BC:  {b}");
+            }
         }
-        if cek_result.budget != bc_result.budget {
+
+        if !budget_matches {
             eprintln!(
                 "  Budget differs: CEK cpu={} mem={}, BC cpu={} mem={}",
-                cek_result.budget.cpu, cek_result.budget.mem,
-                bc_result.budget.cpu, bc_result.budget.mem
+                cek_result.budget.cpu,
+                cek_result.budget.mem,
+                bc_result.budget.cpu,
+                bc_result.budget.mem
             );
         }
+
+        std::process::exit(1);
+    }
+}
+
+fn term_variant_name(
+    term: &uplc_turbo::term::Term<'_, uplc_turbo::binder::DeBruijn>,
+) -> &'static str {
+    use uplc_turbo::term::Term;
+    match term {
+        Term::Var(_) => "Var",
+        Term::Lambda { .. } => "Lambda",
+        Term::Apply { .. } => "Apply",
+        Term::Constant(_) => "Constant",
+        Term::Force(_) => "Force",
+        Term::Delay(_) => "Delay",
+        Term::Error => "Error",
+        Term::Builtin(_) => "Builtin",
+        Term::Constr { .. } => "Constr",
+        Term::Case { .. } => "Case",
     }
 }
