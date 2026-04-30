@@ -344,7 +344,7 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                     .env
                     .lookup(idx)
                     .ok_or(MachineError::ExplicitErrorTerm)?;
-                return self.force_evaluate(value);
+                self.force_evaluate(value)
             }
 
             // ApplyVar: Apply(Var(idx), arg) — skip FrameAwaitFunTerm
@@ -512,7 +512,7 @@ impl<'a, 'b, B: BuiltinCostModel> Vm<'a, 'b, B> {
                     Value::Constr(tag, fields) => {
                         if *tag < nbranches {
                             for field in fields.iter().rev() {
-                                self.stack.push(Frame::AwaitFunValue(*field));
+                                self.stack.push(Frame::AwaitFunValue(field));
                             }
                             self.env = env;
                             self.ip = read_u32(self.bytecode, offsets_start + *tag * 4) as usize;

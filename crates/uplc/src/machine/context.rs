@@ -1,6 +1,4 @@
-use bumpalo::collections::Vec as BumpVec;
-
-use crate::{arena::Arena, binder::Eval, term::Term};
+use crate::{binder::Eval, term::Term};
 
 use super::{env::Env, value::Value};
 
@@ -10,18 +8,18 @@ pub enum Frame<'a, V>
 where
     V: Eval<'a>,
 {
-    FrameAwaitArg(&'a Value<'a, V>),
-    FrameAwaitFunTerm(&'a Env<'a, V>, &'a Term<'a, V>),
-    FrameAwaitFunValue(&'a Value<'a, V>),
-    FrameForce,
-    FrameAwaitArgForLambda(&'a Term<'a, V>, &'a Env<'a, V>),
-    FrameConstr(
+    AwaitArg(&'a Value<'a, V>),
+    AwaitFunTerm(&'a Env<'a, V>, &'a Term<'a, V>),
+    AwaitFunValue(&'a Value<'a, V>),
+    Force,
+    AwaitArgForLambda(&'a Term<'a, V>, &'a Env<'a, V>),
+    Constr(
         &'a Env<'a, V>,
         usize,
         &'a [&'a Term<'a, V>],
         &'a [&'a Value<'a, V>],
     ),
-    FrameCases(&'a Env<'a, V>, &'a [&'a Term<'a, V>]),
+    Cases(&'a Env<'a, V>, &'a [&'a Term<'a, V>]),
 }
 
 /// Pre-allocated stack of continuation frames.

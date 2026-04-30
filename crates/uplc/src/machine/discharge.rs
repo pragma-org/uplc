@@ -41,12 +41,12 @@ where
 
             Term::constr(arena, *tag, fields)
         }
-        Value::LambdaBC { lambda_id, env, .. } => {
+        Value::LambdaBC { .. } => {
             // Discharge requires AST lookup tables — fall back to error
             // unless called via value_as_term_bc with context
             Term::error(arena)
         }
-        Value::DelayBC { delay_id, env, .. } => Term::error(arena),
+        Value::DelayBC { .. } => Term::error(arena),
     }
 }
 
@@ -58,7 +58,6 @@ pub fn value_as_term_bc<'a>(
     lambdas: &[crate::bytecode::LambdaInfo<'a>],
     delays: &[crate::bytecode::DelayInfo<'a>],
 ) -> &'a Term<'a, crate::binder::DeBruijn> {
-    use crate::binder::DeBruijn;
     use bumpalo::collections::CollectIn;
 
     match value {

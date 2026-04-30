@@ -14,6 +14,12 @@ pub struct Stats {
     pub start_time: Instant,
 }
 
+impl Default for Stats {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Stats {
     pub fn new() -> Self {
         Self {

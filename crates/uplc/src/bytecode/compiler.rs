@@ -1,6 +1,5 @@
 use crate::{
     binder::{DeBruijn, Eval},
-    builtin::DefaultFunction,
     constant::{Constant, Integer},
     term::Term,
 };
@@ -293,7 +292,7 @@ fn small_int_value(i: &Integer) -> i8 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{arena::Arena, bytecode::read_u32, syn};
+    use crate::{arena::Arena, builtin::DefaultFunction, bytecode::read_u32, syn};
 
     fn compile_source(source: &str) -> CompiledProgram<'static> {
         let source: &'static str = Box::leak(source.to_string().into_boxed_str());

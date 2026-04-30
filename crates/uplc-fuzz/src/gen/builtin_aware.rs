@@ -171,7 +171,7 @@ fn get_arg_types(builtin_id: u8) -> Vec<ArgType> {
         // MkCons: a, list a
         32 => vec![ArgType::Data, ArgType::ListData],
         // HeadList, TailList, NullList: list
-        33 | 34 | 35 => vec![ArgType::ListData],
+        33..=35 => vec![ArgType::ListData],
         // ChooseData: data, then 5 branches
         36 => vec![
             ArgType::Data,

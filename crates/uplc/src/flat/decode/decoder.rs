@@ -14,8 +14,6 @@ pub struct Decoder<'b> {
     /// Total number of bits consumed from the buffer so far.
     /// This is the single source of truth for position.
     bit_pos: usize,
-    /// Total number of bits in the buffer.
-    total_bits: usize,
     /// 64-bit accumulator: valid bits are left-aligned (MSB side).
     accum: u64,
     /// Number of valid bits remaining in accum.
@@ -31,7 +29,6 @@ impl<'b> Decoder<'b> {
         let mut d = Decoder {
             buffer: bytes,
             bit_pos: 0,
-            total_bits: bytes.len() * 8,
             accum: 0,
             accum_bits: 0,
         };
@@ -43,7 +40,7 @@ impl<'b> Decoder<'b> {
     /// at least 56 bits (or exhaust the buffer).
     #[inline(always)]
     fn refill(&mut self) {
-        let mut next_byte = (self.bit_pos + self.accum_bits as usize + 7) / 8;
+        let mut next_byte = (self.bit_pos + self.accum_bits as usize).div_ceil(8);
         let buf_len = self.buffer.len();
 
         while self.accum_bits <= 56 && next_byte < buf_len {
@@ -213,7 +210,7 @@ impl<'b> Decoder<'b> {
     /// Read a chunked byte array from the buffer. Requires byte alignment.
     fn byte_array<'a>(&mut self, arena: &'a Arena) -> Result<BumpVec<'a, u8>, FlatDecodeError> {
         // After filler, we should be byte-aligned
-        if self.bit_pos % 8 != 0 {
+        if !self.bit_pos.is_multiple_of(8) {
             return Err(FlatDecodeError::BufferNotByteAligned);
         }
 
