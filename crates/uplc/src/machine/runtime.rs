@@ -2576,7 +2576,7 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
                     .costs
                     .builtin_costs
                     .get_cost(
-                        DefaultFunction::OrByteString,
+                        DefaultFunction::XorByteString,
                         &[
                             cost_model::BOOL_EX_MEM,
                             cost_model::byte_string_ex_mem(left_bytes),
