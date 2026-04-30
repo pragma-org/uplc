@@ -18,13 +18,13 @@ cargo run --bin uplc-fuzz
 cargo run --bin uplc-fuzz -j 4 -d 600
 
 # Plain output (no TUI, suitable for CI)
-cargo run --bin uplc-fuzz --no-tui -d 300
+cargo run --bin uplc-fuzz -- --no-tui -d 300
 
 # Reproducible run with fixed seed
-cargo run --bin uplc-fuzz --seed 42 -d 3600
+cargo run --bin uplc-fuzz -- --seed 42 -d 3600
 
 # Fuzz Plutus V1 with tight budgets
-cargo run --bin uplc-fuzz --version v1 --budget-cpu 1000000 --budget-mem 1000000
+cargo run --bin uplc-fuzz -- --version v1 --budget-cpu 1000000 --budget-mem 1000000
 ```
 
 ### CLI flags
@@ -65,17 +65,17 @@ Example `.uplc` file:
 
 ```bash
 # Replay a saved divergence
-cargo run --bin uplc-fuzz --replay fuzz-output/divergence_0001.uplc
+cargo run --bin uplc-fuzz -- --replay fuzz-output/divergence_0001.uplc
 
 # With debug output (prints top-level term variant)
-cargo run -bin uplc-fuzz --replay fuzz-output/divergence_0001.uplc --debug
+cargo run -bin uplc-fuzz -- --replay fuzz-output/divergence_0001.uplc --debug
 ```
 
 Replay exits with code 1 on divergence, making it usable in scripts:
 
 ```bash
 for f in fuzz-output/divergence_*.uplc; do
-    cargo run -bin uplc-fuzz --replay "$f" || echo "DIVERGING: $f"
+    cargo run -bin uplc-fuzz -- --replay "$f" || echo "DIVERGING: $f"
 done
 ```
 
