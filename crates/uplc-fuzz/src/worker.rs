@@ -135,13 +135,13 @@ pub fn run_worker(config: WorkerConfig, tx: Sender<WorkerMessage>) {
             stats.iterations += 1;
 
             // Reset arena periodically to avoid unbounded memory growth
-            if iteration % config.arena_reset_interval as u64 == 0 {
+            if iteration.is_multiple_of(config.arena_reset_interval as u64) {
                 arena.reset();
             }
         }
 
         // Periodically send stats
-        if iteration % config.stats_interval == 0 {
+        if iteration.is_multiple_of(config.stats_interval) {
             let _ = tx.send(WorkerMessage::Stats(stats.clone()));
         }
     }

@@ -74,7 +74,7 @@ pub enum DataSeed {
 }
 
 // Helper: allocate a slice from a Vec into the arena.
-fn alloc_slice<'a, T: Copy>(arena: &'a Arena, items: Vec<T>) -> &'a [T] {
+fn alloc_slice<T: Copy>(arena: &Arena, items: Vec<T>) -> &[T] {
     arena.alloc_slice(items)
 }
 
@@ -623,7 +623,7 @@ fn builtin_name(id: u8) -> &'static str {
 pub fn builtin_force_count(id: u8) -> usize {
     match id {
         26 | 27 | 28 | 32 | 33 | 34 | 35 | 36 | 88 | 89 | 90 | 91 => 1,
-        29 | 30 | 31 => 2,
+        29..=31 => 2,
         _ => 0,
     }
 }

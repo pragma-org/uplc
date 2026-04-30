@@ -120,11 +120,11 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
                 // Fast path: Apply(Lambda(body), arg)
                 if let Term::Lambda { body, .. } = function {
                     self.step_and_maybe_spend(StepKind::Lambda)?;
-                    stack.push(Frame::FrameAwaitArgForLambda(body, env));
+                    stack.push(Frame::AwaitArgForLambda(body, env));
                     return Ok(MachineState::Compute(env, argument));
                 }
 
-                stack.push(Frame::FrameAwaitFunTerm(env, argument));
+                stack.push(Frame::AwaitFunTerm(env, argument));
 
                 Ok(MachineState::Compute(env, function))
             }
@@ -160,27 +160,25 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
                 }
 
                 // Fast path: Force(Force(Builtin(b)))
-                if let Term::Force(inner) = body {
-                    if let Term::Builtin(fun) = inner {
-                        self.step_and_maybe_spend(StepKind::Force)?;
-                        self.step_and_maybe_spend(StepKind::Builtin)?;
-                        let runtime = Runtime::new(self.arena, fun);
-                        if runtime.needs_force() {
-                            let forced = runtime.force(self.arena);
-                            if forced.needs_force() {
-                                let forced2 = forced.force(self.arena);
-                                let value = if forced2.is_ready() {
-                                    self.call(forced2)?
-                                } else {
-                                    Value::builtin(self.arena, forced2)
-                                };
-                                return Ok(MachineState::Return(value));
-                            }
+                if let Term::Force(Term::Builtin(fun)) = body {
+                    self.step_and_maybe_spend(StepKind::Force)?;
+                    self.step_and_maybe_spend(StepKind::Builtin)?;
+                    let runtime = Runtime::new(self.arena, fun);
+                    if runtime.needs_force() {
+                        let forced = runtime.force(self.arena);
+                        if forced.needs_force() {
+                            let forced2 = forced.force(self.arena);
+                            let value = if forced2.is_ready() {
+                                self.call(forced2)?
+                            } else {
+                                Value::builtin(self.arena, forced2)
+                            };
+                            return Ok(MachineState::Return(value));
                         }
                     }
                 }
 
-                stack.push(Frame::FrameForce);
+                stack.push(Frame::Force);
 
                 Ok(MachineState::Compute(env, body))
             }
@@ -190,7 +188,7 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
                 if let Some((first, terms)) = fields.split_first() {
                     let empty = BumpVec::new_in(self.arena.as_bump());
                     let empty = self.arena.alloc(empty);
-                    stack.push(Frame::FrameConstr(env, *tag, terms, empty));
+                    stack.push(Frame::Constr(env, *tag, terms, empty));
 
                     Ok(MachineState::Compute(env, first))
                 } else {
@@ -202,7 +200,7 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
             Term::Case { constr, branches } => {
                 self.step_and_maybe_spend(StepKind::Case)?;
 
-                stack.push(Frame::FrameCases(env, branches));
+                stack.push(Frame::Cases(env, branches));
 
                 Ok(MachineState::Compute(env, constr))
             }
@@ -232,21 +230,19 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
         value: &'a Value<'a, V>,
     ) -> Result<MachineState<'a, V>, MachineError<'a, V>> {
         match stack.pop() {
-            Some(Frame::FrameAwaitFunTerm(arg_env, argument)) => {
-                stack.push(Frame::FrameAwaitArg(value));
+            Some(Frame::AwaitFunTerm(arg_env, argument)) => {
+                stack.push(Frame::AwaitArg(value));
 
                 Ok(MachineState::Compute(arg_env, argument))
             }
-            Some(Frame::FrameAwaitArg(function)) => self.apply_evaluate(stack, function, value),
-            Some(Frame::FrameAwaitArgForLambda(body, env)) => {
+            Some(Frame::AwaitArg(function)) => self.apply_evaluate(function, value),
+            Some(Frame::AwaitArgForLambda(body, env)) => {
                 let new_env = env.push(self.arena, value);
                 Ok(MachineState::Compute(new_env, body))
             }
-            Some(Frame::FrameAwaitFunValue(argument)) => {
-                self.apply_evaluate(stack, value, argument)
-            }
-            Some(Frame::FrameForce) => self.force_evaluate(stack, value),
-            Some(Frame::FrameConstr(env, tag, terms, values)) => {
+            Some(Frame::AwaitFunValue(argument)) => self.apply_evaluate(value, argument),
+            Some(Frame::Force) => self.force_evaluate(value),
+            Some(Frame::Constr(env, tag, terms, values)) => {
                 let mut new_values =
                     BumpVec::with_capacity_in(values.len() + 1, self.arena.as_bump());
 
@@ -259,7 +255,7 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
                 let values = self.arena.alloc(new_values);
 
                 if let Some((first, terms)) = terms.split_first() {
-                    stack.push(Frame::FrameConstr(env, tag, terms, values));
+                    stack.push(Frame::Constr(env, tag, terms, values));
 
                     Ok(MachineState::Compute(env, first))
                 } else {
@@ -268,7 +264,7 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
                     Ok(MachineState::Return(value))
                 }
             }
-            Some(Frame::FrameCases(env, branches)) => match value {
+            Some(Frame::Cases(env, branches)) => match value {
                 Value::Constr(tag, fields) => {
                     if let Some(branch) = branches.get(*tag) {
                         self.transfer_arg_stack(stack, fields);
@@ -295,7 +291,6 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
 
     fn force_evaluate(
         &mut self,
-        stack: &mut ContextStack<'a, V>,
         value: &'a Value<'a, V>,
     ) -> Result<MachineState<'a, V>, MachineError<'a, V>> {
         match value {
@@ -321,7 +316,6 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
 
     fn apply_evaluate(
         &mut self,
-        stack: &mut ContextStack<'a, V>,
         function: &'a Value<'a, V>,
         argument: &'a Value<'a, V>,
     ) -> Result<MachineState<'a, V>, MachineError<'a, V>> {
@@ -441,7 +435,7 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
         fields: &'a [&'a Value<'a, V>],
     ) {
         for field in fields.iter().rev() {
-            stack.push(Frame::FrameAwaitFunValue(*field));
+            stack.push(Frame::AwaitFunValue(*field));
         }
     }
 
