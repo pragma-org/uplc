@@ -67,6 +67,10 @@ struct Cli {
     /// Disable TUI, use plain log output
     #[arg(long)]
     no_tui: bool,
+
+    /// Print debug info during replay (top-level term variants)
+    #[arg(long)]
+    debug: bool,
 }
 
 fn parse_plutus_version(s: &str) -> PlutusVersion {
@@ -325,7 +329,7 @@ fn replay(path: &Path, cli: &Cli) {
         .collect::<Vec<_>>()
         .join("\n");
 
-    let debug_replay = std::env::var("UPLC_FUZZ_DEBUG_REPLAY").is_ok();
+    let debug_replay = cli.debug;
 
     let arena = Arena::new();
     let program = uplc_turbo::syn::parse_program(&arena, &uplc_text)
