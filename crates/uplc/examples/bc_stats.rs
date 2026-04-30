@@ -1,4 +1,4 @@
-use uplc_turbo::{
+use amaru_uplc::{
     arena::Arena,
     binder::DeBruijn,
     bytecode::{compiler, read_u16, read_u32, Op},
@@ -12,7 +12,7 @@ fn main() {
 
     let script = std::fs::read(&script_path).expect("Failed to read script");
     let arena = Arena::new();
-    let program = flat::decode::<DeBruijn>(&arena, &script).expect("Failed to decode");
+    let program = flat::decode_ungated::<DeBruijn>(&arena, &script).expect("Failed to decode");
 
     let compiled = compiler::compile(
         (

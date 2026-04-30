@@ -1,10 +1,9 @@
 use uplc_macros::generate_tests;
-use uplc_turbo::machine::PlutusVersion;
 
 fn run_test(file_contents: &str, expected_output: &str, expected_budget: &str) {
-    let arena = uplc_turbo::arena::Arena::new();
+    let arena = amaru_uplc::arena::Arena::new();
 
-    let Ok(program) = uplc_turbo::syn::parse_program(&arena, file_contents).into_result() else {
+    let Ok(program) = amaru_uplc::syn::parse_program(&arena, file_contents).into_result() else {
         pretty_assertions::assert_eq!("parse error", expected_output);
         pretty_assertions::assert_eq!("parse error", expected_budget);
 
@@ -12,7 +11,7 @@ fn run_test(file_contents: &str, expected_output: &str, expected_budget: &str) {
     };
 
     // Compile to bytecode
-    let compiled = uplc_turbo::bytecode::compiler::compile(
+    let compiled = amaru_uplc::bytecode::compiler::compile(
         (
             program.version.major(),
             program.version.minor(),
@@ -22,14 +21,14 @@ fn run_test(file_contents: &str, expected_output: &str, expected_budget: &str) {
     );
 
     // Execute via bytecode VM
-    let result = uplc_turbo::bytecode::vm::execute(
+    let result = amaru_uplc::bytecode::vm::execute(
         &arena,
         &compiled,
-        uplc_turbo::machine::ExBudget::default(),
-        uplc_turbo::machine::CostModel::<
-            uplc_turbo::machine::cost_model::builtin_costs::builtin_costs_v3::BuiltinCostsV3,
+        amaru_uplc::machine::ExBudget::default(),
+        amaru_uplc::machine::CostModel::<
+            amaru_uplc::machine::cost_model::builtin_costs::builtin_costs_v3::BuiltinCostsV3,
         >::default(),
-        uplc_turbo::machine::BuiltinSemantics::V2,
+        amaru_uplc::machine::BuiltinSemantics::V2,
     );
 
     let info = result.info;
@@ -41,7 +40,7 @@ fn run_test(file_contents: &str, expected_output: &str, expected_budget: &str) {
         return;
     };
 
-    let expected = uplc_turbo::syn::parse_program(&arena, expected_output)
+    let expected = amaru_uplc::syn::parse_program(&arena, expected_output)
         .into_result()
         .unwrap();
 

@@ -1,4 +1,4 @@
-use uplc_turbo::{
+use amaru_uplc::{
     arena::Arena,
     binder::DeBruijn,
     bytecode::{compiler, vm},
@@ -15,7 +15,7 @@ fn main() {
 
     // AST eval
     let arena = Arena::new();
-    let program = flat::decode::<DeBruijn>(&arena, &script).expect("decode failed");
+    let program = flat::decode_ungated::<DeBruijn>(&arena, &script).expect("decode failed");
     let ast_result = program.eval_version(&arena, PlutusVersion::V3);
     let ast_budget = ast_result.info.consumed_budget;
     match &ast_result.term {
@@ -26,7 +26,7 @@ fn main() {
 
     // Bytecode eval
     let arena2 = Arena::new();
-    let program2 = flat::decode::<DeBruijn>(&arena2, &script).expect("decode failed");
+    let program2 = flat::decode_ungated::<DeBruijn>(&arena2, &script).expect("decode failed");
     let compiled = compiler::compile(
         (
             program2.version.major(),
@@ -60,7 +60,7 @@ fn main() {
     // to see roughly where the divergence happens
     if ast_result.term.is_ok() && result.term.is_err() {
         let arena4 = Arena::new();
-        let program4 = flat::decode::<DeBruijn>(&arena4, &script).expect("decode failed");
+        let program4 = flat::decode_ungated::<DeBruijn>(&arena4, &script).expect("decode failed");
         // Run with limited budget matching what BC used
         let limited = program4.eval_version_budget(
             &arena4,

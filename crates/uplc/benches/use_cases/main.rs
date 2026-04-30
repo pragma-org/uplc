@@ -49,11 +49,11 @@ fn bench_ast(c: &mut Criterion, file_name: &str, script: &[u8]) {
     // Pre-check: verify decode + eval succeed before benchmarking
     {
         let test_arena = Arena::new();
-        if flat::decode::<DeBruijn>(&test_arena, script).is_err() {
+        if flat::decode_ungated::<DeBruijn>(&test_arena, script).is_err() {
             eprintln!("EVAL_FAIL: {}", file_name);
             return;
         }
-        let program = flat::decode::<DeBruijn>(&test_arena, script).unwrap();
+        let program = flat::decode_ungated::<DeBruijn>(&test_arena, script).unwrap();
         if program.eval(&test_arena).term.is_err() {
             eprintln!("EVAL_FAIL: {}", file_name);
             return;
@@ -64,7 +64,7 @@ fn bench_ast(c: &mut Criterion, file_name: &str, script: &[u8]) {
 
     c.bench_function(file_name, |b| {
         b.iter(|| {
-            let program = flat::decode::<DeBruijn>(&arena, script).expect("Failed to decode");
+            let program = flat::decode_ungated::<DeBruijn>(&arena, script).expect("Failed to decode");
 
             let result = program.eval(&arena);
 
@@ -76,7 +76,7 @@ fn bench_ast(c: &mut Criterion, file_name: &str, script: &[u8]) {
 }
 
 fn bench_bytecode(c: &mut Criterion, file_name: &str, script: &[u8]) {
-    use uplc_turbo::{
+    use amaru_uplc::{
         bytecode::{compiler, vm},
         machine::{
             cost_model::builtin_costs::builtin_costs_v3::BuiltinCostsV3, BuiltinSemantics,
@@ -86,7 +86,7 @@ fn bench_bytecode(c: &mut Criterion, file_name: &str, script: &[u8]) {
 
     // AOT compile once outside the measurement loop
     let compile_arena = Box::leak(Box::new(Arena::new()));
-    let program = match flat::decode::<DeBruijn>(compile_arena, script) {
+    let program = match flat::decode_ungated::<DeBruijn>(compile_arena, script) {
         Ok(p) => p,
         Err(_) => {
             eprintln!("EVAL_FAIL: {}", file_name);
