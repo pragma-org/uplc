@@ -147,31 +147,31 @@ impl<'a> Version<'a> {
         Self::new(arena, 1, 1, 0)
     }
 
-    pub fn is_v1_0_0(&'a self) -> bool {
+    pub fn is_v1_0_0(&self) -> bool {
         self.0 .0 == 1 && self.0 .1 == 0 && self.0 .2 == 0
     }
 
-    pub fn is_v1_1_0(&'a self) -> bool {
+    pub fn is_v1_1_0(&self) -> bool {
         self.0 .0 == 1 && self.0 .1 == 1 && self.0 .2 == 0
     }
 
-    pub fn is_valid_version(&'a self) -> bool {
+    pub fn is_valid_version(&self) -> bool {
         self.is_v1_0_0() || self.is_v1_1_0()
     }
 
-    pub fn is_less_than_1_1_0(&'a self) -> bool {
+    pub fn is_less_than_1_1_0(&self) -> bool {
         self.0 .0 == 0 || self.0 .1 == 0
     }
 
-    pub fn major(&'a self) -> usize {
+    pub fn major(&self) -> usize {
         self.0 .0
     }
 
-    pub fn minor(&'a self) -> usize {
+    pub fn minor(&self) -> usize {
         self.0 .1
     }
 
-    pub fn patch(&'a self) -> usize {
+    pub fn patch(&self) -> usize {
         self.0 .2
     }
 }

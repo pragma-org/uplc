@@ -1,14 +1,14 @@
 mod cek;
 mod context;
-pub(crate) mod cost_model;
-mod discharge;
-mod env;
+pub mod cost_model;
+pub(crate) mod discharge;
+pub(crate) mod env;
 mod error;
 mod eval_result;
-mod info;
-mod runtime;
+pub(crate) mod info;
+pub(crate) mod runtime;
 mod state;
-mod value;
+pub(crate) mod value;
 
 pub use cek::*;
 pub use cost_model::ex_budget::*;

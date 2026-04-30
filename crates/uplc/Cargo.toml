@@ -30,6 +30,7 @@ num.workspace = true
 once_cell.workspace = true
 secp256k1.workspace = true
 thiserror.workspace = true
+uplc_macros = { version = "0.1.0", path = "../uplc_macros" }
 
 [dev-dependencies]
 criterion = { workspace = true, features = ["html_reports"] }
@@ -52,4 +53,12 @@ harness = false
 
 [[bench]]
 name = "turbo"
+harness = false
+
+[[bench]]
+name = "flat_decode"
+harness = false
+
+[[bench]]
+name = "bytecode"
 harness = false

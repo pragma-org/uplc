@@ -1,6 +1,15 @@
 [workspace]
 resolver = "2"
 members = ["crates/*"]
+exclude = ["crates/uplc-fuzz"]
+
+[profile.release]
+lto = true
+codegen-units = 1
+
+[profile.bench]
+lto = true
+codegen-units = 1
 
 [workspace.package]
 version = "0.1.0"

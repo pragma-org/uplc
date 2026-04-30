@@ -1,52 +1,91 @@
 use bumpalo::collections::{String as BumpString, Vec as BumpVec};
 
-use crate::{arena::Arena, constant::Integer, flat::zigzag::ZigZag};
+use crate::{
+    arena::Arena, builtin::DefaultFunction, constant::Integer, flat::zigzag::ZigZag,
+    machine::PlutusVersion, program::Version,
+};
 
 use super::FlatDecodeError;
 
+/// FLAT format decoder with a 64-bit accumulator for fast bit-level reads.
+///
+/// Position is tracked as `bit_pos` (total bits consumed from start of buffer).
+/// The accumulator holds pre-fetched bits from the buffer, avoiding per-bit
+/// bounds checks and byte-crossing logic in the hot path.
 pub struct Decoder<'b> {
     pub buffer: &'b [u8],
-    pub used_bits: usize,
-    pub pos: usize,
+    /// Total number of bits consumed from the buffer so far.
+    /// This is the single source of truth for position.
+    bit_pos: usize,
+    /// 64-bit accumulator: valid bits are left-aligned (MSB side).
+    accum: u64,
+    /// Number of valid bits remaining in accum.
+    accum_bits: u32,
 }
 
 pub struct Ctx<'a> {
     pub arena: &'a Arena,
+    pub version: Option<&'a Version<'a>>,
+    pub plutus_version: Option<PlutusVersion>,
+    pub protocol_version: Option<u32>,
+}
+
+impl<'a> Ctx<'a> {
+    /// Returns true if gating is active and the program version is pre-1.1.0.
+    pub fn program_is_pre_1_1_0(&self) -> bool {
+        match self.version {
+            Some(v) => v.is_less_than_1_1_0(),
+            None => false,
+        }
+    }
+
+    /// Returns true if the given builtin is NOT available under the current
+    /// plutus_version / protocol_version combination.
+    pub fn is_builtin_gated(&self, func: &DefaultFunction) -> bool {
+        match (self.plutus_version, self.protocol_version) {
+            (Some(pv), Some(proto)) => !func.is_available_in(pv, proto),
+            _ => false,
+        }
+    }
 }
 
 impl<'b> Decoder<'b> {
     pub fn new(bytes: &'b [u8]) -> Decoder<'b> {
-        Decoder {
+        let mut d = Decoder {
             buffer: bytes,
-            pos: 0,
-            used_bits: 0,
+            bit_pos: 0,
+            accum: 0,
+            accum_bits: 0,
+        };
+        d.refill();
+        d
+    }
+
+    /// Refill the accumulator from the buffer. Loads bytes until we have
+    /// at least 56 bits (or exhaust the buffer).
+    #[inline(always)]
+    fn refill(&mut self) {
+        let mut next_byte = (self.bit_pos + self.accum_bits as usize).div_ceil(8);
+        let buf_len = self.buffer.len();
+
+        while self.accum_bits <= 56 && next_byte < buf_len {
+            self.accum |= (self.buffer[next_byte] as u64) << (56 - self.accum_bits);
+            self.accum_bits += 8;
+            next_byte += 1;
         }
     }
 
-    /// Decode a word of any size.
-    /// This is byte alignment agnostic.
-    /// First we decode the next 8 bits of the buffer.
-    /// We take the 7 least significant bits as the 7 least significant bits of
-    /// the current unsigned integer. If the most significant bit of the 8
-    /// bits is 1 then we take the next 8 and repeat the process above,
-    /// filling in the next 7 least significant bits of the unsigned integer and
-    /// so on. If the most significant bit was instead 0 we stop decoding
-    /// any more bits.
+    /// Decode a word of any size (variable-length unsigned integer).
     pub fn word(&mut self) -> Result<usize, FlatDecodeError> {
         let mut leading_bit = 1;
         let mut final_word: usize = 0;
         let mut shl: usize = 0;
 
-        // continue looping if lead bit is 1 which is 128 as a u8 otherwise exit
         while leading_bit > 0 {
             let word8 = self.bits8(8)?;
-
             let word7 = word8 & 127;
-
             final_word |= (word7 as usize) << shl;
-
             shl += 7;
-
             leading_bit = word8 & 128;
         }
 
@@ -54,12 +93,6 @@ impl<'b> Decoder<'b> {
     }
 
     /// Decode a list of items with a decoder function.
-    /// This is byte alignment agnostic.
-    /// Decode a bit from the buffer.
-    /// If 0 then stop.
-    /// Otherwise we decode an item in the list with the decoder function passed
-    /// in. Then decode the next bit in the buffer and repeat above.
-    /// Returns a list of items decoded with the decoder function.
     pub fn list_with<'a, T, F>(
         &mut self,
         ctx: &mut Ctx<'a>,
@@ -77,206 +110,166 @@ impl<'b> Decoder<'b> {
         Ok(vec_array)
     }
 
-    /// Decode up to 8 bits.
-    /// This is byte alignment agnostic.
-    /// If num_bits is greater than the 8 we throw an IncorrectNumBits error.
-    /// First we decode the next num_bits of bits in the buffer.
-    /// If there are less unused bits in the current byte in the buffer than
-    /// num_bits, then we decode the remaining bits from the most
-    /// significant bits in the next byte in the buffer. Otherwise we decode
-    /// the unused bits from the current byte. Returns the decoded value up
-    /// to a byte in size.
+    /// Decode up to 8 bits from the accumulator.
+    #[inline(always)]
     pub fn bits8(&mut self, num_bits: usize) -> Result<u8, FlatDecodeError> {
-        if num_bits > 8 {
-            return Err(FlatDecodeError::IncorrectNumBits);
+        debug_assert!(num_bits <= 8);
+
+        if (self.accum_bits as usize) < num_bits {
+            self.refill();
+            if (self.accum_bits as usize) < num_bits {
+                return Err(FlatDecodeError::NotEnoughBits(num_bits));
+            }
         }
 
-        self.ensure_bits(num_bits)?;
-
-        let unused_bits = 8 - self.used_bits;
-        let leading_zeroes = 8 - num_bits;
-        let r = (self.buffer[self.pos] << self.used_bits) >> leading_zeroes;
-
-        let x = if num_bits > unused_bits {
-            r | (self.buffer[self.pos + 1] >> (unused_bits + leading_zeroes))
-        } else {
-            r
-        };
-
-        self.drop_bits(num_bits);
+        let x = (self.accum >> (64 - num_bits)) as u8;
+        self.accum <<= num_bits;
+        self.accum_bits -= num_bits as u32;
+        self.bit_pos += num_bits;
 
         Ok(x)
     }
 
-    /// Ensures the buffer has the required bits passed in by required_bits.
-    /// Throws a NotEnoughBits error if there are less bits remaining in the
-    /// buffer than required_bits.
-    fn ensure_bits(&mut self, required_bits: usize) -> Result<(), FlatDecodeError> {
-        if required_bits > (self.buffer.len() - self.pos) * 8 - self.used_bits {
-            Err(FlatDecodeError::NotEnoughBits(required_bits))
-        } else {
-            Ok(())
-        }
-    }
-
-    /// Increment buffer by num_bits.
-    /// If num_bits + used bits is greater than 8,
-    /// then increment position by (num_bits + used bits) / 8
-    /// Use the left over remainder as the new amount of used bits.
-    fn drop_bits(&mut self, num_bits: usize) {
-        let all_used_bits = num_bits + self.used_bits;
-
-        self.used_bits = all_used_bits % 8;
-
-        self.pos += all_used_bits / 8;
-    }
-
-    /// Decodes a filler of max one byte size.
-    /// Decodes bits until we hit a bit that is 1.
-    /// Expects that the 1 is at the end of the current byte in the buffer.
-    pub fn filler(&mut self) -> Result<(), FlatDecodeError> {
-        while self.zero()? {}
-
-        Ok(())
-    }
-
-    /// Decode the next bit in the buffer.
-    /// If the bit was 0 then return true.
-    /// Otherwise return false.
-    /// Throws EndOfBuffer error if used at the end of the array.
-    fn zero(&mut self) -> Result<bool, FlatDecodeError> {
-        let current_bit = self.bit()?;
-
-        Ok(!current_bit)
-    }
-
-    /// Decode the next bit in the buffer.
-    /// If the bit was 1 then return true.
-    /// Otherwise return false.
-    /// Throws EndOfBuffer error if used at the end of the array.
+    /// Decode a single bit.
+    #[inline(always)]
     pub fn bit(&mut self) -> Result<bool, FlatDecodeError> {
-        if self.pos >= self.buffer.len() {
-            return Err(FlatDecodeError::EndOfBuffer);
+        if self.accum_bits == 0 {
+            self.refill();
+            if self.accum_bits == 0 {
+                return Err(FlatDecodeError::EndOfBuffer);
+            }
         }
 
-        let b = self.buffer[self.pos] & (128 >> self.used_bits) > 0;
-
-        self.increment_buffer_by_bit();
+        let b = (self.accum >> 63) != 0;
+        self.accum <<= 1;
+        self.accum_bits -= 1;
+        self.bit_pos += 1;
 
         Ok(b)
     }
 
-    /// Decode an integer of an arbitrary size..
-    ///
-    /// This is byte alignment agnostic.
-    /// First we decode the next 8 bits of the buffer.
-    /// We take the 7 least significant bits as the 7 least significant bits of
-    /// the current unsigned integer. If the most significant bit of the 8
-    /// bits is 1 then we take the next 8 and repeat the process above,
-    /// filling in the next 7 least significant bits of the unsigned integer and
-    /// so on. If the most significant bit was instead 0 we stop decoding
-    /// any more bits. Finally we use zigzag to convert the unsigned integer
-    /// back to a signed integer.
-    pub fn integer(&mut self) -> Result<Integer, FlatDecodeError> {
-        Ok(ZigZag::unzigzag(&self.big_word()?))
+    /// Decodes a filler (skip zero bits until we hit a 1, aligning to byte boundary).
+    pub fn filler(&mut self) -> Result<(), FlatDecodeError> {
+        while !self.bit()? {}
+        Ok(())
     }
 
-    /// Decode a word of 128 bits size.
-    /// This is byte alignment agnostic.
-    /// First we decode the next 8 bits of the buffer.
-    /// We take the 7 least significant bits as the 7 least significant bits of
-    /// the current unsigned integer. If the most significant bit of the 8
-    /// bits is 1 then we take the next 8 and repeat the process above,
-    /// filling in the next 7 least significant bits of the unsigned integer and
-    /// so on. If the most significant bit was instead 0 we stop decoding
-    /// any more bits.
-    pub fn big_word(&mut self) -> Result<Integer, FlatDecodeError> {
-        let mut leading_bit = 1;
-        let mut final_word = Integer::from(0);
-        let mut shift = 0_u32; // Using u32 for shift as it's more than enough for 128 bits
+    /// Decode an integer (zigzag-encoded big_word).
+    pub fn integer(&mut self) -> Result<Integer, FlatDecodeError> {
+        // Fast path: try to decode as u64 first (covers the vast majority of integers).
+        // Only fall back to BigInt for integers > 63 bits (9+ encoded bytes).
+        let mut val: u64 = 0;
+        let mut shift: u32 = 0;
 
-        // Continue looping if lead bit is 1 (0x80) otherwise exit
-        while leading_bit > 0 {
+        loop {
             let word8 = self.bits8(8)?;
-            let word7 = word8 & 0x7F; // 127, get 7 least significant bits
-
-            // Create temporary Integer from word7 and shift it
-            let part = Integer::from(word7);
-            let shifted_part = part << shift;
-
-            // OR it with our result
-            final_word |= shifted_part;
-
-            // Increment shift by 7 for next iteration
+            val |= ((word8 & 0x7F) as u64) << shift;
             shift += 7;
 
-            // Check if we should continue (MSB set)
-            leading_bit = word8 & 0x80; // 128
-        }
+            if word8 & 0x80 == 0 {
+                // Finished — convert via zigzag using u64 arithmetic
+                // ZigZag: if LSB=0, val>>1; if LSB=1, -(val>>1)-1
+                let unsigned = val;
+                let signed = if unsigned & 1 == 0 {
+                    (unsigned >> 1) as i64
+                } else {
+                    -((unsigned >> 1) as i64) - 1
+                };
+                return Ok(Integer::from(signed));
+            }
 
-        Ok(final_word)
+            if shift >= 63 {
+                // Overflow u64 — fall back to BigInt for remaining bytes
+                let mut big = Integer::from(val);
+                loop {
+                    let word8 = self.bits8(8)?;
+                    let part = Integer::from(word8 & 0x7F);
+                    big |= part << shift;
+                    shift += 7;
+                    if word8 & 0x80 == 0 {
+                        return Ok(ZigZag::unzigzag(&big));
+                    }
+                }
+            }
+        }
     }
 
-    /// Decode a byte array.
-    /// Decodes a filler to byte align the buffer,
-    /// then decodes the next byte to get the array length up to a max of 255.
-    /// We decode bytes equal to the array length to form the byte array.
-    /// If the following byte for array length is not 0 we decode it and repeat
-    /// above to continue decoding the byte array. We stop once we hit a
-    /// byte array length of 0. If array length is 0 for first byte array
-    /// length the we return a empty array.
+    /// Decode a variable-length big integer (unsigned).
+    pub fn big_word(&mut self) -> Result<Integer, FlatDecodeError> {
+        // Fast path: try u64 first
+        let mut val: u64 = 0;
+        let mut shift: u32 = 0;
+
+        loop {
+            let word8 = self.bits8(8)?;
+            val |= ((word8 & 0x7F) as u64) << shift;
+            shift += 7;
+
+            if word8 & 0x80 == 0 {
+                return Ok(Integer::from(val));
+            }
+
+            if shift >= 63 {
+                // Overflow — fall back to BigInt
+                let mut big = Integer::from(val);
+                loop {
+                    let word8 = self.bits8(8)?;
+                    let part = Integer::from(word8 & 0x7F);
+                    big |= part << shift;
+                    shift += 7;
+                    if word8 & 0x80 == 0 {
+                        return Ok(big);
+                    }
+                }
+            }
+        }
+    }
+
+    /// Decode a byte-aligned byte array. Calls filler() first to align,
+    /// then reads chunked byte data directly from the buffer.
     pub fn bytes<'a>(&mut self, arena: &'a Arena) -> Result<BumpVec<'a, u8>, FlatDecodeError> {
         self.filler()?;
         self.byte_array(arena)
     }
 
-    /// Decode a byte array.
-    /// Throws a BufferNotByteAligned error if the buffer is not byte aligned
-    /// Decodes the next byte to get the array length up to a max of 255.
-    /// We decode bytes equal to the array length to form the byte array.
-    /// If the following byte for array length is not 0 we decode it and repeat
-    /// above to continue decoding the byte array. We stop once we hit a
-    /// byte array length of 0. If array length is 0 for first byte array
-    /// length the we return a empty array.
+    /// Read a chunked byte array from the buffer. Requires byte alignment.
     fn byte_array<'a>(&mut self, arena: &'a Arena) -> Result<BumpVec<'a, u8>, FlatDecodeError> {
-        if self.used_bits != 0 {
+        // After filler, we should be byte-aligned
+        if !self.bit_pos.is_multiple_of(8) {
             return Err(FlatDecodeError::BufferNotByteAligned);
         }
 
-        self.ensure_bytes(1)?;
+        // Drain the accumulator — switch to direct buffer reading
+        let pos = self.bit_pos / 8;
+        self.accum = 0;
+        self.accum_bits = 0;
 
-        let mut blk_len = self.buffer[self.pos] as usize;
-
-        self.pos += 1;
+        // Read directly from buffer
+        let mut cur = pos;
+        self.ensure_bytes_at(cur, 1)?;
+        let mut blk_len = self.buffer[cur] as usize;
+        cur += 1;
 
         let mut blk_array = BumpVec::with_capacity_in(blk_len, arena.as_bump());
 
         while blk_len != 0 {
-            self.ensure_bytes(blk_len + 1)?;
+            self.ensure_bytes_at(cur, blk_len + 1)?;
 
-            let decoded_array = &self.buffer[self.pos..self.pos + blk_len];
+            blk_array.extend(&self.buffer[cur..cur + blk_len]);
+            cur += blk_len;
 
-            blk_array.extend(decoded_array);
-
-            self.pos += blk_len;
-
-            blk_len = self.buffer[self.pos] as usize;
-
-            self.pos += 1
+            blk_len = self.buffer[cur] as usize;
+            cur += 1;
         }
+
+        // Update position and refill accumulator
+        self.bit_pos = cur * 8;
+        self.refill();
 
         Ok(blk_array)
     }
 
-    /// Decode a string.
-    /// Convert to byte array and then use byte array decoding.
-    /// Decodes a filler to byte align the buffer,
-    /// then decodes the next byte to get the array length up to a max of 255.
-    /// We decode bytes equal to the array length to form the byte array.
-    /// If the following byte for array length is not 0 we decode it and repeat
-    /// above to continue decoding the byte array. We stop once we hit a
-    /// byte array length of 0. If array length is 0 for first byte array
-    /// length the we return a empty array.
+    /// Decode a UTF-8 string (byte array interpreted as UTF-8).
     pub fn utf8<'a>(&mut self, arena: &'a Arena) -> Result<&'a str, FlatDecodeError> {
         let b = self.bytes(arena)?;
 
@@ -287,26 +280,22 @@ impl<'b> Decoder<'b> {
         Ok(s)
     }
 
-    /// Increment used bits by 1.
-    /// If all 8 bits are used then increment buffer position by 1.
-    fn increment_buffer_by_bit(&mut self) {
-        if self.used_bits == 7 {
-            self.pos += 1;
-
-            self.used_bits = 0;
-        } else {
-            self.used_bits += 1;
-        }
-    }
-
-    /// Ensures the buffer has the required bytes passed in by required_bytes.
-    /// Throws a NotEnoughBytes error if there are less bytes remaining in the
-    /// buffer than required_bytes.
-    fn ensure_bytes(&mut self, required_bytes: usize) -> Result<(), FlatDecodeError> {
-        if required_bytes > self.buffer.len() - self.pos {
+    /// Check that at least `required_bytes` are available starting at `pos`.
+    fn ensure_bytes_at(&self, pos: usize, required_bytes: usize) -> Result<(), FlatDecodeError> {
+        if pos + required_bytes > self.buffer.len() {
             Err(FlatDecodeError::NotEnoughBytes(required_bytes))
         } else {
             Ok(())
         }
+    }
+
+    // Legacy compatibility accessors (used by some external code)
+
+    pub fn used_bits(&self) -> usize {
+        self.bit_pos % 8
+    }
+
+    pub fn pos(&self) -> usize {
+        self.bit_pos / 8
     }
 }

@@ -3,8 +3,11 @@ use bumpalo::collections::Vec as BumpVec;
 use crate::{
     arena::Arena,
     binder::Eval,
+    constant::Constant,
     machine::{
-        context::Context, cost_model::builtin_costs::BuiltinCostModel, env::Env,
+        context::{ContextStack, Frame},
+        cost_model::builtin_costs::BuiltinCostModel,
+        env::Env,
         state::MachineState,
     },
     term::Term,
@@ -19,31 +22,37 @@ use super::{
     CostModel, ExBudget, MachineError,
 };
 
-pub struct Machine<'a, B: BuiltinCostModel> {
+pub struct Machine<'a, B: BuiltinCostModel, V: Eval<'a>> {
     pub(super) arena: &'a Arena,
     ex_budget: ExBudget,
-    unbudgeted_steps: [u8; 10],
-    pub(super) costs: CostModel<B>,
+    unbudgeted_steps: [u8; 9],
+    /// Countdown to next spend_unbudgeted_steps call.
+    /// Decremented each step; when it hits 0, we spend.
+    steps_until_spend: u8,
+    pub(crate) costs: CostModel<B>,
     slippage: u8,
     pub(super) logs: Vec<String>,
     pub(super) semantics: BuiltinSemantics,
+    _marker: std::marker::PhantomData<V>,
 }
 
-impl<'a, B: BuiltinCostModel> Machine<'a, B> {
+impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
     pub fn new(
         arena: &'a Arena,
         initial_budget: ExBudget,
         costs: CostModel<B>,
         semantics: BuiltinSemantics,
     ) -> Self {
-        Machine {
+        Self {
             arena,
             ex_budget: initial_budget,
-            unbudgeted_steps: [0; 10],
+            unbudgeted_steps: [0; 9],
+            steps_until_spend: 200,
             costs,
             slippage: 200,
             logs: Vec::new(),
             semantics,
+            _marker: std::marker::PhantomData,
         }
     }
 
@@ -54,39 +63,40 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
         }
     }
 
-    pub fn run<V>(&mut self, term: &'a Term<'a, V>) -> Result<&'a Term<'a, V>, MachineError<'a, V>>
-    where
-        V: Eval<'a>,
-    {
+    /// Get remaining budget without consuming the machine.
+    pub(crate) fn remaining_budget(&self) -> ExBudget {
+        self.ex_budget
+    }
+
+    /// Take logs without consuming the machine.
+    pub(crate) fn take_logs(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.logs)
+    }
+
+    pub fn run(&mut self, term: &'a Term<'a, V>) -> Result<&'a Term<'a, V>, MachineError<'a, V>> {
         self.spend_budget(self.costs.machine_startup)?;
 
-        let initial_context = Context::no_frame(self.arena);
+        let mut stack = ContextStack::new();
 
-        let mut state =
-            MachineState::compute(self.arena, initial_context, Env::new_in(self.arena), term);
+        let mut state = MachineState::Compute(Env::new_in(self.arena), term);
 
         loop {
-            let step = match state {
-                MachineState::Compute(context, env, term) => self.compute(context, env, term),
-                MachineState::Return(context, value) => self.return_compute(context, value),
+            state = match state {
+                MachineState::Compute(env, term) => self.compute(&mut stack, env, term)?,
+                MachineState::Return(value) => self.return_compute(&mut stack, value)?,
                 MachineState::Done(term) => {
                     return Ok(term);
                 }
             };
-
-            state = step?;
         }
     }
 
-    pub fn compute<V>(
+    pub fn compute(
         &mut self,
-        context: &'a Context<'a, V>,
+        stack: &mut ContextStack<'a, V>,
         env: &'a Env<'a, V>,
         term: &'a Term<'a, V>,
-    ) -> Result<&'a mut MachineState<'a, V>, MachineError<'a, V>>
-    where
-        V: Eval<'a>,
-    {
+    ) -> Result<MachineState<'a, V>, MachineError<'a, V>> {
         match term {
             Term::Var(name) => {
                 self.step_and_maybe_spend(StepKind::Var)?;
@@ -95,80 +105,111 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                     .lookup(name.index())
                     .ok_or(MachineError::OpenTermEvaluated(term))?;
 
-                let state = MachineState::return_(self.arena, context, value);
-
-                Ok(state)
+                Ok(MachineState::Return(value))
             }
             Term::Lambda { parameter, body } => {
                 self.step_and_maybe_spend(StepKind::Lambda)?;
 
                 let value = Value::lambda(self.arena, *parameter, body, env);
 
-                let state = MachineState::return_(self.arena, context, value);
-
-                Ok(state)
+                Ok(MachineState::Return(value))
             }
             Term::Apply { function, argument } => {
                 self.step_and_maybe_spend(StepKind::Apply)?;
 
-                let frame = Context::frame_await_fun_term(self.arena, env, argument, context);
+                // Fast path: Apply(Lambda(body), arg)
+                if let Term::Lambda { body, .. } = function {
+                    self.step_and_maybe_spend(StepKind::Lambda)?;
+                    stack.push(Frame::AwaitArgForLambda(body, env));
+                    return Ok(MachineState::Compute(env, argument));
+                }
 
-                let state = MachineState::compute(self.arena, frame, env, function);
+                stack.push(Frame::AwaitFunTerm(env, argument));
 
-                Ok(state)
+                Ok(MachineState::Compute(env, function))
             }
             Term::Delay(body) => {
                 self.step_and_maybe_spend(StepKind::Delay)?;
 
                 let value = Value::delay(self.arena, body, env);
 
-                let state = MachineState::return_(self.arena, context, value);
-
-                Ok(state)
+                Ok(MachineState::Return(value))
             }
             Term::Force(body) => {
                 self.step_and_maybe_spend(StepKind::Force)?;
 
-                let frame = Context::frame_force(self.arena, context);
+                // Fast path: Force(Delay(body))
+                if let Term::Delay(inner) = body {
+                    self.step_and_maybe_spend(StepKind::Delay)?;
+                    return Ok(MachineState::Compute(env, inner));
+                }
 
-                let state = MachineState::compute(self.arena, frame, env, body);
+                // Fast path: Force(Builtin(b))
+                if let Term::Builtin(fun) = body {
+                    self.step_and_maybe_spend(StepKind::Builtin)?;
+                    let runtime = Runtime::new(self.arena, fun);
+                    if runtime.needs_force() {
+                        let forced = runtime.force(self.arena);
+                        let value = if forced.is_ready() {
+                            self.call(forced)?
+                        } else {
+                            Value::builtin(self.arena, forced)
+                        };
+                        return Ok(MachineState::Return(value));
+                    }
+                }
 
-                Ok(state)
+                // Fast path: Force(Force(Builtin(b)))
+                if let Term::Force(Term::Builtin(fun)) = body {
+                    self.step_and_maybe_spend(StepKind::Force)?;
+                    self.step_and_maybe_spend(StepKind::Builtin)?;
+                    let runtime = Runtime::new(self.arena, fun);
+                    if runtime.needs_force() {
+                        let forced = runtime.force(self.arena);
+                        if forced.needs_force() {
+                            let forced2 = forced.force(self.arena);
+                            let value = if forced2.is_ready() {
+                                self.call(forced2)?
+                            } else {
+                                Value::builtin(self.arena, forced2)
+                            };
+                            return Ok(MachineState::Return(value));
+                        }
+                    }
+                }
+
+                stack.push(Frame::Force);
+
+                Ok(MachineState::Compute(env, body))
             }
             Term::Constr { tag, fields } => {
                 self.step_and_maybe_spend(StepKind::Constr)?;
 
                 if let Some((first, terms)) = fields.split_first() {
-                    let frame = Context::frame_constr_empty(self.arena, env, *tag, terms, context);
+                    let empty = BumpVec::new_in(self.arena.as_bump());
+                    let empty = self.arena.alloc(empty);
+                    stack.push(Frame::Constr(env, *tag, terms, empty));
 
-                    let state = MachineState::compute(self.arena, frame, env, first);
-
-                    Ok(state)
+                    Ok(MachineState::Compute(env, first))
                 } else {
                     let value = Value::constr_empty(self.arena, *tag);
 
-                    let state = MachineState::return_(self.arena, context, value);
-
-                    Ok(state)
+                    Ok(MachineState::Return(value))
                 }
             }
             Term::Case { constr, branches } => {
                 self.step_and_maybe_spend(StepKind::Case)?;
 
-                let frame = Context::frame_cases(self.arena, env, branches, context);
+                stack.push(Frame::Cases(env, branches));
 
-                let state = MachineState::compute(self.arena, frame, env, constr);
-
-                Ok(state)
+                Ok(MachineState::Compute(env, constr))
             }
             Term::Constant(constant) => {
                 self.step_and_maybe_spend(StepKind::Constant)?;
 
                 let value = Value::con(self.arena, constant);
 
-                let state = MachineState::return_(self.arena, context, value);
-
-                Ok(state)
+                Ok(MachineState::Return(value))
             }
             Term::Builtin(fun) => {
                 self.step_and_maybe_spend(StepKind::Builtin)?;
@@ -177,43 +218,36 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
 
                 let value = Value::builtin(self.arena, runtime);
 
-                let state = MachineState::return_(self.arena, context, value);
-
-                Ok(state)
+                Ok(MachineState::Return(value))
             }
             Term::Error => Err(MachineError::ExplicitErrorTerm),
         }
     }
 
-    pub fn return_compute<V>(
+    pub fn return_compute(
         &mut self,
-        context: &'a Context<'a, V>,
+        stack: &mut ContextStack<'a, V>,
         value: &'a Value<'a, V>,
-    ) -> Result<&'a mut MachineState<'a, V>, MachineError<'a, V>>
-    where
-        V: Eval<'a>,
-    {
-        match context {
-            Context::FrameAwaitFunTerm(arg_env, argument, context) => {
-                let context = Context::frame_await_arg(self.arena, value, context);
+    ) -> Result<MachineState<'a, V>, MachineError<'a, V>> {
+        match stack.pop() {
+            Some(Frame::AwaitFunTerm(arg_env, argument)) => {
+                stack.push(Frame::AwaitArg(value));
 
-                let state = MachineState::compute(self.arena, context, arg_env, argument);
-
-                Ok(state)
+                Ok(MachineState::Compute(arg_env, argument))
             }
-            Context::FrameAwaitArg(function, context) => {
-                self.apply_evaluate(context, function, value)
+            Some(Frame::AwaitArg(function)) => self.apply_evaluate(function, value),
+            Some(Frame::AwaitArgForLambda(body, env)) => {
+                let new_env = env.push(self.arena, value);
+                Ok(MachineState::Compute(new_env, body))
             }
-            Context::FrameAwaitFunValue(argument, context) => {
-                self.apply_evaluate(context, value, argument)
-            }
-            Context::FrameForce(context) => self.force_evaluate(context, value),
-            Context::FrameConstr(env, tag, terms, values, context) => {
+            Some(Frame::AwaitFunValue(argument)) => self.apply_evaluate(value, argument),
+            Some(Frame::Force) => self.force_evaluate(value),
+            Some(Frame::Constr(env, tag, terms, values)) => {
                 let mut new_values =
                     BumpVec::with_capacity_in(values.len() + 1, self.arena.as_bump());
 
-                for value in values.iter() {
-                    new_values.push(*value);
+                for v in values.iter() {
+                    new_values.push(*v);
                 }
 
                 new_values.push(value);
@@ -221,64 +255,46 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 let values = self.arena.alloc(new_values);
 
                 if let Some((first, terms)) = terms.split_first() {
-                    let frame =
-                        Context::frame_constr(self.arena, env, *tag, terms, values, context);
+                    stack.push(Frame::Constr(env, tag, terms, values));
 
-                    let state = MachineState::compute(self.arena, frame, env, first);
-
-                    Ok(state)
+                    Ok(MachineState::Compute(env, first))
                 } else {
-                    let value = Value::constr(self.arena, *tag, values);
+                    let value = Value::constr(self.arena, tag, values);
 
-                    let state = MachineState::return_(self.arena, context, value);
-
-                    Ok(state)
+                    Ok(MachineState::Return(value))
                 }
             }
-            Context::FrameCases(env, branches, context) => match value {
+            Some(Frame::Cases(env, branches)) => match value {
                 Value::Constr(tag, fields) => {
-                    // kind of awkward tbh cause tag is already usize so how can it be bigger
-                    // than the max
-                    // if *tag > usize::MAX {
-                    //     return Err(MachineError::MaxConstrTagExceeded(value));
-                    // }
-
                     if let Some(branch) = branches.get(*tag) {
-                        let frame = self.transfer_arg_stack(fields, context);
+                        self.transfer_arg_stack(stack, fields);
 
-                        let state = MachineState::compute(self.arena, frame, env, branch);
-
-                        Ok(state)
+                        Ok(MachineState::Compute(env, branch))
                     } else {
                         Err(MachineError::MissingCaseBranch(branches, value))
                     }
                 }
+                Value::Con(constant) => self.case_on_constant(stack, constant, env, branches),
                 v => Err(MachineError::NonConstrScrutinized(v)),
             },
-            Context::NoFrame => {
-                if self.unbudgeted_steps[9] > 0 {
+            None => {
+                if self.steps_until_spend < self.slippage {
                     self.spend_unbudgeted_steps()?;
                 }
 
                 let term = discharge::value_as_term(self.arena, value);
 
-                let state = MachineState::done(self.arena, term);
-
-                Ok(state)
+                Ok(MachineState::Done(term))
             }
         }
     }
 
-    fn force_evaluate<V>(
+    fn force_evaluate(
         &mut self,
-        context: &'a Context<'a, V>,
         value: &'a Value<'a, V>,
-    ) -> Result<&'a mut MachineState<'a, V>, MachineError<'a, V>>
-    where
-        V: Eval<'a>,
-    {
+    ) -> Result<MachineState<'a, V>, MachineError<'a, V>> {
         match value {
-            Value::Delay(term, env) => Ok(MachineState::compute(self.arena, context, env, term)),
+            Value::Delay(term, env) => Ok(MachineState::Compute(env, term)),
             Value::Builtin(runtime) => {
                 if runtime.needs_force() {
                     let value = if runtime.is_ready() {
@@ -287,9 +303,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         Value::builtin(self.arena, runtime.force(self.arena))
                     };
 
-                    let state = MachineState::return_(self.arena, context, value);
-
-                    Ok(state)
+                    Ok(MachineState::Return(value))
                 } else {
                     let term = discharge::value_as_term(self.arena, value);
 
@@ -300,36 +314,28 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
         }
     }
 
-    fn apply_evaluate<V>(
+    fn apply_evaluate(
         &mut self,
-        context: &'a Context<'a, V>,
         function: &'a Value<'a, V>,
         argument: &'a Value<'a, V>,
-    ) -> Result<&'a mut MachineState<'a, V>, MachineError<'a, V>>
-    where
-        V: Eval<'a>,
-    {
+    ) -> Result<MachineState<'a, V>, MachineError<'a, V>> {
         match function {
             Value::Lambda { body, env, .. } => {
                 let new_env = env.push(self.arena, argument);
 
-                let state = MachineState::compute(self.arena, context, new_env, body);
-
-                Ok(state)
+                Ok(MachineState::Compute(new_env, body))
             }
             Value::Builtin(runtime) => {
                 if !runtime.needs_force() && runtime.is_arrow() {
                     let runtime = runtime.push(self.arena, argument);
 
                     let value = if runtime.is_ready() {
-                        self.eval_builtin_app(runtime)?
+                        self.call(runtime)?
                     } else {
                         Value::builtin(self.arena, runtime)
                     };
 
-                    let state = MachineState::return_(self.arena, context, value);
-
-                    Ok(state)
+                    Ok(MachineState::Return(value))
                 } else {
                     let term = discharge::value_as_term(self.arena, function);
 
@@ -340,54 +346,122 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
         }
     }
 
-    fn eval_builtin_app<V>(
+    fn case_on_constant(
         &mut self,
-        runtime: &'a Runtime<'a, V>,
-    ) -> Result<&'a Value<'a, V>, MachineError<'a, V>>
-    where
-        V: Eval<'a>,
-    {
-        self.call(runtime)
-    }
+        stack: &mut ContextStack<'a, V>,
+        constant: &'a Constant<'a>,
+        env: &'a Env<'a, V>,
+        branches: &'a [&'a Term<'a, V>],
+    ) -> Result<MachineState<'a, V>, MachineError<'a, V>> {
+        match constant {
+            Constant::Boolean(b) => {
+                // Haskell: False with 1 or 2 branches, True with exactly 2
+                let tag: usize = if *b { 1 } else { 0 };
+                match (b, branches.len()) {
+                    (false, 1) | (false, 2) | (true, 2) => {
+                        Ok(MachineState::Compute(env, branches[tag]))
+                    }
+                    _ => Err(MachineError::NonConstrScrutinized(Value::con(
+                        self.arena, constant,
+                    ))),
+                }
+            }
+            Constant::Unit => {
+                if branches.len() != 1 {
+                    return Err(MachineError::NonConstrScrutinized(Value::con(
+                        self.arena, constant,
+                    )));
+                }
+                Ok(MachineState::Compute(env, branches[0]))
+            }
+            Constant::Integer(int_val) => {
+                use num::ToPrimitive;
+                let tag = int_val.to_usize().ok_or_else(|| {
+                    MachineError::NonConstrScrutinized(Value::con(self.arena, constant))
+                })?;
+                if tag >= branches.len() {
+                    return Err(MachineError::NonConstrScrutinized(Value::con(
+                        self.arena, constant,
+                    )));
+                }
+                Ok(MachineState::Compute(env, branches[tag]))
+            }
+            Constant::ProtoList(typ, items) => {
+                match (items.is_empty(), branches.len()) {
+                    // Non-empty list with 1 or 2 branches: take branch 0, push head+tail
+                    (false, 1) | (false, 2) => {
+                        let head_val: &'a Value<'a, V> = Value::con(self.arena, items[0]);
+                        let tail_const = Constant::proto_list(self.arena, typ, &items[1..]);
+                        let tail_val: &'a Value<'a, V> = Value::con(self.arena, tail_const);
 
-    fn transfer_arg_stack<V>(
-        &mut self,
-        fields: &'a [&'a Value<'a, V>],
-        context: &'a Context<'a, V>,
-    ) -> &'a Context<'a, V>
-    where
-        V: Eval<'a>,
-    {
-        let mut c = context;
+                        let fields: &'a [&'a Value<'a, V>] = self.arena.alloc([head_val, tail_val]);
+                        self.transfer_arg_stack(stack, fields);
 
-        for field in fields.iter().rev() {
-            c = Context::frame_await_fun_value(self.arena, *field, c);
+                        Ok(MachineState::Compute(env, branches[0]))
+                    }
+                    // Empty list with exactly 2 branches: take branch 1
+                    (true, 2) => Ok(MachineState::Compute(env, branches[1])),
+                    // Empty list with 1 branch (Cons-only): error
+                    // Any other branch count: error
+                    _ => Err(MachineError::NonConstrScrutinized(Value::con(
+                        self.arena, constant,
+                    ))),
+                }
+            }
+            Constant::ProtoPair(_t1, _t2, fst, snd) => {
+                if branches.len() != 1 {
+                    return Err(MachineError::NonConstrScrutinized(Value::con(
+                        self.arena, constant,
+                    )));
+                }
+
+                let fst_val: &'a Value<'a, V> = Value::con(self.arena, fst);
+                let snd_val: &'a Value<'a, V> = Value::con(self.arena, snd);
+
+                let fields: &'a [&'a Value<'a, V>] = self.arena.alloc([fst_val, snd_val]);
+                self.transfer_arg_stack(stack, fields);
+
+                Ok(MachineState::Compute(env, branches[0]))
+            }
+            _ => Err(MachineError::NonConstrScrutinized(Value::con(
+                self.arena, constant,
+            ))),
         }
-
-        c
     }
 
-    fn step_and_maybe_spend<V>(&mut self, step: StepKind) -> Result<(), MachineError<'a, V>>
-    where
-        V: Eval<'a>,
-    {
-        let index = step as usize;
+    fn transfer_arg_stack(
+        &mut self,
+        stack: &mut ContextStack<'a, V>,
+        fields: &'a [&'a Value<'a, V>],
+    ) {
+        for field in fields.iter().rev() {
+            stack.push(Frame::AwaitFunValue(*field));
+        }
+    }
 
-        self.unbudgeted_steps[index] += 1;
-        self.unbudgeted_steps[9] += 1;
+    pub(crate) fn step_and_maybe_spend(
+        &mut self,
+        step: StepKind,
+    ) -> Result<(), MachineError<'a, V>> {
+        self.unbudgeted_steps[step as usize] += 1;
+        self.steps_until_spend -= 1;
 
-        if self.unbudgeted_steps[9] >= self.slippage {
+        if self.steps_until_spend == 0 {
             self.spend_unbudgeted_steps()?;
         }
 
         Ok(())
     }
 
-    fn spend_unbudgeted_steps<V>(&mut self) -> Result<(), MachineError<'a, V>>
-    where
-        V: Eval<'a>,
-    {
-        for step_kind in 0..self.unbudgeted_steps.len() - 1 {
+    pub(crate) fn flush_unbudgeted_steps(&mut self) -> Result<(), MachineError<'a, V>> {
+        if self.steps_until_spend < self.slippage {
+            self.spend_unbudgeted_steps()?;
+        }
+        Ok(())
+    }
+
+    fn spend_unbudgeted_steps(&mut self) -> Result<(), MachineError<'a, V>> {
+        for step_kind in 0..self.unbudgeted_steps.len() {
             let mut unspent_step_budget = self.costs.machine_costs.get(step_kind);
 
             unspent_step_budget.occurrences(self.unbudgeted_steps[step_kind] as i64);
@@ -397,20 +471,17 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
             self.unbudgeted_steps[step_kind] = 0;
         }
 
-        self.unbudgeted_steps[9] = 0;
+        self.steps_until_spend = self.slippage;
 
         Ok(())
     }
 
-    pub(super) fn spend_budget<V>(
+    pub(crate) fn spend_budget(
         &mut self,
         spend_budget: ExBudget,
-    ) -> Result<(), MachineError<'a, V>>
-    where
-        V: Eval<'a>,
-    {
-        self.ex_budget.mem -= spend_budget.mem;
-        self.ex_budget.cpu -= spend_budget.cpu;
+    ) -> Result<(), MachineError<'a, V>> {
+        self.ex_budget.mem = self.ex_budget.mem.saturating_sub(spend_budget.mem);
+        self.ex_budget.cpu = self.ex_budget.cpu.saturating_sub(spend_budget.cpu);
 
         if self.ex_budget.mem < 0 || self.ex_budget.cpu < 0 {
             Err(MachineError::OutOfExError(self.ex_budget))

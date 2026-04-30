@@ -12,6 +12,11 @@ use super::{
 pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a PlutusData<'a>, Extra<'a>> {
     recursive(|data| {
         choice((
+            // Allow redundant parentheses around any data node.
+            just('(')
+                .padded()
+                .ignore_then(data.clone().padded())
+                .then_ignore(just(')').padded()),
             just('B')
                 .padded()
                 .ignore_then(just('#').ignore_then(hex_bytes()).padded())

@@ -29,3 +29,7 @@ pub const PROTO_ARRAY_TWO: u8 = 12;
 pub const PROTO_PAIR_ONE: u8 = 7;
 pub const PROTO_PAIR_TWO: u8 = 7;
 pub const PROTO_PAIR_THREE: u8 = 6;
+pub const VALUE: u8 = 13;
+pub const BLS12_381_G1_ELEMENT: u8 = 9;
+pub const BLS12_381_G2_ELEMENT: u8 = 10;
+pub const BLS12_381_ML_RESULT: u8 = 11;

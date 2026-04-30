@@ -4,7 +4,10 @@ mod error;
 pub use encoder::Encoder;
 pub use error::FlatEncodeError;
 
-use crate::{binder::Binder, constant::Constant, program::Program, term::Term, typ::Type};
+use crate::{
+    binder::Binder, constant::Constant, ledger_value::LedgerValue, program::Program, term::Term,
+    typ::Type,
+};
 
 use super::tag;
 
@@ -158,9 +161,33 @@ fn encode_constant<'a>(e: &mut Encoder, constant: &'a Constant<'a>) -> Result<()
             encode_constant_value(e, fst)?;
             encode_constant_value(e, snd)?;
         }
-        Constant::Bls12_381G1Element(_)
-        | Constant::Bls12_381G2Element(_)
-        | Constant::Bls12_381MlResult(_) => return Err(FlatEncodeError::BlsElementNotSupported),
+        Constant::Value(v) => {
+            e.list_with(&[tag::VALUE], encode_constant_tag)?;
+
+            encode_value(e, v)?;
+        }
+        Constant::Bls12_381G1Element(g1) => {
+            e.list_with(&[tag::BLS12_381_G1_ELEMENT], encode_constant_tag)?;
+            let mut out = [0u8; 48];
+            unsafe {
+                blst::blst_p1_compress(out.as_mut_ptr(), *g1);
+            }
+            e.bytes(&out)?;
+        }
+        Constant::Bls12_381G2Element(g2) => {
+            e.list_with(&[tag::BLS12_381_G2_ELEMENT], encode_constant_tag)?;
+            let mut out = [0u8; 96];
+            unsafe {
+                blst::blst_p2_compress(out.as_mut_ptr(), *g2);
+            }
+            e.bytes(&out)?;
+        }
+        Constant::Bls12_381MlResult(_) => {
+            // MlResult has no serializable form, but we need a unique tag
+            // so it won't be confused with other types
+            e.list_with(&[tag::BLS12_381_ML_RESULT], encode_constant_tag)?;
+            e.bytes(&[])?;
+        }
     }
 
     Ok(())
@@ -202,6 +229,7 @@ fn encode_type(typ: &Type, bytes: &mut Vec<u8>) -> Result<(), FlatEncodeError> {
             encode_type(type2, bytes)?;
         }
         Type::Data => bytes.push(tag::DATA),
+        Type::Value => bytes.push(tag::VALUE),
         Type::Bls12_381G1Element | Type::Bls12_381G2Element | Type::Bls12_381MlResult => {
             return Err(FlatEncodeError::BlsElementNotSupported)
         }
@@ -236,13 +264,55 @@ fn encode_constant_value<'a>(e: &mut Encoder, x: &'a &Constant<'a>) -> Result<()
 
             encode_constant_value(e, b)?;
         }
-        Constant::Data(_data) => {
-            todo!();
+        Constant::Data(data) => {
+            // Data is CBOR-encoded, then the CBOR bytes are written as a FLAT bytestring
+            let cbor_bytes =
+                minicbor::to_vec(data).map_err(|_| FlatEncodeError::BlsElementNotSupported)?; // reuse error variant for now
+            e.bytes(&cbor_bytes)?;
         }
-        Constant::Bls12_381G1Element(_)
-        | Constant::Bls12_381G2Element(_)
-        | Constant::Bls12_381MlResult(_) => return Err(FlatEncodeError::BlsElementNotSupported),
+        Constant::Value(v) => {
+            encode_value(e, v)?;
+        }
+        Constant::Bls12_381G1Element(g1) => {
+            let mut out = [0u8; 48];
+            unsafe {
+                blst::blst_p1_compress(out.as_mut_ptr(), *g1);
+            }
+            e.bytes(&out)?;
+        }
+        Constant::Bls12_381G2Element(g2) => {
+            let mut out = [0u8; 96];
+            unsafe {
+                blst::blst_p2_compress(out.as_mut_ptr(), *g2);
+            }
+            e.bytes(&out)?;
+        }
+        Constant::Bls12_381MlResult(_) => {
+            e.bytes(&[])?;
+        }
     }
+
+    Ok(())
+}
+
+fn encode_value(e: &mut Encoder, v: &LedgerValue) -> Result<(), FlatEncodeError> {
+    for entry in v.entries {
+        e.one();
+
+        e.bytes(entry.currency)?;
+
+        for token in entry.tokens {
+            e.one();
+
+            e.bytes(token.name)?;
+
+            e.integer(token.quantity);
+        }
+
+        e.zero();
+    }
+
+    e.zero();
 
     Ok(())
 }
@@ -262,8 +332,7 @@ mod tests {
     use super::*;
     use crate::arena::Arena;
     use crate::binder::DeBruijn;
-    use crate::flat::decode;
-    use crate::machine::PlutusVersion;
+    use crate::flat::decode_ungated as decode;
 
     #[test]
     fn roundtrip_program_big_constr_tag() {
@@ -282,7 +351,7 @@ mod tests {
         let bytes_hex = "0101003370090011aab9d37549810cd8668218809f4100420101ff0001";
         let bytes = hex::decode(bytes_hex).unwrap();
         let arena = Arena::new();
-        let program: Result<&Program<DeBruijn>, _> = decode(&arena, &bytes, PlutusVersion::V3, 9);
+        let program: Result<&Program<DeBruijn>, _> = decode(&arena, &bytes);
         match program {
             Ok(program) => {
                 let encoded = encode(program);
@@ -323,7 +392,7 @@ mod tests {
             "0101003370090011bad357426aae78dd526112d8799fc24c033b2e3c9fd0803ce7ffffffff0001";
         let bytes = hex::decode(bytes_hex).unwrap();
         let arena = Arena::new();
-        let program: Result<&Program<DeBruijn>, _> = decode(&arena, &bytes, PlutusVersion::V3, 9);
+        let program: Result<&Program<DeBruijn>, _> = decode(&arena, &bytes);
         match program {
             Ok(program) => {
                 let encoded = encode(program);
@@ -363,7 +432,7 @@ mod tests {
         let bytes_hex = "0101003370490021bad357426ae88dd62601049f070eff0001";
         let bytes = hex::decode(bytes_hex).unwrap();
         let arena = Arena::new();
-        let program: Result<&Program<DeBruijn>, _> = decode(&arena, &bytes, PlutusVersion::V3, 9);
+        let program: Result<&Program<DeBruijn>, _> = decode(&arena, &bytes);
         match program {
             Ok(program) => {
                 let encoded = encode(program);

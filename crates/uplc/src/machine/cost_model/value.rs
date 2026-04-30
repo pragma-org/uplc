@@ -46,14 +46,12 @@ pub fn string_ex_mem(s: &str) -> i64 {
     s.chars().count() as i64
 }
 
-pub fn pair_ex_mem(l: &Constant, r: &Constant) -> i64 {
-    constant_ex_mem(l) + constant_ex_mem(r)
+pub fn pair_ex_mem(_l: &Constant, _r: &Constant) -> i64 {
+    i64::MAX
 }
 
 pub fn proto_list_ex_mem(items: &[&Constant]) -> i64 {
-    items
-        .iter()
-        .fold(0, |acc, constant| acc + constant_ex_mem(constant))
+    items.len() as i64
 }
 
 pub fn value_ex_mem<'a, V>(v: &'a Value<'a, V>) -> i64
@@ -66,6 +64,8 @@ where
         Value::Builtin(_) => 1,
         Value::Delay(_, _) => 1,
         Value::Constr(_, _) => 1,
+        Value::LambdaBC { .. } => 1,
+        Value::DelayBC { .. } => 1,
     }
 }
 
@@ -83,6 +83,7 @@ pub fn constant_ex_mem(c: &Constant) -> i64 {
         Constant::Bls12_381G1Element(_) => g1_element_ex_mem(),
         Constant::Bls12_381G2Element(_) => g2_element_ex_mem(),
         Constant::Bls12_381MlResult(_) => ml_result_ex_mem(),
+        Constant::Value(v) => v.size as i64,
     }
 }
 

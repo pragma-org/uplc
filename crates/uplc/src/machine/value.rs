@@ -4,6 +4,7 @@ use crate::{
     arena::Arena,
     binder::Eval,
     constant::{Constant, Integer},
+    ledger_value::LedgerValue,
     term::Term,
     typ::Type,
 };
@@ -24,6 +25,20 @@ where
     Builtin(&'a Runtime<'a, V>),
     Delay(&'a Term<'a, V>, &'a Env<'a, V>),
     Constr(usize, &'a [&'a Value<'a, V>]),
+    /// Bytecode closure: lambda body at bytecode offset, capturing env.
+    /// lambda_id indexes into CompiledProgram::lambdas for discharge info.
+    LambdaBC {
+        body_ip: u32,
+        lambda_id: u16,
+        env: &'a Env<'a, V>,
+    },
+    /// Bytecode thunk: delayed body at bytecode offset, capturing env.
+    /// delay_id indexes into CompiledProgram::delays for discharge info.
+    DelayBC {
+        body_ip: u32,
+        delay_id: u16,
+        env: &'a Env<'a, V>,
+    },
 }
 
 impl<'a, V> Value<'a, V>
@@ -64,6 +79,32 @@ where
         values: &'a [&'a Value<'a, V>],
     ) -> &'a Value<'a, V> {
         arena.alloc(Value::Constr(tag, values))
+    }
+
+    pub fn lambda_bc(
+        arena: &'a Arena,
+        body_ip: u32,
+        lambda_id: u16,
+        env: &'a Env<'a, V>,
+    ) -> &'a Value<'a, V> {
+        arena.alloc(Value::LambdaBC {
+            body_ip,
+            lambda_id,
+            env,
+        })
+    }
+
+    pub fn delay_bc(
+        arena: &'a Arena,
+        body_ip: u32,
+        delay_id: u16,
+        env: &'a Env<'a, V>,
+    ) -> &'a Value<'a, V> {
+        arena.alloc(Value::DelayBC {
+            body_ip,
+            delay_id,
+            env,
+        })
     }
 
     pub fn builtin(arena: &'a Arena, runtime: &'a Runtime<'a, V>) -> &'a Value<'a, V> {
@@ -251,6 +292,16 @@ where
         };
 
         Ok(ml_res)
+    }
+
+    pub fn unwrap_ledger_value(&'a self) -> Result<&'a LedgerValue<'a>, MachineError<'a, V>> {
+        let inner = self.unwrap_constant()?;
+
+        let Constant::Value(v) = inner else {
+            return Err(MachineError::type_mismatch(Type::Value, inner));
+        };
+
+        Ok(v)
     }
 }
 

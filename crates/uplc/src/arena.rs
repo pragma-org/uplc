@@ -40,6 +40,15 @@ impl Arena {
         &self.integers[idx]
     }
 
+    /// Allocate a slice from a Vec into the arena.
+    /// The Vec's contents are copied into bump-allocated memory and the Vec is dropped.
+    pub fn alloc_slice<T: Copy>(&self, items: Vec<T>) -> &[T] {
+        if items.is_empty() {
+            return &[];
+        }
+        self.bump.alloc_slice_copy(&items)
+    }
+
     pub(crate) fn as_bump(&self) -> &Bump {
         &self.bump
     }

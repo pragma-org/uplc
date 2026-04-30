@@ -8,15 +8,51 @@ use crate::{
     builtin::DefaultFunction,
     constant::{self, Constant, Integer},
     data::PlutusData,
+    ledger_value::{self, LedgerValue, ValueError},
     machine::cost_model::builtin_costs::BuiltinCostModel,
     typ::Type,
 };
 use bumpalo::collections::{CollectIn, String as BumpString, Vec as BumpVec};
 use num::{Integer as NumInteger, Signed, Zero};
 
-use super::{cost_model, value::Value, Machine, MachineError};
+use super::{cost_model, value::Value, Machine, MachineError, RuntimeError};
+
+/// Max builtin arity is 6 (ChooseData). Fixed-size array avoids
+/// heap allocation and clone overhead for partial builtin application.
+const MAX_BUILTIN_ARITY: usize = 6;
 
 pub const INTEGER_TO_BYTE_STRING_MAXIMUM_OUTPUT_LENGTH: i64 = 8192;
+
+/// Check that an integer fits in a signed 4096-bit range: [-(2^4095), 2^4095 - 1].
+/// Used by multiScalarMul to limit scalar sizes.
+fn check_multi_scalar_range(int: &Integer) -> Result<(), RuntimeError<'static>> {
+    let bits = int.bits();
+
+    if bits <= 4095 {
+        return Ok(());
+    }
+
+    if bits > 4096 {
+        return Err(RuntimeError::MultiScalarMulScalarOutOfBounds);
+    }
+
+    // bits == 4096: only valid if negative and exactly -(2^4095)
+    if !int.is_negative() {
+        return Err(RuntimeError::MultiScalarMulScalarOutOfBounds);
+    }
+
+    let magnitude = int.magnitude();
+
+    use num::One;
+
+    let two_pow_4095 = num::BigUint::one() << 4095;
+
+    if *magnitude == two_pow_4095 {
+        Ok(())
+    } else {
+        Err(RuntimeError::MultiScalarMulScalarOutOfBounds)
+    }
+}
 
 pub enum BuiltinSemantics {
     V1,
@@ -40,12 +76,13 @@ impl From<&PlutusVersion> for BuiltinSemantics {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Runtime<'a, V>
 where
     V: Eval<'a>,
 {
-    pub args: BumpVec<'a, &'a Value<'a, V>>,
+    arg_buf: [Option<&'a Value<'a, V>>; MAX_BUILTIN_ARITY],
+    arg_count: u8,
     pub fun: &'a DefaultFunction,
     pub forces: usize,
 }
@@ -56,32 +93,43 @@ where
 {
     pub fn new(arena: &'a Arena, fun: &'a DefaultFunction) -> &'a Self {
         arena.alloc(Self {
-            args: BumpVec::new_in(arena.as_bump()),
+            arg_buf: [None; MAX_BUILTIN_ARITY],
+            arg_count: 0,
             fun,
             forces: 0,
         })
     }
 
     pub fn force(&self, arena: &'a Arena) -> &'a Self {
-        let new_runtime = arena.alloc(Runtime {
-            args: self.args.clone(),
+        arena.alloc(Runtime {
+            arg_buf: self.arg_buf,
+            arg_count: self.arg_count,
             fun: self.fun,
             forces: self.forces + 1,
-        });
-
-        new_runtime
+        })
     }
 
     pub fn push(&self, arena: &'a Arena, arg: &'a Value<'a, V>) -> &'a Self {
-        let new_runtime = arena.alloc(Runtime {
-            args: self.args.clone(),
+        let mut new_buf = self.arg_buf;
+        new_buf[self.arg_count as usize] = Some(arg);
+        arena.alloc(Runtime {
+            arg_buf: new_buf,
+            arg_count: self.arg_count + 1,
             fun: self.fun,
             forces: self.forces,
-        });
+        })
+    }
 
-        new_runtime.args.push(arg);
+    /// Access an argument by index.
+    #[inline]
+    pub fn arg(&self, index: usize) -> &'a Value<'a, V> {
+        // SAFETY: args are always filled sequentially, so arg_buf[i] is Some for i < arg_count
+        unsafe { self.arg_buf[index].unwrap_unchecked() }
+    }
 
-        new_runtime
+    #[inline]
+    pub fn arg_count(&self) -> usize {
+        self.arg_count as usize
     }
 
     pub fn needs_force(&self) -> bool {
@@ -89,26 +137,23 @@ where
     }
 
     pub fn is_arrow(&self) -> bool {
-        self.args.len() < self.fun.arity()
+        (self.arg_count as usize) < self.fun.arity()
     }
 
     pub fn is_ready(&self) -> bool {
-        self.args.len() == self.fun.arity()
+        self.arg_count as usize == self.fun.arity()
     }
 }
 
-impl<'a, B: BuiltinCostModel> Machine<'a, B> {
-    pub fn call<V>(
+impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
+    pub fn call(
         &mut self,
         runtime: &'a Runtime<'a, V>,
-    ) -> Result<&'a Value<'a, V>, MachineError<'a, V>>
-    where
-        V: Eval<'a>,
-    {
+    ) -> Result<&'a Value<'a, V>, MachineError<'a, V>> {
         match runtime.fun {
             DefaultFunction::AddInteger => {
-                let arg1 = runtime.args[0].unwrap_integer()?;
-                let arg2 = runtime.args[1].unwrap_integer()?;
+                let arg1 = runtime.arg(0).unwrap_integer()?;
+                let arg2 = runtime.arg(1).unwrap_integer()?;
 
                 let budget = self
                     .costs
@@ -132,8 +177,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::SubtractInteger => {
-                let arg1 = runtime.args[0].unwrap_integer()?;
-                let arg2 = runtime.args[1].unwrap_integer()?;
+                let arg1 = runtime.arg(0).unwrap_integer()?;
+                let arg2 = runtime.arg(1).unwrap_integer()?;
 
                 let budget = self
                     .costs
@@ -160,8 +205,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::EqualsInteger => {
-                let arg1 = runtime.args[0].unwrap_integer()?;
-                let arg2 = runtime.args[1].unwrap_integer()?;
+                let arg1 = runtime.arg(0).unwrap_integer()?;
+                let arg2 = runtime.arg(1).unwrap_integer()?;
 
                 let budget = self
                     .costs
@@ -186,8 +231,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::LessThanEqualsInteger => {
-                let arg1 = runtime.args[0].unwrap_integer()?;
-                let arg2 = runtime.args[1].unwrap_integer()?;
+                let arg1 = runtime.arg(0).unwrap_integer()?;
+                let arg2 = runtime.arg(1).unwrap_integer()?;
 
                 let budget = self
                     .costs
@@ -212,8 +257,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::AppendByteString => {
-                let arg1 = runtime.args[0].unwrap_byte_string()?;
-                let arg2 = runtime.args[1].unwrap_byte_string()?;
+                let arg1 = runtime.arg(0).unwrap_byte_string()?;
+                let arg2 = runtime.arg(1).unwrap_byte_string()?;
 
                 let budget = self
                     .costs
@@ -244,8 +289,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::EqualsByteString => {
-                let arg1 = runtime.args[0].unwrap_byte_string()?;
-                let arg2 = runtime.args[1].unwrap_byte_string()?;
+                let arg1 = runtime.arg(0).unwrap_byte_string()?;
+                let arg2 = runtime.arg(1).unwrap_byte_string()?;
 
                 let budget = self
                     .costs
@@ -270,9 +315,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::IfThenElse => {
-                let arg1 = runtime.args[0].unwrap_bool()?;
-                let arg2 = runtime.args[1];
-                let arg3 = runtime.args[2];
+                let arg1 = runtime.arg(0).unwrap_bool()?;
+                let arg2 = runtime.arg(1);
+                let arg3 = runtime.arg(2);
                 let budget = self
                     .costs
                     .builtin_costs
@@ -294,8 +339,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 }
             }
             DefaultFunction::MultiplyInteger => {
-                let arg1 = runtime.args[0].unwrap_integer()?;
-                let arg2 = runtime.args[1].unwrap_integer()?;
+                let arg1 = runtime.arg(0).unwrap_integer()?;
+                let arg2 = runtime.arg(1).unwrap_integer()?;
 
                 let budget = self
                     .costs
@@ -322,8 +367,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::DivideInteger => {
-                let arg1 = runtime.args[0].unwrap_integer()?;
-                let arg2 = runtime.args[1].unwrap_integer()?;
+                let arg1 = runtime.arg(0).unwrap_integer()?;
+                let arg2 = runtime.arg(1).unwrap_integer()?;
 
                 let budget = self
                     .costs
@@ -354,8 +399,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 }
             }
             DefaultFunction::QuotientInteger => {
-                let arg1 = runtime.args[0].unwrap_integer()?;
-                let arg2 = runtime.args[1].unwrap_integer()?;
+                let arg1 = runtime.arg(0).unwrap_integer()?;
+                let arg2 = runtime.arg(1).unwrap_integer()?;
 
                 let budget = self
                     .costs
@@ -383,8 +428,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 }
             }
             DefaultFunction::RemainderInteger => {
-                let arg1 = runtime.args[0].unwrap_integer()?;
-                let arg2 = runtime.args[1].unwrap_integer()?;
+                let arg1 = runtime.arg(0).unwrap_integer()?;
+                let arg2 = runtime.arg(1).unwrap_integer()?;
 
                 let budget = self
                     .costs
@@ -412,8 +457,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 }
             }
             DefaultFunction::ModInteger => {
-                let arg1 = runtime.args[0].unwrap_integer()?;
-                let arg2 = runtime.args[1].unwrap_integer()?;
+                let arg1 = runtime.arg(0).unwrap_integer()?;
+                let arg2 = runtime.arg(1).unwrap_integer()?;
 
                 let budget = self
                     .costs
@@ -440,8 +485,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 }
             }
             DefaultFunction::LessThanInteger => {
-                let arg1 = runtime.args[0].unwrap_integer()?;
-                let arg2 = runtime.args[1].unwrap_integer()?;
+                let arg1 = runtime.arg(0).unwrap_integer()?;
+                let arg2 = runtime.arg(1).unwrap_integer()?;
 
                 let budget = self
                     .costs
@@ -466,8 +511,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::ConsByteString => {
-                let arg1 = runtime.args[0].unwrap_integer()?;
-                let arg2 = runtime.args[1].unwrap_byte_string()?;
+                let arg1 = runtime.arg(0).unwrap_integer()?;
+                let arg2 = runtime.arg(1).unwrap_byte_string()?;
 
                 let budget = self
                     .costs
@@ -487,16 +532,17 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
 
                 let byte: u8 = match &self.semantics {
                     BuiltinSemantics::V1 => {
-                        let wrap: Integer = arg1 % 256;
+                        // ((x % 256) + 256) % 256 is always in 0..=255
+                        let wrap: Integer = ((arg1 % 256) + 256) % 256;
 
-                        wrap.try_into().expect("should cast to u64 just fine")
+                        wrap.try_into().unwrap()
                     }
                     BuiltinSemantics::V2 => {
                         if *arg1 > Integer::from(255) || *arg1 < Integer::from(0) {
                             return Err(MachineError::byte_string_cons_not_a_byte(arg1));
                         }
-
-                        arg1.try_into().expect("should cast to u8 just fine")
+                        // Guarded above: 0 <= arg1 <= 255
+                        arg1.try_into().unwrap()
                     }
                 };
 
@@ -513,9 +559,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::SliceByteString => {
-                let arg1 = runtime.args[0].unwrap_integer()?;
-                let arg2 = runtime.args[1].unwrap_integer()?;
-                let arg3 = runtime.args[2].unwrap_byte_string()?;
+                let arg1 = runtime.arg(0).unwrap_integer()?;
+                let arg2 = runtime.arg(1).unwrap_integer()?;
+                let arg3 = runtime.arg(2).unwrap_byte_string()?;
 
                 let budget = self
                     .costs
@@ -561,7 +607,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::LengthOfByteString => {
-                let arg1 = runtime.args[0].unwrap_byte_string()?;
+                let arg1 = runtime.arg(0).unwrap_byte_string()?;
 
                 let budget = self
                     .costs
@@ -584,8 +630,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::IndexByteString => {
-                let arg1 = runtime.args[0].unwrap_byte_string()?;
-                let arg2 = runtime.args[1].unwrap_integer()?;
+                let arg1 = runtime.arg(0).unwrap_byte_string()?;
+                let arg2 = runtime.arg(1).unwrap_integer()?;
 
                 let budget = self
                     .costs
@@ -603,7 +649,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
 
                 self.spend_budget(budget)?;
 
-                let index: i128 = arg2.try_into().unwrap();
+                let index: i128 = arg2.try_into().unwrap_or(i128::MAX);
 
                 if 0 <= index && (index as usize) < arg1.len() {
                     let result: Integer = arg1[index as usize].into();
@@ -616,8 +662,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 }
             }
             DefaultFunction::LessThanByteString => {
-                let arg1 = runtime.args[0].unwrap_byte_string()?;
-                let arg2 = runtime.args[1].unwrap_byte_string()?;
+                let arg1 = runtime.arg(0).unwrap_byte_string()?;
+                let arg2 = runtime.arg(1).unwrap_byte_string()?;
 
                 let budget = self
                     .costs
@@ -642,8 +688,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::LessThanEqualsByteString => {
-                let arg1 = runtime.args[0].unwrap_byte_string()?;
-                let arg2 = runtime.args[1].unwrap_byte_string()?;
+                let arg1 = runtime.arg(0).unwrap_byte_string()?;
+                let arg2 = runtime.arg(1).unwrap_byte_string()?;
 
                 let budget = self
                     .costs
@@ -670,7 +716,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
             DefaultFunction::Sha2_256 => {
                 use cryptoxide::{digest::Digest, sha2::Sha256};
 
-                let arg1 = runtime.args[0].unwrap_byte_string()?;
+                let arg1 = runtime.arg(0).unwrap_byte_string()?;
 
                 let budget = self
                     .costs
@@ -705,7 +751,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
             DefaultFunction::Sha3_256 => {
                 use cryptoxide::{digest::Digest, sha3::Sha3_256};
 
-                let arg1 = runtime.args[0].unwrap_byte_string()?;
+                let arg1 = runtime.arg(0).unwrap_byte_string()?;
 
                 let budget = self
                     .costs
@@ -740,7 +786,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
             DefaultFunction::Blake2b_256 => {
                 use cryptoxide::{blake2b::Blake2b, digest::Digest};
 
-                let arg1 = runtime.args[0].unwrap_byte_string()?;
+                let arg1 = runtime.arg(0).unwrap_byte_string()?;
 
                 let budget = self
                     .costs
@@ -773,7 +819,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
             DefaultFunction::Keccak_256 => {
                 use cryptoxide::{digest::Digest, sha3::Keccak256};
 
-                let arg1 = runtime.args[0].unwrap_byte_string()?;
+                let arg1 = runtime.arg(0).unwrap_byte_string()?;
 
                 let budget = self
                     .costs
@@ -808,7 +854,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
             DefaultFunction::Blake2b_224 => {
                 use cryptoxide::{blake2b::Blake2b, digest::Digest};
 
-                let arg1 = runtime.args[0].unwrap_byte_string()?;
+                let arg1 = runtime.arg(0).unwrap_byte_string()?;
 
                 let budget = self
                     .costs
@@ -841,9 +887,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
             DefaultFunction::VerifyEd25519Signature => {
                 use cryptoxide::ed25519;
 
-                let public_key = runtime.args[0].unwrap_byte_string()?;
-                let message = runtime.args[1].unwrap_byte_string()?;
-                let signature = runtime.args[2].unwrap_byte_string()?;
+                let public_key = runtime.arg(0).unwrap_byte_string()?;
+                let message = runtime.arg(1).unwrap_byte_string()?;
+                let signature = runtime.arg(2).unwrap_byte_string()?;
 
                 let budget = self
                     .costs
@@ -881,9 +927,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
             DefaultFunction::VerifyEcdsaSecp256k1Signature => {
                 use secp256k1::{ecdsa::Signature, Message, PublicKey, Secp256k1};
 
-                let public_key = runtime.args[0].unwrap_byte_string()?;
-                let message = runtime.args[1].unwrap_byte_string()?;
-                let signature = runtime.args[2].unwrap_byte_string()?;
+                let public_key = runtime.arg(0).unwrap_byte_string()?;
+                let message = runtime.arg(1).unwrap_byte_string()?;
+                let signature = runtime.arg(2).unwrap_byte_string()?;
 
                 let budget = self
                     .costs
@@ -922,9 +968,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
             DefaultFunction::VerifySchnorrSecp256k1Signature => {
                 use secp256k1::{schnorr::Signature, Secp256k1, XOnlyPublicKey};
 
-                let public_key = runtime.args[0].unwrap_byte_string()?;
-                let message = runtime.args[1].unwrap_byte_string()?;
-                let signature = runtime.args[2].unwrap_byte_string()?;
+                let public_key = runtime.arg(0).unwrap_byte_string()?;
+                let message = runtime.arg(1).unwrap_byte_string()?;
+                let signature = runtime.arg(2).unwrap_byte_string()?;
 
                 let budget = self
                     .costs
@@ -958,8 +1004,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::AppendString => {
-                let arg1 = runtime.args[0].unwrap_string()?;
-                let arg2 = runtime.args[1].unwrap_string()?;
+                let arg1 = runtime.arg(0).unwrap_string()?;
+                let arg2 = runtime.arg(1).unwrap_string()?;
 
                 let budget = self
                     .costs
@@ -989,8 +1035,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::EqualsString => {
-                let arg1 = runtime.args[0].unwrap_string()?;
-                let arg2 = runtime.args[1].unwrap_string()?;
+                let arg1 = runtime.arg(0).unwrap_string()?;
+                let arg2 = runtime.arg(1).unwrap_string()?;
 
                 let budget = self
                     .costs
@@ -1013,7 +1059,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::EncodeUtf8 => {
-                let arg1 = runtime.args[0].unwrap_string()?;
+                let arg1 = runtime.arg(0).unwrap_string()?;
 
                 let budget = self
                     .costs
@@ -1039,7 +1085,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::DecodeUtf8 => {
-                let arg1 = runtime.args[0].unwrap_byte_string()?;
+                let arg1 = runtime.arg(0).unwrap_byte_string()?;
 
                 let budget = self
                     .costs
@@ -1059,8 +1105,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::ChooseUnit => {
-                runtime.args[0].unwrap_unit()?;
-                let arg2 = runtime.args[1];
+                runtime.arg(0).unwrap_unit()?;
+                let arg2 = runtime.arg(1);
 
                 let budget = self
                     .costs
@@ -1076,8 +1122,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(arg2)
             }
             DefaultFunction::Trace => {
-                let arg1 = runtime.args[0].unwrap_string()?;
-                let arg2 = runtime.args[1];
+                let arg1 = runtime.arg(0).unwrap_string()?;
+                let arg2 = runtime.arg(1);
 
                 let budget = self
                     .costs
@@ -1098,7 +1144,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(arg2)
             }
             DefaultFunction::FstPair => {
-                let (_, _, first, second) = runtime.args[0].unwrap_pair()?;
+                let (_, _, first, second) = runtime.arg(0).unwrap_pair()?;
 
                 let budget = self
                     .costs
@@ -1116,7 +1162,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::SndPair => {
-                let (_, _, first, second) = runtime.args[0].unwrap_pair()?;
+                let (_, _, first, second) = runtime.arg(0).unwrap_pair()?;
 
                 let budget = self
                     .costs
@@ -1134,9 +1180,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::ChooseList => {
-                let (_, list) = runtime.args[0].unwrap_list()?;
-                let arg2 = runtime.args[1];
-                let arg3 = runtime.args[2];
+                let (_, list) = runtime.arg(0).unwrap_list()?;
+                let arg2 = runtime.arg(1);
+                let arg3 = runtime.arg(2);
 
                 let budget = self
                     .costs
@@ -1160,8 +1206,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 }
             }
             DefaultFunction::MkCons => {
-                let item = runtime.args[0].unwrap_constant()?;
-                let (typ, list) = runtime.args[1].unwrap_list()?;
+                let item = runtime.arg(0).unwrap_constant()?;
+                let (typ, list) = runtime.arg(1).unwrap_list()?;
 
                 let budget = self
                     .costs
@@ -1196,7 +1242,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::HeadList => {
-                let (_, list) = runtime.args[0].unwrap_list()?;
+                let (_, list) = runtime.arg(0).unwrap_list()?;
 
                 let budget = self
                     .costs
@@ -1218,7 +1264,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 }
             }
             DefaultFunction::TailList => {
-                let (t1, list) = runtime.args[0].unwrap_list()?;
+                let (t1, list) = runtime.arg(0).unwrap_list()?;
 
                 let budget = self
                     .costs
@@ -1242,7 +1288,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 }
             }
             DefaultFunction::NullList => {
-                let (_, list) = runtime.args[0].unwrap_list()?;
+                let (_, list) = runtime.arg(0).unwrap_list()?;
 
                 let budget = self
                     .costs
@@ -1260,12 +1306,12 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::ChooseData => {
-                let arg1 = runtime.args[0].unwrap_constant()?.unwrap_data()?;
-                let arg2 = runtime.args[1];
-                let arg3 = runtime.args[2];
-                let arg4 = runtime.args[3];
-                let arg5 = runtime.args[4];
-                let arg6 = runtime.args[5];
+                let arg1 = runtime.arg(0).unwrap_constant()?.unwrap_data()?;
+                let arg2 = runtime.arg(1);
+                let arg3 = runtime.arg(2);
+                let arg4 = runtime.arg(3);
+                let arg5 = runtime.arg(4);
+                let arg6 = runtime.arg(5);
 
                 let budget = self
                     .costs
@@ -1294,8 +1340,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 }
             }
             DefaultFunction::ConstrData => {
-                let tag = runtime.args[0].unwrap_integer()?;
-                let (typ, fields) = runtime.args[1].unwrap_list()?;
+                let tag = runtime.arg(0).unwrap_integer()?;
+                let (typ, fields) = runtime.arg(1).unwrap_list()?;
 
                 let budget = self
                     .costs
@@ -1314,11 +1360,13 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 if *typ != Type::Data {
                     return Err(MachineError::type_mismatch(
                         Type::Data,
-                        runtime.args[1].unwrap_constant()?,
+                        runtime.arg(1).unwrap_constant()?,
                     ));
                 }
 
-                let tag = tag.try_into().expect("should cast to u64 just fine");
+                let tag: u64 = tag
+                    .try_into()
+                    .map_err(|_| MachineError::outside_usize_bounds(tag))?;
                 let fields: BumpVec<'_, _> = fields
                     .iter()
                     .map(|d| match d {
@@ -1337,7 +1385,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::MapData => {
-                let (r#type, list) = runtime.args[0].unwrap_list()?;
+                let (r#type, list) = runtime.arg(0).unwrap_list()?;
 
                 if !matches!(r#type, Type::Pair(Type::Data, Type::Data)) {
                     return Err(MachineError::type_mismatch(
@@ -1346,7 +1394,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                             Type::data(self.arena),
                             Type::data(self.arena),
                         )),
-                        runtime.args[0].unwrap_constant()?,
+                        runtime.arg(0).unwrap_constant()?,
                     ));
                 }
 
@@ -1388,7 +1436,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::ListData => {
-                let (typ, fields) = runtime.args[0].unwrap_list()?;
+                let (typ, fields) = runtime.arg(0).unwrap_list()?;
 
                 let budget = self
                     .costs
@@ -1404,7 +1452,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 if *typ != Type::Data {
                     return Err(MachineError::type_mismatch(
                         Type::Data,
-                        runtime.args[0].unwrap_constant()?,
+                        runtime.arg(0).unwrap_constant()?,
                     ));
                 }
 
@@ -1424,7 +1472,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::IData => {
-                let i = runtime.args[0].unwrap_integer()?;
+                let i = runtime.arg(0).unwrap_integer()?;
 
                 let budget = self
                     .costs
@@ -1441,7 +1489,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::BData => {
-                let b = runtime.args[0].unwrap_byte_string()?;
+                let b = runtime.arg(0).unwrap_byte_string()?;
 
                 let budget = self
                     .costs
@@ -1458,7 +1506,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::UnConstrData => {
-                let (tag, fields) = runtime.args[0]
+                let (tag, fields) = runtime
+                    .arg(0)
                     .unwrap_constant()?
                     .unwrap_data()?
                     .unwrap_constr()?;
@@ -1495,7 +1544,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::UnMapData => {
-                let map = runtime.args[0]
+                let map = runtime
+                    .arg(0)
                     .unwrap_constant()?
                     .unwrap_data()?
                     .unwrap_map()?;
@@ -1536,7 +1586,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::UnListData => {
-                let list = runtime.args[0]
+                let list = runtime
+                    .arg(0)
                     .unwrap_constant()?
                     .unwrap_data()?
                     .unwrap_list()?;
@@ -1565,7 +1616,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::UnIData => {
-                let i = runtime.args[0]
+                let i = runtime
+                    .arg(0)
                     .unwrap_constant()?
                     .unwrap_data()?
                     .unwrap_integer()?;
@@ -1586,7 +1638,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::UnBData => {
-                let bs = runtime.args[0]
+                let bs = runtime
+                    .arg(0)
                     .unwrap_constant()?
                     .unwrap_data()?
                     .unwrap_byte_string()?;
@@ -1607,8 +1660,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::EqualsData => {
-                let d1 = runtime.args[0].unwrap_constant()?.unwrap_data()?;
-                let d2 = runtime.args[1].unwrap_constant()?.unwrap_data()?;
+                let d1 = runtime.arg(0).unwrap_constant()?.unwrap_data()?;
+                let d2 = runtime.arg(1).unwrap_constant()?.unwrap_data()?;
 
                 let budget = self
                     .costs
@@ -1626,7 +1679,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::SerialiseData => {
-                let arg1 = runtime.args[0].unwrap_constant()?.unwrap_data()?;
+                let arg1 = runtime.arg(0).unwrap_constant()?.unwrap_data()?;
 
                 let budget = self
                     .costs
@@ -1647,8 +1700,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::MkPairData => {
-                let d1 = runtime.args[0].unwrap_constant()?.unwrap_data()?;
-                let d2 = runtime.args[1].unwrap_constant()?.unwrap_data()?;
+                let d1 = runtime.arg(0).unwrap_constant()?.unwrap_data()?;
+                let d2 = runtime.arg(1).unwrap_constant()?.unwrap_data()?;
 
                 let budget = self
                     .costs
@@ -1674,7 +1727,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::MkNilData => {
-                runtime.args[0].unwrap_unit()?;
+                runtime.arg(0).unwrap_unit()?;
 
                 let budget = self
                     .costs
@@ -1694,7 +1747,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::MkNilPairData => {
-                runtime.args[0].unwrap_unit()?;
+                runtime.arg(0).unwrap_unit()?;
 
                 let budget = self
                     .costs
@@ -1720,8 +1773,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::Bls12_381_G1_Add => {
-                let arg1 = runtime.args[0].unwrap_bls12_381_g1_element()?;
-                let arg2 = runtime.args[1].unwrap_bls12_381_g1_element()?;
+                let arg1 = runtime.arg(0).unwrap_bls12_381_g1_element()?;
+                let arg2 = runtime.arg(1).unwrap_bls12_381_g1_element()?;
 
                 let budget = self
                     .costs
@@ -1752,7 +1805,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::Bls12_381_G1_Neg => {
-                let arg1 = runtime.args[0].unwrap_bls12_381_g1_element()?;
+                let arg1 = runtime.arg(0).unwrap_bls12_381_g1_element()?;
 
                 let budget = self
                     .costs
@@ -1781,8 +1834,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::Bls12_381_G1_ScalarMul => {
-                let arg1 = runtime.args[0].unwrap_integer()?;
-                let arg2 = runtime.args[1].unwrap_bls12_381_g1_element()?;
+                let arg1 = runtime.arg(0).unwrap_integer()?;
+                let arg2 = runtime.arg(1).unwrap_bls12_381_g1_element()?;
 
                 let budget = self
                     .costs
@@ -1836,8 +1889,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::Bls12_381_G1_Equal => {
-                let arg1 = runtime.args[0].unwrap_bls12_381_g1_element()?;
-                let arg2 = runtime.args[1].unwrap_bls12_381_g1_element()?;
+                let arg1 = runtime.arg(0).unwrap_bls12_381_g1_element()?;
+                let arg2 = runtime.arg(1).unwrap_bls12_381_g1_element()?;
 
                 let budget = self
                     .costs
@@ -1862,7 +1915,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::Bls12_381_G1_Compress => {
-                let arg1 = runtime.args[0].unwrap_bls12_381_g1_element()?;
+                let arg1 = runtime.arg(0).unwrap_bls12_381_g1_element()?;
 
                 let budget = self
                     .costs
@@ -1884,7 +1937,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::Bls12_381_G1_Uncompress => {
-                let arg1 = runtime.args[0].unwrap_byte_string()?;
+                let arg1 = runtime.arg(0).unwrap_byte_string()?;
 
                 let budget = self
                     .costs
@@ -1908,8 +1961,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::Bls12_381_G1_HashToGroup => {
-                let arg1 = runtime.args[0].unwrap_byte_string()?;
-                let arg2 = runtime.args[1].unwrap_byte_string()?;
+                let arg1 = runtime.arg(0).unwrap_byte_string()?;
+                let arg2 = runtime.arg(1).unwrap_byte_string()?;
 
                 let budget = self
                     .costs
@@ -1953,8 +2006,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::Bls12_381_G2_Add => {
-                let arg1 = runtime.args[0].unwrap_bls12_381_g2_element()?;
-                let arg2 = runtime.args[1].unwrap_bls12_381_g2_element()?;
+                let arg1 = runtime.arg(0).unwrap_bls12_381_g2_element()?;
+                let arg2 = runtime.arg(1).unwrap_bls12_381_g2_element()?;
 
                 let budget = self
                     .costs
@@ -1985,7 +2038,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::Bls12_381_G2_Neg => {
-                let arg1 = runtime.args[0].unwrap_bls12_381_g2_element()?;
+                let arg1 = runtime.arg(0).unwrap_bls12_381_g2_element()?;
 
                 let budget = self
                     .costs
@@ -2014,8 +2067,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::Bls12_381_G2_ScalarMul => {
-                let arg1 = runtime.args[0].unwrap_integer()?;
-                let arg2 = runtime.args[1].unwrap_bls12_381_g2_element()?;
+                let arg1 = runtime.arg(0).unwrap_integer()?;
+                let arg2 = runtime.arg(1).unwrap_bls12_381_g2_element()?;
 
                 let budget = self
                     .costs
@@ -2073,8 +2126,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::Bls12_381_G2_Equal => {
-                let arg1 = runtime.args[0].unwrap_bls12_381_g2_element()?;
-                let arg2 = runtime.args[1].unwrap_bls12_381_g2_element()?;
+                let arg1 = runtime.arg(0).unwrap_bls12_381_g2_element()?;
+                let arg2 = runtime.arg(1).unwrap_bls12_381_g2_element()?;
 
                 let budget = self
                     .costs
@@ -2099,7 +2152,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::Bls12_381_G2_Compress => {
-                let arg1 = runtime.args[0].unwrap_bls12_381_g2_element()?;
+                let arg1 = runtime.arg(0).unwrap_bls12_381_g2_element()?;
 
                 let budget = self
                     .costs
@@ -2121,7 +2174,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::Bls12_381_G2_Uncompress => {
-                let arg1 = runtime.args[0].unwrap_byte_string()?;
+                let arg1 = runtime.arg(0).unwrap_byte_string()?;
 
                 let budget = self
                     .costs
@@ -2145,8 +2198,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::Bls12_381_G2_HashToGroup => {
-                let arg1 = runtime.args[0].unwrap_byte_string()?;
-                let arg2 = runtime.args[1].unwrap_byte_string()?;
+                let arg1 = runtime.arg(0).unwrap_byte_string()?;
+                let arg2 = runtime.arg(1).unwrap_byte_string()?;
 
                 let budget = self
                     .costs
@@ -2190,8 +2243,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::Bls12_381_MillerLoop => {
-                let arg1 = runtime.args[0].unwrap_bls12_381_g1_element()?;
-                let arg2 = runtime.args[1].unwrap_bls12_381_g2_element()?;
+                let arg1 = runtime.arg(0).unwrap_bls12_381_g1_element()?;
+                let arg2 = runtime.arg(1).unwrap_bls12_381_g2_element()?;
 
                 let budget = self
                     .costs
@@ -2228,8 +2281,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::Bls12_381_MulMlResult => {
-                let arg1 = runtime.args[0].unwrap_bls12_381_ml_result()?;
-                let arg2 = runtime.args[1].unwrap_bls12_381_ml_result()?;
+                let arg1 = runtime.arg(0).unwrap_bls12_381_ml_result()?;
+                let arg2 = runtime.arg(1).unwrap_bls12_381_ml_result()?;
 
                 let budget = self
                     .costs
@@ -2260,8 +2313,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::Bls12_381_FinalVerify => {
-                let arg1 = runtime.args[0].unwrap_bls12_381_ml_result()?;
-                let arg2 = runtime.args[1].unwrap_bls12_381_ml_result()?;
+                let arg1 = runtime.arg(0).unwrap_bls12_381_ml_result()?;
+                let arg2 = runtime.arg(1).unwrap_bls12_381_ml_result()?;
 
                 let budget = self
                     .costs
@@ -2286,9 +2339,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::IntegerToByteString => {
-                let endianness = runtime.args[0].unwrap_bool()?;
-                let size = runtime.args[1].unwrap_integer()?;
-                let input = runtime.args[2].unwrap_integer()?;
+                let endianness = runtime.arg(0).unwrap_bool()?;
+                let size = runtime.arg(1).unwrap_integer()?;
+                let input = runtime.arg(2).unwrap_integer()?;
 
                 if size.is_negative() {
                     return Err(MachineError::integer_to_byte_string_negative_size(size));
@@ -2404,8 +2457,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::ByteStringToInteger => {
-                let endianness = runtime.args[0].unwrap_bool()?;
-                let bytes = runtime.args[1].unwrap_byte_string()?;
+                let endianness = runtime.arg(0).unwrap_bool()?;
+                let bytes = runtime.arg(1).unwrap_byte_string()?;
 
                 let budget = self
                     .costs
@@ -2434,9 +2487,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::AndByteString => {
-                let should_pad = runtime.args[0].unwrap_bool()?;
-                let left_bytes = runtime.args[1].unwrap_byte_string()?;
-                let right_bytes = runtime.args[2].unwrap_byte_string()?;
+                let should_pad = runtime.arg(0).unwrap_bool()?;
+                let left_bytes = runtime.arg(1).unwrap_byte_string()?;
+                let right_bytes = runtime.arg(2).unwrap_byte_string()?;
 
                 let budget = self
                     .costs
@@ -2476,9 +2529,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::OrByteString => {
-                let should_pad = runtime.args[0].unwrap_bool()?;
-                let left_bytes = runtime.args[1].unwrap_byte_string()?;
-                let right_bytes = runtime.args[2].unwrap_byte_string()?;
+                let should_pad = runtime.arg(0).unwrap_bool()?;
+                let left_bytes = runtime.arg(1).unwrap_byte_string()?;
+                let right_bytes = runtime.arg(2).unwrap_byte_string()?;
 
                 let budget = self
                     .costs
@@ -2520,15 +2573,15 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::XorByteString => {
-                let should_pad = runtime.args[0].unwrap_bool()?;
-                let left_bytes = runtime.args[1].unwrap_byte_string()?;
-                let right_bytes = runtime.args[2].unwrap_byte_string()?;
+                let should_pad = runtime.arg(0).unwrap_bool()?;
+                let left_bytes = runtime.arg(1).unwrap_byte_string()?;
+                let right_bytes = runtime.arg(2).unwrap_byte_string()?;
 
                 let budget = self
                     .costs
                     .builtin_costs
                     .get_cost(
-                        DefaultFunction::OrByteString,
+                        DefaultFunction::XorByteString,
                         &[
                             cost_model::BOOL_EX_MEM,
                             cost_model::byte_string_ex_mem(left_bytes),
@@ -2564,7 +2617,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::ComplementByteString => {
-                let bytes = runtime.args[0].unwrap_byte_string()?;
+                let bytes = runtime.arg(0).unwrap_byte_string()?;
 
                 let budget = self
                     .costs
@@ -2585,8 +2638,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(Value::byte_string(self.arena, result))
             }
             DefaultFunction::ReadBit => {
-                let bytes = runtime.args[0].unwrap_byte_string()?;
-                let bit_index = runtime.args[1].unwrap_integer()?;
+                let bytes = runtime.arg(0).unwrap_byte_string()?;
+                let bit_index = runtime.arg(1).unwrap_integer()?;
 
                 let budget = self
                     .costs
@@ -2624,9 +2677,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(Value::bool(self.arena, bit_test))
             }
             DefaultFunction::WriteBits => {
-                let mut bytes = runtime.args[0].unwrap_byte_string()?.to_vec();
-                let indices = runtime.args[1].unwrap_int_list()?;
-                let set_bit = runtime.args[2].unwrap_bool()?;
+                let mut bytes = runtime.arg(0).unwrap_byte_string()?.to_vec();
+                let indices = runtime.arg(1).unwrap_int_list()?;
+                let set_bit = runtime.arg(2).unwrap_bool()?;
 
                 let budget = self
                     .costs
@@ -2672,8 +2725,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(Value::byte_string(self.arena, result))
             }
             DefaultFunction::ReplicateByte => {
-                let size = runtime.args[0].unwrap_integer()?;
-                let byte = runtime.args[1].unwrap_integer()?;
+                let size = runtime.arg(0).unwrap_integer()?;
+                let byte = runtime.arg(1).unwrap_integer()?;
 
                 if size.is_negative() {
                     return Err(MachineError::replicate_byte_negative_size(size));
@@ -2734,8 +2787,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(Value::byte_string(self.arena, result))
             }
             DefaultFunction::ShiftByteString => {
-                let bytes = runtime.args[0].unwrap_byte_string()?;
-                let shift = runtime.args[1].unwrap_integer()?;
+                let bytes = runtime.arg(0).unwrap_byte_string()?;
+                let shift = runtime.arg(1).unwrap_integer()?;
 
                 let arg1: i64 = u64::try_from(shift.abs())
                     .unwrap()
@@ -2768,7 +2821,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 if is_shift_left {
                     if bit_shift == 0 {
                         // If we can shift entire bytes, that's much simpler
-                        let copy_len = length - bit_shift;
+                        let copy_len = length - byte_shift;
                         // For example, consider the following byte array [1,0,1,0,1] being shifted 8 bits (1 byte)
                         // Result: [0,1,0,1,0]
                         result[..copy_len].copy_from_slice(&bytes[byte_shift..]);
@@ -2827,8 +2880,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(Value::byte_string(self.arena, result))
             }
             DefaultFunction::RotateByteString => {
-                let bytes = runtime.args[0].unwrap_byte_string()?;
-                let shift = runtime.args[1].unwrap_integer()?;
+                let bytes = runtime.arg(0).unwrap_byte_string()?;
+                let shift = runtime.arg(1).unwrap_integer()?;
 
                 let arg1: i64 = u64::try_from(shift.abs())
                     .unwrap()
@@ -2903,7 +2956,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(Value::byte_string(self.arena, result))
             }
             DefaultFunction::CountSetBits => {
-                let bytes = runtime.args[0].unwrap_byte_string()?;
+                let bytes = runtime.arg(0).unwrap_byte_string()?;
 
                 let budget = self
                     .costs
@@ -2922,7 +2975,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(Value::integer(self.arena, result))
             }
             DefaultFunction::FindFirstSetBit => {
-                let bytes = runtime.args[0].unwrap_byte_string()?;
+                let bytes = runtime.arg(0).unwrap_byte_string()?;
 
                 let budget = self
                     .costs
@@ -2956,7 +3009,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
             }
             DefaultFunction::Ripemd_160 => {
                 use cryptoxide::{digest::Digest, ripemd160::Ripemd160};
-                let input = runtime.args[0].unwrap_byte_string()?;
+                let input = runtime.arg(0).unwrap_byte_string()?;
                 let budget = self
                     .costs
                     .builtin_costs
@@ -2975,9 +3028,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(Value::byte_string(self.arena, result))
             }
             DefaultFunction::ExpModInteger => {
-                let base = runtime.args[0].unwrap_integer()?;
-                let exponent = runtime.args[1].unwrap_integer()?;
-                let modulus = runtime.args[2].unwrap_integer()?;
+                let base = runtime.arg(0).unwrap_integer()?;
+                let exponent = runtime.arg(1).unwrap_integer()?;
+                let modulus = runtime.arg(2).unwrap_integer()?;
 
                 let budget = self
                     .costs
@@ -3012,8 +3065,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::DropList => {
-                let elements_to_drop = runtime.args[0].unwrap_integer()?;
-                let (list_type, list) = runtime.args[1].unwrap_list()?;
+                let elements_to_drop = runtime.arg(0).unwrap_integer()?;
+                let (list_type, list) = runtime.arg(1).unwrap_list()?;
 
                 let arg0: i64 = u64::try_from(elements_to_drop.abs())
                     .unwrap()
@@ -3055,7 +3108,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::LengthOfArray => {
-                let (_, array) = runtime.args[0].unwrap_array()?;
+                let (_, array) = runtime.arg(0).unwrap_array()?;
 
                 let budget = self
                     .costs
@@ -3077,18 +3130,14 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::ListToArray => {
-                let (list_type, list) = runtime.args[0].unwrap_list()?;
+                let (list_type, list) = runtime.arg(0).unwrap_list()?;
+
+                let list_len = list.len() as i64;
 
                 let budget = self
                     .costs
                     .builtin_costs
-                    .get_cost(
-                        DefaultFunction::ListToArray,
-                        &[
-                            cost_model::proto_list_ex_mem(list),
-                            cost_model::proto_list_ex_mem(list),
-                        ],
-                    )
+                    .get_cost(DefaultFunction::ListToArray, &[list_len])
                     .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::ListToArray))?;
 
                 self.spend_budget(budget)?;
@@ -3100,8 +3149,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 Ok(value)
             }
             DefaultFunction::IndexArray => {
-                let (_, array) = runtime.args[0].unwrap_array()?;
-                let arg1 = runtime.args[1].unwrap_integer()?;
+                let (_, array) = runtime.arg(0).unwrap_array()?;
+                let arg1 = runtime.arg(1).unwrap_integer()?;
 
                 let budget = self
                     .costs
@@ -3125,6 +3174,397 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 } else {
                     Err(MachineError::index_array_out_of_bounds(arg1, array.len()))
                 }
+            }
+            DefaultFunction::Bls12_381_G1_MultiScalarMul => {
+                let (_, scalars) = runtime.arg(0).unwrap_list()?;
+                let (_, points) = runtime.arg(1).unwrap_list()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::Bls12_381_G1_MultiScalarMul,
+                        &[scalars.len() as i64, points.len() as i64],
+                    )
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::Bls12_381_G1_MultiScalarMul,
+                    ))?;
+
+                self.spend_budget(budget)?;
+
+                let n = scalars.len().min(points.len());
+
+                if n == 0 {
+                    let out = self.arena.alloc(blst::blst_p1::default());
+
+                    let compressed: [u8; 48] = {
+                        let mut buf = [0u8; 48];
+                        buf[0] = 0xc0;
+                        buf
+                    };
+
+                    let identity = blst::blst_p1::uncompress(self.arena, &compressed)
+                        .map_err(MachineError::bls)?;
+
+                    *out = *identity;
+
+                    let constant = Constant::g1(self.arena, out);
+
+                    return Ok(Value::con(self.arena, constant));
+                }
+
+                let size_scalar = size_of::<blst::blst_scalar>();
+
+                let scalar_buf = self.arena.alloc(blst::blst_scalar::default());
+                let mut acc = blst::blst_p1::default();
+
+                for i in 0..n {
+                    let Constant::Integer(si) = scalars[i] else {
+                        return Err(MachineError::type_mismatch(Type::Integer, scalars[i]));
+                    };
+
+                    let Constant::Bls12_381G1Element(pi) = points[i] else {
+                        return Err(MachineError::type_mismatch(
+                            Type::Bls12_381G1Element,
+                            points[i],
+                        ));
+                    };
+
+                    // Check scalar fits in signed 4096-bit range
+                    check_multi_scalar_range(si).map_err(MachineError::runtime)?;
+
+                    let si = si.mod_floor(&SCALAR_PERIOD);
+
+                    let (_, mut si_bytes) = si.to_bytes_be();
+
+                    if size_scalar > si_bytes.len() {
+                        let diff = size_scalar - si_bytes.len();
+
+                        let mut new_vec = vec![0; diff];
+
+                        new_vec.append(&mut si_bytes);
+
+                        si_bytes = new_vec;
+                    }
+
+                    let mut term = blst::blst_p1::default();
+                    unsafe {
+                        blst::blst_scalar_from_bendian(
+                            scalar_buf as *mut _,
+                            si_bytes.as_ptr() as *const _,
+                        );
+
+                        blst::blst_p1_mult(
+                            &mut term as *mut _,
+                            (*pi) as *const _,
+                            scalar_buf.b.as_ptr() as *const _,
+                            size_scalar * 8,
+                        );
+                    }
+
+                    if i == 0 {
+                        acc = term;
+                    } else {
+                        let mut sum = blst::blst_p1::default();
+
+                        unsafe {
+                            blst::blst_p1_add_or_double(
+                                &mut sum as *mut _,
+                                &acc as *const _,
+                                &term as *const _,
+                            );
+                        }
+
+                        acc = sum;
+                    }
+                }
+
+                let out = self.arena.alloc(acc);
+
+                let constant = Constant::g1(self.arena, out);
+
+                Ok(Value::con(self.arena, constant))
+            }
+            DefaultFunction::Bls12_381_G2_MultiScalarMul => {
+                let (_, scalars) = runtime.arg(0).unwrap_list()?;
+                let (_, points) = runtime.arg(1).unwrap_list()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::Bls12_381_G2_MultiScalarMul,
+                        &[scalars.len() as i64, points.len() as i64],
+                    )
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::Bls12_381_G2_MultiScalarMul,
+                    ))?;
+
+                self.spend_budget(budget)?;
+
+                let n = scalars.len().min(points.len());
+
+                if n == 0 {
+                    // Return G2 identity (zero point)
+                    let out = self.arena.alloc(blst::blst_p2::default());
+
+                    let compressed: [u8; 96] = {
+                        let mut buf = [0u8; 96];
+                        buf[0] = 0xc0;
+                        buf
+                    };
+
+                    let identity = blst::blst_p2::uncompress(self.arena, &compressed)
+                        .map_err(MachineError::bls)?;
+
+                    *out = *identity;
+
+                    let constant = Constant::g2(self.arena, out);
+
+                    return Ok(Value::con(self.arena, constant));
+                }
+
+                let size_scalar = size_of::<blst::blst_scalar>();
+
+                let scalar_buf = self.arena.alloc(blst::blst_scalar::default());
+                let mut acc = blst::blst_p2::default();
+
+                for i in 0..n {
+                    let Constant::Integer(si) = scalars[i] else {
+                        return Err(MachineError::type_mismatch(Type::Integer, scalars[i]));
+                    };
+
+                    let Constant::Bls12_381G2Element(pi) = points[i] else {
+                        return Err(MachineError::type_mismatch(
+                            Type::Bls12_381G2Element,
+                            points[i],
+                        ));
+                    };
+
+                    // Check scalar fits in signed 4096-bit range
+                    check_multi_scalar_range(si).map_err(MachineError::runtime)?;
+
+                    let si = si.mod_floor(&SCALAR_PERIOD);
+
+                    let (_, mut si_bytes) = si.to_bytes_be();
+
+                    if size_scalar > si_bytes.len() {
+                        let diff = size_scalar - si_bytes.len();
+                        let mut new_vec = vec![0; diff];
+                        new_vec.append(&mut si_bytes);
+                        si_bytes = new_vec;
+                    }
+
+                    let mut term = blst::blst_p2::default();
+
+                    unsafe {
+                        blst::blst_scalar_from_bendian(
+                            scalar_buf as *mut _,
+                            si_bytes.as_ptr() as *const _,
+                        );
+
+                        blst::blst_p2_mult(
+                            &mut term as *mut _,
+                            (*pi) as *const _,
+                            scalar_buf.b.as_ptr() as *const _,
+                            size_scalar * 8,
+                        );
+                    }
+
+                    if i == 0 {
+                        acc = term;
+                    } else {
+                        let mut sum = blst::blst_p2::default();
+
+                        unsafe {
+                            blst::blst_p2_add_or_double(
+                                &mut sum as *mut _,
+                                &acc as *const _,
+                                &term as *const _,
+                            );
+                        }
+
+                        acc = sum;
+                    }
+                }
+
+                let out = self.arena.alloc(acc);
+
+                let constant = Constant::g2(self.arena, out);
+
+                Ok(Value::con(self.arena, constant))
+            }
+            DefaultFunction::InsertCoin => {
+                let ccy = runtime.arg(0).unwrap_byte_string()?;
+                let tok = runtime.arg(1).unwrap_byte_string()?;
+                let qty = runtime.arg(2).unwrap_integer()?;
+                let v = runtime.arg(3).unwrap_ledger_value()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::InsertCoin,
+                        &[ledger_value::value_max_depth(v)],
+                    )
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::InsertCoin))?;
+
+                self.spend_budget(budget)?;
+
+                // Validate quantity in 128-bit signed range
+                if !qty.is_zero() {
+                    ledger_value::check_quantity_range(qty).map_err(MachineError::value)?;
+                }
+
+                // Validate key lengths (> 32 only allowed when qty=0, which is a no-op)
+                if ccy.len() > 32 || tok.len() > 32 {
+                    if qty.is_zero() {
+                        let constant = Constant::ledger_value(self.arena, v);
+                        return Ok(Value::con(self.arena, constant));
+                    }
+
+                    let err = if ccy.len() > 32 {
+                        ValueError::InsertCoinInvalidCurrency
+                    } else {
+                        ValueError::InsertCoinInvalidToken
+                    };
+
+                    return Err(MachineError::value(err));
+                }
+
+                let result = LedgerValue::insert_coin(self.arena, ccy, tok, qty, v);
+
+                let constant = Constant::ledger_value(self.arena, result);
+
+                Ok(Value::con(self.arena, constant))
+            }
+            DefaultFunction::LookupCoin => {
+                let ccy = runtime.arg(0).unwrap_byte_string()?;
+                let tok = runtime.arg(1).unwrap_byte_string()?;
+                let v = runtime.arg(2).unwrap_ledger_value()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::LookupCoin,
+                        &[
+                            cost_model::byte_string_ex_mem(ccy),
+                            cost_model::byte_string_ex_mem(tok),
+                            ledger_value::value_max_depth(v),
+                        ],
+                    )
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::LookupCoin))?;
+
+                self.spend_budget(budget)?;
+
+                let qty = v.lookup_coin(self.arena, ccy, tok);
+
+                Ok(Value::integer(self.arena, qty))
+            }
+            DefaultFunction::UnionValue => {
+                let v1 = runtime.arg(0).unwrap_ledger_value()?;
+                let v2 = runtime.arg(1).unwrap_ledger_value()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::UnionValue,
+                        &[v1.size as i64, v2.size as i64],
+                    )
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::UnionValue))?;
+
+                self.spend_budget(budget)?;
+
+                let result =
+                    LedgerValue::union_value(self.arena, v1, v2).map_err(MachineError::value)?;
+
+                let constant = Constant::ledger_value(self.arena, result);
+
+                Ok(Value::con(self.arena, constant))
+            }
+            DefaultFunction::ValueContains => {
+                let v1 = runtime.arg(0).unwrap_ledger_value()?;
+                let v2 = runtime.arg(1).unwrap_ledger_value()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::ValueContains,
+                        &[v1.size as i64, v2.size as i64],
+                    )
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::ValueContains,
+                    ))?;
+
+                self.spend_budget(budget)?;
+
+                let result =
+                    LedgerValue::value_contains(self.arena, v1, v2).map_err(MachineError::value)?;
+
+                Ok(Value::bool(self.arena, result))
+            }
+            DefaultFunction::ValueData => {
+                let v = runtime.arg(0).unwrap_ledger_value()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(DefaultFunction::ValueData, &[v.size as i64])
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::ValueData))?;
+
+                self.spend_budget(budget)?;
+
+                let data = LedgerValue::value_data(self.arena, v);
+
+                let constant = Constant::data(self.arena, data);
+
+                Ok(Value::con(self.arena, constant))
+            }
+            DefaultFunction::UnValueData => {
+                let data = runtime.arg(0).unwrap_constant()?.unwrap_data()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::UnValueData,
+                        &[ledger_value::data_node_count(data)],
+                    )
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::UnValueData))?;
+
+                self.spend_budget(budget)?;
+
+                let result =
+                    LedgerValue::un_value_data(self.arena, data).map_err(MachineError::value)?;
+
+                let constant = Constant::ledger_value(self.arena, result);
+
+                Ok(Value::con(self.arena, constant))
+            }
+            DefaultFunction::ScaleValue => {
+                let scalar = runtime.arg(0).unwrap_integer()?;
+                let v = runtime.arg(1).unwrap_ledger_value()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::ScaleValue,
+                        &[cost_model::integer_ex_mem(scalar), v.size as i64],
+                    )
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::ScaleValue))?;
+
+                self.spend_budget(budget)?;
+
+                let result =
+                    LedgerValue::scale_value(self.arena, scalar, v).map_err(MachineError::value)?;
+
+                let constant = Constant::ledger_value(self.arena, result);
+
+                Ok(Value::con(self.arena, constant))
             }
         }
     }

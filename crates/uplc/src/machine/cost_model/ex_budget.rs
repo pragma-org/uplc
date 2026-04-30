@@ -20,8 +20,8 @@ impl ExBudget {
     }
 
     pub fn occurrences(&mut self, n: i64) {
-        self.mem *= n;
-        self.cpu *= n;
+        self.mem = self.mem.saturating_mul(n);
+        self.cpu = self.cpu.saturating_mul(n);
     }
 
     pub fn machine() -> Self {
@@ -111,8 +111,8 @@ impl std::ops::Sub for ExBudget {
 
     fn sub(self, rhs: Self) -> Self::Output {
         ExBudget {
-            mem: self.mem - rhs.mem,
-            cpu: self.cpu - rhs.cpu,
+            mem: self.mem.saturating_sub(rhs.mem),
+            cpu: self.cpu.saturating_sub(rhs.cpu),
         }
     }
 }
