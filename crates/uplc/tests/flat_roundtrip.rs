@@ -228,65 +228,79 @@ fn flat_roundtrip_sha2() {
 
 #[test]
 fn flat_decode_benchmark_scripts() {
-    let data_dir = std::path::Path::new("benches/use_cases/plutus_use_cases");
-    if !data_dir.exists() {
-        return; // Skip if benchmark data not available
-    }
+    std::thread::Builder::new()
+        .stack_size(8 * 1024 * 1024)
+        .spawn(|| {
+            let data_dir = std::path::Path::new("benches/use_cases/plutus_use_cases");
+            if !data_dir.exists() {
+                return; // Skip if benchmark data not available
+            }
 
-    for entry in std::fs::read_dir(data_dir).unwrap() {
-        let path = entry.unwrap().path();
-        if !path.is_file() {
-            continue;
-        }
+            for entry in std::fs::read_dir(data_dir).unwrap() {
+                let path = entry.unwrap().path();
+                if !path.is_file() {
+                    continue;
+                }
 
-        let file_name = path.file_name().unwrap().to_str().unwrap().to_string();
-        let script = std::fs::read(&path).unwrap();
+                let file_name = path.file_name().unwrap().to_str().unwrap().to_string();
+                let script = std::fs::read(&path).unwrap();
 
-        let arena = Arena::new();
-        let program = flat::decode::<DeBruijn>(&arena, &script)
-            .unwrap_or_else(|e| panic!("Failed to decode {file_name}: {e:?}"));
+                let arena = Arena::new();
+                let program = flat::decode::<DeBruijn>(&arena, &script)
+                    .unwrap_or_else(|e| panic!("Failed to decode {file_name}: {e:?}"));
 
-        // We don't care if eval succeeds (some scripts need args),
-        // we just care that decode succeeded
-        let _ = program.eval(&arena);
-    }
+                // We don't care if eval succeeds (some scripts need args),
+                // we just care that decode succeeded
+                let _ = program.eval(&arena);
+            }
+        })
+        .unwrap()
+        .join()
+        .unwrap();
 }
 
 /// Decode, eval, re-encode, re-decode and verify for benchmark scripts
 #[test]
 fn flat_roundtrip_benchmark_scripts() {
-    let data_dir = std::path::Path::new("benches/use_cases/plutus_use_cases");
-    if !data_dir.exists() {
-        return;
-    }
+    std::thread::Builder::new()
+        .stack_size(8 * 1024 * 1024)
+        .spawn(|| {
+            let data_dir = std::path::Path::new("benches/use_cases/plutus_use_cases");
+            if !data_dir.exists() {
+                return;
+            }
 
-    for entry in std::fs::read_dir(data_dir).unwrap() {
-        let path = entry.unwrap().path();
-        if !path.is_file() {
-            continue;
-        }
+            for entry in std::fs::read_dir(data_dir).unwrap() {
+                let path = entry.unwrap().path();
+                if !path.is_file() {
+                    continue;
+                }
 
-        let file_name = path.file_name().unwrap().to_str().unwrap().to_string();
-        let script = std::fs::read(&path).unwrap();
+                let file_name = path.file_name().unwrap().to_str().unwrap().to_string();
+                let script = std::fs::read(&path).unwrap();
 
-        let arena = Arena::new();
-        let program = match flat::decode::<DeBruijn>(&arena, &script) {
-            Ok(p) => p,
-            Err(_) => continue, // Skip scripts that fail to decode
-        };
+                let arena = Arena::new();
+                let program = match flat::decode::<DeBruijn>(&arena, &script) {
+                    Ok(p) => p,
+                    Err(_) => continue, // Skip scripts that fail to decode
+                };
 
-        // Re-encode
-        let re_encoded = flat::encode(program)
-            .unwrap_or_else(|e| panic!("Failed to re-encode {file_name}: {e:?}"));
+                // Re-encode
+                let re_encoded = flat::encode(program)
+                    .unwrap_or_else(|e| panic!("Failed to re-encode {file_name}: {e:?}"));
 
-        // Re-decode
-        let arena2 = Arena::new();
-        let re_decoded = flat::decode::<DeBruijn>(&arena2, &re_encoded)
-            .unwrap_or_else(|e| panic!("Failed to re-decode {file_name}: {e:?}"));
+                // Re-decode
+                let arena2 = Arena::new();
+                let re_decoded = flat::decode::<DeBruijn>(&arena2, &re_encoded)
+                    .unwrap_or_else(|e| panic!("Failed to re-decode {file_name}: {e:?}"));
 
-        assert_eq!(
-            program.term, re_decoded.term,
-            "Round-trip mismatch for {file_name}"
-        );
-    }
+                assert_eq!(
+                    program.term, re_decoded.term,
+                    "Round-trip mismatch for {file_name}"
+                );
+            }
+        })
+        .unwrap()
+        .join()
+        .unwrap();
 }
