@@ -1,3 +1,6 @@
+//! Flat encode error types.
+#![allow(missing_docs)]
+
 use std::convert::Infallible;
 
 use thiserror::Error;

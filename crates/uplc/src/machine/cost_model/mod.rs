@@ -1,3 +1,6 @@
+//! CEK machine cost models.
+#![allow(missing_docs)]
+
 pub mod builtin_costs;
 pub(crate) mod cost_map;
 mod costing;

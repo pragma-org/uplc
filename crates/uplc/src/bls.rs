@@ -1,3 +1,9 @@
+//! BLS12-381 elliptic curve operations.
+//!
+//! Wraps the [`blst`] crate to provide point compression, hashing-to-curve,
+//! and pairing operations used by the BLS built-in functions (Plutus V3).
+#![allow(missing_docs)]
+
 use bumpalo::collections::Vec as BumpVec;
 use once_cell::sync::Lazy;
 

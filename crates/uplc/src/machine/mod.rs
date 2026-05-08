@@ -1,3 +1,15 @@
+//! CEK machine implementation and associated types.
+//!
+//! The main entry point is [`Program::eval`](crate::program::Program::eval). This module
+//! re-exports the types needed to inspect evaluation results:
+//!
+//! - [`EvalResult`] — the final term (or error) plus [`MachineInfo`]
+//! - [`MachineError`] — all error variants the machine can produce
+//! - [`ExBudget`] — CPU/memory execution budget
+//! - [`PlutusVersion`] — V1 / V2 / V3 semantics selector
+//! - [`BuiltinSemantics`] — built-in behaviour variant (V1 or V2)
+//! - [`CostModel`] — parameterised cost model
+
 mod cek;
 mod context;
 pub(crate) mod cost_model;

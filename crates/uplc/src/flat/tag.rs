@@ -1,3 +1,6 @@
+//! Flat binary format tag constants for UPLC terms, types, and built-ins.
+#![allow(missing_docs)]
+
 // Widths
 pub const TERM_TAG_WIDTH: usize = 4;
 pub const CONST_TAG_WIDTH: usize = 4;

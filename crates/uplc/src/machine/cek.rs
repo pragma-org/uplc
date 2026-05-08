@@ -1,3 +1,6 @@
+//! CEK machine execution loop.
+#![allow(missing_docs)]
+
 use bumpalo::collections::Vec as BumpVec;
 
 use crate::{

@@ -1,7 +1,13 @@
+//! Named De Bruijn variable binder strategy.
+
 use crate::arena::Arena;
 
 use super::{Binder, Eval};
 
+/// A hybrid variable binding that carries both a human-readable name and a De Bruijn index.
+///
+/// Useful when debugging or round-tripping through a textual format: the `text` label
+/// aids readability while the `index` drives CEK machine variable lookup.
 #[derive(Debug)]
 pub struct NamedDeBruijn<'a> {
     text: &'a str,
@@ -9,6 +15,7 @@ pub struct NamedDeBruijn<'a> {
 }
 
 impl<'a> NamedDeBruijn<'a> {
+    /// Allocates a [`NamedDeBruijn`] with the given text label and De Bruijn index.
     pub fn new(arena: &'a Arena, text: &'a str, index: usize) -> &'a Self {
         arena.alloc(NamedDeBruijn { text, index })
     }
