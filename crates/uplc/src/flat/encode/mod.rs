@@ -11,6 +11,7 @@ use crate::{
 
 use super::tag;
 
+/// Encodes a UPLC [`Program`] into its Flat binary representation.
 pub fn encode<'a, V>(program: &'a Program<'a, V>) -> Result<Vec<u8>, FlatEncodeError>
 where
     V: Binder<'a>,

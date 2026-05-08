@@ -1,3 +1,5 @@
+//! Built-in function runtime dispatch and Plutus version selection.
+
 use core::str;
 use std::array::TryFromSliceError;
 
@@ -71,15 +73,30 @@ fn prepare_msm_scalar(
     scalar_bytes.extend_from_slice(&scalar_buf.b);
 }
 
+/// Selects the semantic behaviour of certain built-in functions.
+///
+/// `V2` semantics (used for Plutus V3) aligns `modInteger` / `divideInteger` with
+/// Haskell's standard `div` / `mod` behaviour for negative operands.
+#[non_exhaustive]
 pub enum BuiltinSemantics {
+    /// Original Plutus V1/V2 built-in semantics.
     V1,
+    /// Updated semantics introduced in Plutus V3.
     V2,
 }
 
+/// Plutus language version selector for the CEK machine.
+///
+/// Controls which built-in functions are available and which [`BuiltinSemantics`]
+/// variant is used during evaluation.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlutusVersion {
+    /// Plutus V1 — Alonzo-era built-ins.
     V1,
+    /// Plutus V2 — Vasil-era additions (inline datums, reference inputs).
     V2,
+    /// Plutus V3 — Chang-era additions (BLS12-381, bitwise ops, sums-of-products).
     V3,
 }
 
@@ -151,6 +168,7 @@ where
 }
 
 impl<'a, B: BuiltinCostModel> Machine<'a, B> {
+    /// Executes a fully-saturated built-in runtime call and returns the resulting value.
     pub fn call<V>(
         &mut self,
         runtime: &'a Runtime<'a, V>,

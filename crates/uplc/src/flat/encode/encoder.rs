@@ -2,8 +2,10 @@ use crate::{constant::Integer, flat::zigzag::ZigZag};
 
 use super::FlatEncodeError;
 
+/// Bit-level Flat binary encoder.
 #[derive(Default)]
 pub struct Encoder {
+    /// The encoded bytes accumulated so far.
     pub buffer: Vec<u8>,
     // Int
     used_bits: i64,

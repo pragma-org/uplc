@@ -1,123 +1,221 @@
 use crate::machine::PlutusVersion;
 
+/// All built-in functions available in the UPLC language.
+///
+/// The discriminant values match the Flat encoding used in on-chain scripts.
+/// Not every function is available in every Plutus version; the runtime
+/// checks availability before dispatch.
+#[non_exhaustive]
 #[repr(u8)]
 #[allow(non_camel_case_types)]
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum DefaultFunction {
-    // Integer functions
+    // --- Integer ---
+    /// Adds two integers.
     AddInteger = 0,
+    /// Subtracts the second integer from the first.
     SubtractInteger = 1,
+    /// Multiplies two integers.
     MultiplyInteger = 2,
+    /// Truncated division (rounds towards negative infinity).
     DivideInteger = 3,
+    /// Truncated quotient (rounds towards zero).
     QuotientInteger = 4,
+    /// Remainder after [`QuotientInteger`](Self::QuotientInteger).
     RemainderInteger = 5,
+    /// Modulo after [`DivideInteger`](Self::DivideInteger).
     ModInteger = 6,
+    /// Tests two integers for equality.
     EqualsInteger = 7,
+    /// Returns `true` if the first integer is strictly less than the second.
     LessThanInteger = 8,
+    /// Returns `true` if the first integer is less than or equal to the second.
     LessThanEqualsInteger = 9,
-    // ByteString functions
+
+    // --- ByteString ---
+    /// Concatenates two byte strings.
     AppendByteString = 10,
+    /// Prepends a byte (given as an integer 0–255) to a byte string.
     ConsByteString = 11,
+    /// Extracts a sub-byte-string by offset and length.
     SliceByteString = 12,
+    /// Returns the length of a byte string.
     LengthOfByteString = 13,
+    /// Returns the byte at a given index.
     IndexByteString = 14,
+    /// Tests two byte strings for equality.
     EqualsByteString = 15,
+    /// Lexicographic less-than on byte strings.
     LessThanByteString = 16,
+    /// Lexicographic less-than-or-equal on byte strings.
     LessThanEqualsByteString = 17,
-    // Cryptography and hash functions
+
+    // --- Cryptography ---
+    /// SHA-256 hash of a byte string.
     Sha2_256 = 18,
+    /// SHA3-256 hash of a byte string.
     Sha3_256 = 19,
+    /// Blake2b-256 hash of a byte string.
     Blake2b_256 = 20,
+    /// Keccak-256 hash of a byte string (Plutus V3, protocol version ≥ 9).
     Keccak_256 = 71,
+    /// Blake2b-224 hash of a byte string (Plutus V3, protocol version ≥ 9).
     Blake2b_224 = 72,
+    /// Verifies an Ed25519 signature given `(public_key, message, signature)`.
     VerifyEd25519Signature = 21,
+    /// Verifies an ECDSA secp256k1 signature given `(public_key, message, signature)`.
     VerifyEcdsaSecp256k1Signature = 52,
+    /// Verifies a Schnorr secp256k1 signature given `(public_key, message, signature)`.
     VerifySchnorrSecp256k1Signature = 53,
-    // String functions
+
+    // --- String ---
+    /// Concatenates two UTF-8 strings.
     AppendString = 22,
+    /// Tests two strings for equality.
     EqualsString = 23,
+    /// Encodes a string to a byte string (UTF-8).
     EncodeUtf8 = 24,
+    /// Decodes a byte string to a string (UTF-8); errors on invalid bytes.
     DecodeUtf8 = 25,
-    // Bool function
+
+    // --- Control ---
+    /// Polymorphic conditional; forces the chosen branch.
     IfThenElse = 26,
-    // Unit function
+    /// Evaluates a unit value and returns the provided second argument.
     ChooseUnit = 27,
-    // Tracing function
+    /// Logs a trace message and returns the second argument unchanged.
     Trace = 28,
-    // Pairs functions
+
+    // --- Pairs ---
+    /// Returns the first element of a pair.
     FstPair = 29,
+    /// Returns the second element of a pair.
     SndPair = 30,
-    // List functions
+
+    // --- Lists ---
+    /// Pattern-matches a list, selecting the nil or cons branch.
     ChooseList = 31,
+    /// Prepends an element to a typed list.
     MkCons = 32,
+    /// Returns the first element of a non-empty list.
     HeadList = 33,
+    /// Returns the list without its first element.
     TailList = 34,
+    /// Returns `true` if the list is empty.
     NullList = 35,
-    // Data functions
-    // It is convenient to have a "choosing" function for a data type that has more than two
-    // constructors to get pattern matching over it and we may end up having multiple such data
-    // types, hence we include the name of the data type as a suffix.
+
+    // --- Data ---
+    /// Pattern-matches a `Data` value across all five constructors.
     ChooseData = 36,
+    /// Constructs a `Data` constr value from a tag and a list of fields.
     ConstrData = 37,
+    /// Lifts a map of `Data` values into a `Data` map.
     MapData = 38,
+    /// Lifts a list of `Data` values into `Data`.
     ListData = 39,
+    /// Lifts an integer into `Data`.
     IData = 40,
+    /// Lifts a byte string into `Data`.
     BData = 41,
+    /// Deconstructs a `Data` constr into `(tag, fields)`.
     UnConstrData = 42,
+    /// Extracts the map from a `Data` map value.
     UnMapData = 43,
+    /// Extracts the list from a `Data` list value.
     UnListData = 44,
+    /// Extracts the integer from a `Data` integer value.
     UnIData = 45,
+    /// Extracts the byte string from a `Data` byte-string value.
     UnBData = 46,
+    /// Tests two `Data` values for structural equality.
     EqualsData = 47,
+    /// CBOR-serialises a `Data` value to a byte string.
     SerialiseData = 51,
-    // Misc constructors
-    // Constructors that we need for constructing e.g. Data. Polymorphic builtin
-    // constructors are often problematic (See note [Representable built-in
-    // functions over polymorphic built-in types])
+
+    // --- Data constructors ---
+    /// Constructs a `Data` pair.
     MkPairData = 48,
+    /// Constructs an empty `Data` list.
     MkNilData = 49,
+    /// Constructs an empty `Data` map (list of pairs).
     MkNilPairData = 50,
 
-    // BLS Builtins
+    // --- BLS12-381 (Plutus V3) ---
+    /// Point addition in BLS12-381 G1.
     Bls12_381_G1_Add = 54,
+    /// Point negation in BLS12-381 G1.
     Bls12_381_G1_Neg = 55,
+    /// Scalar multiplication in BLS12-381 G1.
     Bls12_381_G1_ScalarMul = 56,
+    /// Equality test for BLS12-381 G1 points.
     Bls12_381_G1_Equal = 57,
+    /// Compresses a BLS12-381 G1 point to 48 bytes.
     Bls12_381_G1_Compress = 58,
+    /// Decompresses 48 bytes into a BLS12-381 G1 point.
     Bls12_381_G1_Uncompress = 59,
+    /// Hashes a byte string to a BLS12-381 G1 point using a domain-separation tag.
     Bls12_381_G1_HashToGroup = 60,
+    /// Point addition in BLS12-381 G2.
     Bls12_381_G2_Add = 61,
+    /// Point negation in BLS12-381 G2.
     Bls12_381_G2_Neg = 62,
+    /// Scalar multiplication in BLS12-381 G2.
     Bls12_381_G2_ScalarMul = 63,
+    /// Equality test for BLS12-381 G2 points.
     Bls12_381_G2_Equal = 64,
+    /// Compresses a BLS12-381 G2 point to 96 bytes.
     Bls12_381_G2_Compress = 65,
+    /// Decompresses 96 bytes into a BLS12-381 G2 point.
     Bls12_381_G2_Uncompress = 66,
+    /// Hashes a byte string to a BLS12-381 G2 point using a domain-separation tag.
     Bls12_381_G2_HashToGroup = 67,
+    /// Computes the BLS12-381 Miller loop (G1 × G2 → GT).
     Bls12_381_MillerLoop = 68,
+    /// Multiplies two BLS12-381 GT (Miller-loop result) elements.
     Bls12_381_MulMlResult = 69,
+    /// Checks equality of two BLS12-381 pairings (final-exponentiation verify).
     Bls12_381_FinalVerify = 70,
 
-    // Bitwise
+    // --- Bitwise (Plutus V3) ---
+    /// Converts an integer to a byte string with given endianness and size.
     IntegerToByteString = 73,
+    /// Converts a byte string to an integer with given endianness.
     ByteStringToInteger = 74,
-
+    /// Bitwise AND of two byte strings, with a padding-semantics flag.
     AndByteString = 75,
+    /// Bitwise OR of two byte strings, with a padding-semantics flag.
     OrByteString = 76,
+    /// Bitwise XOR of two byte strings, with a padding-semantics flag.
     XorByteString = 77,
+    /// Bitwise complement of a byte string.
     ComplementByteString = 78,
+    /// Reads a single bit at the given index.
     ReadBit = 79,
+    /// Writes a list of `(index, bit)` pairs into a byte string.
     WriteBits = 80,
+    /// Creates a byte string of given length filled with a single byte.
     ReplicateByte = 81,
+    /// Logical shift of a byte string by a signed number of bits.
     ShiftByteString = 82,
+    /// Rotation of a byte string by a signed number of bits.
     RotateByteString = 83,
+    /// Counts the number of set bits (popcount) in a byte string.
     CountSetBits = 84,
+    /// Returns the index of the lowest set bit, or -1 if none.
     FindFirstSetBit = 85,
+    /// RIPEMD-160 hash of a byte string.
     Ripemd_160 = 86,
 
+    // --- van Rossem (protocol version ≥ 11) ---
+    /// Modular exponentiation: `base ^ exp mod modulus`.
     ExpModInteger = 87,
+    /// Drops the first `n` elements of a list.
     DropList = 88,
+    /// Returns the length of an array.
     LengthOfArray = 89,
+    /// Converts a list to an array.
     ListToArray = 90,
+    /// Returns the element at a given index in an array.
     IndexArray = 91,
 
     // BLS Multi-Scalar Multiplication
@@ -135,6 +233,8 @@ pub enum DefaultFunction {
 }
 
 impl DefaultFunction {
+    /// Number of [`Force`](crate::term::Term::Force) applications required before
+    /// this built-in accepts value arguments (0 for monomorphic, 1–2 for polymorphic).
     pub fn force_count(&self) -> usize {
         match self {
             DefaultFunction::AddInteger => 0,
@@ -241,6 +341,7 @@ impl DefaultFunction {
         }
     }
 
+    /// Number of value arguments this built-in expects after any required `Force`s.
     pub fn arity(&self) -> usize {
         match self {
             DefaultFunction::AddInteger => 2,

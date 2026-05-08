@@ -1,3 +1,6 @@
+//! Flat binary decoder implementation.
+#![allow(missing_docs)]
+
 use bumpalo::collections::{String as BumpString, Vec as BumpVec};
 
 use crate::{
