@@ -47,11 +47,6 @@
 //! | [`bls`] | BLS12-381 elliptic curve primitives |
 //! | [`typ`] | UPLC type system |
 //!
-//! # Feature flags
-//!
-//! - `alloc_profiler` — enables experimental arena allocation profiling. Currently a no-op;
-//!   reserved for future profiling hooks.
-//!
 //! [UPLC]: https://plutus.readthedocs.io/en/latest/reference/uplc-introduction.html
 //! [Plutus]: https://plutus.readthedocs.io/
 //! [Cardano]: https://cardano.org/
