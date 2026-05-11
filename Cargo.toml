@@ -11,6 +11,8 @@ authors = ["PRAGMA <hello@pragma.io>", "Lucas Rosa <x@rvcas.dev>"]
 repository = "https://github.com/pragma-org/uplc"
 homepage = "https://github.com/pragma-org/uplc"
 documentation = "https://docs.rs/amaru-uplc"
+keywords = ["uplc", "plutus", "cardano", "smart-contracts", "cek-machine"]
+categories = ["cryptography::cryptocurrencies", "compilers", "parser-implementations"]
 
 [workspace.dependencies]
 # Internal
