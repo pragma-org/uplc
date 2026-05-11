@@ -1,7 +1,14 @@
+//! Named variable binder strategy.
+
 use crate::arena::Arena;
 
 use super::Binder;
 
+/// A human-readable named variable binding.
+///
+/// Used during parsing and pretty-printing where variable names are preserved.
+/// Each binding carries a `text` label and a `unique` integer to disambiguate
+/// shadowed names.
 #[derive(Debug)]
 pub struct Name<'a> {
     text: &'a str,
@@ -9,6 +16,7 @@ pub struct Name<'a> {
 }
 
 impl<'a> Name<'a> {
+    /// Allocates a [`Name`] with the given text label and uniqueness index.
     pub fn new(arena: &'a Arena, text: &'a str, unique: usize) -> &'a Self {
         arena.alloc(Name { text, unique })
     }

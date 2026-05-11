@@ -255,6 +255,7 @@ where
 }
 
 impl<'a> Constant<'a> {
+    /// Wraps this constant in a `Value::Con` for use as a CEK machine value.
     pub fn value<V>(&'a self, arena: &'a Arena) -> &'a Value<'a, V>
     where
         V: Eval<'a>,

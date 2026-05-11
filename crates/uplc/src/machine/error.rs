@@ -1,3 +1,12 @@
+//! Error types produced by the CEK machine during evaluation.
+// The #[error("...")] Display strings on each variant serve as the primary documentation;
+// per-variant /// comments would duplicate them.
+#![allow(missing_docs)]
+//!
+//! [`MachineError`] is the top-level error enum. Most variants wrap a [`RuntimeError`]
+//! which covers arithmetic faults, type mismatches, cryptographic errors, and
+//! out-of-bounds accesses encountered when executing built-in functions.
+
 use std::array::TryFromSliceError;
 
 use crate::{
@@ -12,6 +21,7 @@ use crate::{
 
 use super::{value::Value, ExBudget};
 
+#[non_exhaustive]
 #[derive(thiserror::Error, Debug)]
 pub enum MachineError<'a, V>
 where
@@ -45,6 +55,7 @@ where
     NoCostForBuiltin(DefaultFunction),
 }
 
+#[non_exhaustive]
 #[derive(thiserror::Error, Debug)]
 pub enum RuntimeError<'a> {
     #[error("Byte string out of bounds")]
