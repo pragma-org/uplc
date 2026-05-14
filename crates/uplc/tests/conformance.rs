@@ -14,6 +14,7 @@ fn run_conformance_test(file_contents: &str, expected_output: &str, expected_bud
 
     let info = result.info;
 
+    println!("results: {:?}", result.term);
     let Ok(term) = result.term else {
         pretty_assertions::assert_eq!("evaluation failure", expected_output);
         pretty_assertions::assert_eq!("evaluation failure", expected_budget);
