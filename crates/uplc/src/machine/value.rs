@@ -253,7 +253,7 @@ where
 
         Ok(ml_res)
     }
-    
+
     pub fn unwrap_ledger_value(&'a self) -> Result<&'a LedgerValue<'a>, MachineError<'a, V>> {
         let inner = self.unwrap_constant()?;
 

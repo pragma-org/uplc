@@ -5,9 +5,8 @@ use crate::{
     binder::Eval,
     constant::Constant,
     machine::{
-        context::{Context},
-        cost_model::builtin_costs::BuiltinCostModel,
-        env::Env,state::MachineState,
+        context::Context, cost_model::builtin_costs::BuiltinCostModel, env::Env,
+        state::MachineState,
     },
     term::Term,
 };
@@ -39,7 +38,7 @@ impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
         costs: CostModel<B>,
         semantics: BuiltinSemantics,
     ) -> Self {
-            Self {
+        Self {
             arena,
             ex_budget: initial_budget,
             unbudgeted_steps: [0; 10],

@@ -249,7 +249,6 @@ pub fn try_from_tag(arena: &Arena, v: u8) -> Result<&DefaultFunction, FlatDecode
         }
         v if v == DefaultFunction::ScaleValue as u8 => Ok(arena.alloc(DefaultFunction::ScaleValue)),
 
-
         _ => Err(FlatDecodeError::DefaultFunctionNotFound(v)),
     }
 }
