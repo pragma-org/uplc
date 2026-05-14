@@ -3,9 +3,11 @@ use bumpalo::collections::Vec as BumpVec;
 use crate::{
     arena::Arena,
     binder::Eval,
+    constant::Constant,
     machine::{
-        context::Context, cost_model::builtin_costs::BuiltinCostModel, env::Env,
-        state::MachineState,
+        context::{Context},
+        cost_model::builtin_costs::BuiltinCostModel,
+        env::Env,state::MachineState,
     },
     term::Term,
 };
@@ -19,7 +21,7 @@ use super::{
     CostModel, ExBudget, MachineError,
 };
 
-pub struct Machine<'a, B: BuiltinCostModel> {
+pub struct Machine<'a, B: BuiltinCostModel, V: Eval<'a>> {
     pub(super) arena: &'a Arena,
     ex_budget: ExBudget,
     unbudgeted_steps: [u8; 10],
@@ -27,16 +29,17 @@ pub struct Machine<'a, B: BuiltinCostModel> {
     slippage: u8,
     pub(super) logs: Vec<String>,
     pub(super) semantics: BuiltinSemantics,
+    _marker: std::marker::PhantomData<V>,
 }
 
-impl<'a, B: BuiltinCostModel> Machine<'a, B> {
+impl<'a, B: BuiltinCostModel, V: Eval<'a>> Machine<'a, B, V> {
     pub fn new(
         arena: &'a Arena,
         initial_budget: ExBudget,
         costs: CostModel<B>,
         semantics: BuiltinSemantics,
     ) -> Self {
-        Machine {
+            Self {
             arena,
             ex_budget: initial_budget,
             unbudgeted_steps: [0; 10],
@@ -44,6 +47,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
             slippage: 200,
             logs: Vec::new(),
             semantics,
+            _marker: std::marker::PhantomData,
         }
     }
 
@@ -54,10 +58,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
         }
     }
 
-    pub fn run<V>(&mut self, term: &'a Term<'a, V>) -> Result<&'a Term<'a, V>, MachineError<'a, V>>
-    where
-        V: Eval<'a>,
-    {
+    pub fn run(&mut self, term: &'a Term<'a, V>) -> Result<&'a Term<'a, V>, MachineError<'a, V>> {
         self.spend_budget(self.costs.machine_startup)?;
 
         let initial_context = Context::no_frame(self.arena);
@@ -78,15 +79,12 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
         }
     }
 
-    pub fn compute<V>(
+    pub fn compute(
         &mut self,
         context: &'a Context<'a, V>,
         env: &'a Env<'a, V>,
         term: &'a Term<'a, V>,
-    ) -> Result<&'a mut MachineState<'a, V>, MachineError<'a, V>>
-    where
-        V: Eval<'a>,
-    {
+    ) -> Result<&'a mut MachineState<'a, V>, MachineError<'a, V>> {
         match term {
             Term::Var(name) => {
                 self.step_and_maybe_spend(StepKind::Var)?;
@@ -185,14 +183,11 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
         }
     }
 
-    pub fn return_compute<V>(
+    pub fn return_compute(
         &mut self,
         context: &'a Context<'a, V>,
         value: &'a Value<'a, V>,
-    ) -> Result<&'a mut MachineState<'a, V>, MachineError<'a, V>>
-    where
-        V: Eval<'a>,
-    {
+    ) -> Result<&'a mut MachineState<'a, V>, MachineError<'a, V>> {
         match context {
             Context::FrameAwaitFunTerm(arg_env, argument, context) => {
                 let context = Context::frame_await_arg(self.arena, value, context);
@@ -253,6 +248,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         Err(MachineError::MissingCaseBranch(branches, value))
                     }
                 }
+                Value::Con(constant) => self.case_on_constant(constant, env, branches, context),
                 v => Err(MachineError::NonConstrScrutinized(v)),
             },
             Context::NoFrame => {
@@ -269,14 +265,11 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
         }
     }
 
-    fn force_evaluate<V>(
+    fn force_evaluate(
         &mut self,
         context: &'a Context<'a, V>,
         value: &'a Value<'a, V>,
-    ) -> Result<&'a mut MachineState<'a, V>, MachineError<'a, V>>
-    where
-        V: Eval<'a>,
-    {
+    ) -> Result<&'a mut MachineState<'a, V>, MachineError<'a, V>> {
         match value {
             Value::Delay(term, env) => Ok(MachineState::compute(self.arena, context, env, term)),
             Value::Builtin(runtime) => {
@@ -300,15 +293,12 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
         }
     }
 
-    fn apply_evaluate<V>(
+    fn apply_evaluate(
         &mut self,
         context: &'a Context<'a, V>,
         function: &'a Value<'a, V>,
         argument: &'a Value<'a, V>,
-    ) -> Result<&'a mut MachineState<'a, V>, MachineError<'a, V>>
-    where
-        V: Eval<'a>,
-    {
+    ) -> Result<&'a mut MachineState<'a, V>, MachineError<'a, V>> {
         match function {
             Value::Lambda { body, env, .. } => {
                 let new_env = env.push(self.arena, argument);
@@ -322,7 +312,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                     let runtime = runtime.push(self.arena, argument);
 
                     let value = if runtime.is_ready() {
-                        self.eval_builtin_app(runtime)?
+                        self.call(runtime)?
                     } else {
                         Value::builtin(self.arena, runtime)
                     };
@@ -340,24 +330,112 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
         }
     }
 
-    fn eval_builtin_app<V>(
+    fn case_on_constant(
         &mut self,
-        runtime: &'a Runtime<'a, V>,
-    ) -> Result<&'a Value<'a, V>, MachineError<'a, V>>
-    where
-        V: Eval<'a>,
-    {
-        self.call(runtime)
+        constant: &'a Constant<'a>,
+        env: &'a Env<'a, V>,
+        branches: &'a [&'a Term<'a, V>],
+        context: &'a Context<'a, V>,
+    ) -> Result<&'a mut MachineState<'a, V>, MachineError<'a, V>> {
+        match constant {
+            Constant::Boolean(b) => {
+                if branches.is_empty() || branches.len() > 2 {
+                    return Err(MachineError::NonConstrScrutinized(Value::con(
+                        self.arena, constant,
+                    )));
+                }
+                let tag: usize = if *b { 1 } else { 0 };
+                if tag >= branches.len() {
+                    return Err(MachineError::NonConstrScrutinized(Value::con(
+                        self.arena, constant,
+                    )));
+                }
+                Ok(MachineState::compute(
+                    self.arena,
+                    context,
+                    env,
+                    branches[tag],
+                ))
+            }
+            Constant::Unit => {
+                if branches.len() != 1 {
+                    return Err(MachineError::NonConstrScrutinized(Value::con(
+                        self.arena, constant,
+                    )));
+                }
+                Ok(MachineState::compute(self.arena, context, env, branches[0]))
+            }
+            Constant::Integer(int_val) => {
+                use num::ToPrimitive;
+                let tag = int_val.to_usize().ok_or_else(|| {
+                    MachineError::NonConstrScrutinized(Value::con(self.arena, constant))
+                })?;
+                if tag >= branches.len() {
+                    return Err(MachineError::NonConstrScrutinized(Value::con(
+                        self.arena, constant,
+                    )));
+                }
+                Ok(MachineState::compute(
+                    self.arena,
+                    context,
+                    env,
+                    branches[tag],
+                ))
+            }
+            Constant::ProtoList(typ, items) => {
+                if !items.is_empty() {
+                    // Non-empty list: branch 0, with head and tail as arguments
+                    if branches.is_empty() {
+                        return Err(MachineError::NonConstrScrutinized(Value::con(
+                            self.arena, constant,
+                        )));
+                    }
+
+                    let head_val: &'a Value<'a, V> = Value::con(self.arena, items[0]);
+                    let tail_const = Constant::proto_list(self.arena, typ, &items[1..]);
+                    let tail_val: &'a Value<'a, V> = Value::con(self.arena, tail_const);
+
+                    let fields: &'a [&'a Value<'a, V>] = self.arena.alloc([head_val, tail_val]);
+                    let frame = self.transfer_arg_stack(fields, context);
+
+                    Ok(MachineState::compute(self.arena, frame, env, branches[0]))
+                } else {
+                    // Empty list: branch 1
+                    if branches.len() >= 2 {
+                        Ok(MachineState::compute(self.arena, context, env, branches[1]))
+                    } else {
+                        Err(MachineError::NonConstrScrutinized(Value::con(
+                            self.arena, constant,
+                        )))
+                    }
+                }
+            }
+            Constant::ProtoPair(_t1, _t2, fst, snd) => {
+                if branches.len() != 1 {
+                    return Err(MachineError::NonConstrScrutinized(Value::con(
+                        self.arena, constant,
+                    )));
+                }
+
+                let fst_val: &'a Value<'a, V> = Value::con(self.arena, fst);
+                let snd_val: &'a Value<'a, V> = Value::con(self.arena, snd);
+
+                let fields: &'a [&'a Value<'a, V>] = self.arena.alloc([fst_val, snd_val]);
+                let frame = self.transfer_arg_stack(fields, context);
+
+                Ok(MachineState::compute(self.arena, frame, env, branches[0]))
+            }
+            _ => Err(MachineError::NonConstrScrutinized(Value::con(
+                self.arena, constant,
+            ))),
+        }
     }
 
-    fn transfer_arg_stack<V>(
+    fn transfer_arg_stack(
         &mut self,
         fields: &'a [&'a Value<'a, V>],
         context: &'a Context<'a, V>,
-    ) -> &'a Context<'a, V>
-    where
-        V: Eval<'a>,
-    {
+    ) -> &'a Context<'a, V> {
         let mut c = context;
 
         for field in fields.iter().rev() {
@@ -367,10 +445,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
         c
     }
 
-    fn step_and_maybe_spend<V>(&mut self, step: StepKind) -> Result<(), MachineError<'a, V>>
-    where
-        V: Eval<'a>,
-    {
+    fn step_and_maybe_spend(&mut self, step: StepKind) -> Result<(), MachineError<'a, V>> {
         let index = step as usize;
 
         self.unbudgeted_steps[index] += 1;
@@ -383,10 +458,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
         Ok(())
     }
 
-    fn spend_unbudgeted_steps<V>(&mut self) -> Result<(), MachineError<'a, V>>
-    where
-        V: Eval<'a>,
-    {
+    fn spend_unbudgeted_steps(&mut self) -> Result<(), MachineError<'a, V>> {
         for step_kind in 0..self.unbudgeted_steps.len() - 1 {
             let mut unspent_step_budget = self.costs.machine_costs.get(step_kind);
 
@@ -402,13 +474,10 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
         Ok(())
     }
 
-    pub(super) fn spend_budget<V>(
+    pub(super) fn spend_budget(
         &mut self,
         spend_budget: ExBudget,
-    ) -> Result<(), MachineError<'a, V>>
-    where
-        V: Eval<'a>,
-    {
+    ) -> Result<(), MachineError<'a, V>> {
         self.ex_budget.mem -= spend_budget.mem;
         self.ex_budget.cpu -= spend_budget.cpu;
 

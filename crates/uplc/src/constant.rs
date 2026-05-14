@@ -1,4 +1,7 @@
-use crate::{arena::Arena, binder::Eval, data::PlutusData, machine::MachineError, typ::Type};
+use crate::{
+    arena::Arena, binder::Eval, data::PlutusData, ledger_value::LedgerValue, machine::MachineError,
+    typ::Type,
+};
 
 #[derive(Debug, PartialEq)]
 pub enum Constant<'a> {
@@ -19,6 +22,7 @@ pub enum Constant<'a> {
     Bls12_381G1Element(&'a blst::blst_p1),
     Bls12_381G2Element(&'a blst::blst_p2),
     Bls12_381MlResult(&'a blst::blst_fp12),
+    Value(&'a LedgerValue<'a>),
 }
 
 pub type Integer = num::BigInt;
@@ -103,6 +107,10 @@ impl<'a> Constant<'a> {
         arena.alloc(Constant::Bls12_381MlResult(ml_res))
     }
 
+    pub fn ledger_value(arena: &'a Arena, v: &'a LedgerValue<'a>) -> &'a Constant<'a> {
+        arena.alloc(Constant::Value(v))
+    }
+
     pub fn unwrap_data<V>(&'a self) -> Result<&'a PlutusData<'a>, MachineError<'a, V>>
     where
         V: Eval<'a>,
@@ -127,6 +135,7 @@ impl<'a> Constant<'a> {
             Constant::Bls12_381G1Element(_) => Type::g1(arena),
             Constant::Bls12_381G2Element(_) => Type::g2(arena),
             Constant::Bls12_381MlResult(_) => Type::ml_result(arena),
+            Constant::Value(_) => Type::value(arena),
         }
     }
 }
