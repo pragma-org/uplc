@@ -119,6 +119,10 @@ pub enum DefaultFunction {
     LengthOfArray = 89,
     ListToArray = 90,
     IndexArray = 91,
+
+    // BLS Multi-Scalar Multiplication
+    Bls12_381_G1_MultiScalarMul = 92,
+    Bls12_381_G2_MultiScalarMul = 93,
 }
 
 impl DefaultFunction {
@@ -216,6 +220,8 @@ impl DefaultFunction {
             DefaultFunction::LengthOfArray => 1,
             DefaultFunction::ListToArray => 1,
             DefaultFunction::IndexArray => 1,
+            DefaultFunction::Bls12_381_G1_MultiScalarMul => 0,
+            DefaultFunction::Bls12_381_G2_MultiScalarMul => 0,
         }
     }
 
@@ -313,6 +319,8 @@ impl DefaultFunction {
             DefaultFunction::LengthOfArray => 1,
             DefaultFunction::ListToArray => 1,
             DefaultFunction::IndexArray => 2,
+            DefaultFunction::Bls12_381_G1_MultiScalarMul => 2,
+            DefaultFunction::Bls12_381_G2_MultiScalarMul => 2,
         }
     }
 

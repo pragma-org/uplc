@@ -280,6 +280,8 @@ pub fn builtin_from_str<'a>(arena: &'a Arena, name: &str) -> Option<&'a Term<'a,
         "lengthOfArray" => Some(Term::length_of_array(arena)),
         "listToArray" => Some(Term::list_to_array(arena)),
         "indexArray" => Some(Term::index_array(arena)),
+        "bls12_381_G1_multiScalarMul" => Some(Term::bls12_381_g1_multi_scalar_mul(arena)),
+        "bls12_381_G2_multiScalarMul" => Some(Term::bls12_381_g2_multi_scalar_mul(arena)),
         _ => None,
     }
 }
