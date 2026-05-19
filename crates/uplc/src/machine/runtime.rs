@@ -20,7 +20,7 @@ pub const INTEGER_TO_BYTE_STRING_MAXIMUM_OUTPUT_LENGTH: i64 = 8192;
 
 /// Check that an integer fits in a signed 4096-bit range: [-(2^4095), 2^4095 - 1].
 /// Used by multiScalarMul to limit scalar sizes.
-fn check_multi_scalar_range(int: &Integer) -> Result<(), RuntimeError<'static>> {
+fn check_multi_scalar_range(int: &Integer) -> Result<(), RuntimeError<'_>> {
     let bits = int.bits();
 
     if bits <= 4095 {
