@@ -4,7 +4,10 @@ mod error;
 pub use encoder::Encoder;
 pub use error::FlatEncodeError;
 
-use crate::{binder::Binder, constant::Constant, program::Program, term::Term, typ::Type};
+use crate::{
+    binder::Binder, constant::Constant, ledger_value::LedgerValue, program::Program, term::Term,
+    typ::Type,
+};
 
 use super::tag;
 
@@ -158,6 +161,11 @@ fn encode_constant<'a>(e: &mut Encoder, constant: &'a Constant<'a>) -> Result<()
             encode_constant_value(e, fst)?;
             encode_constant_value(e, snd)?;
         }
+        Constant::Value(v) => {
+            e.list_with(&[tag::VALUE], encode_constant_tag)?;
+
+            encode_value(e, v)?;
+        }
         Constant::Bls12_381G1Element(_)
         | Constant::Bls12_381G2Element(_)
         | Constant::Bls12_381MlResult(_) => return Err(FlatEncodeError::BlsElementNotSupported),
@@ -202,6 +210,7 @@ fn encode_type(typ: &Type, bytes: &mut Vec<u8>) -> Result<(), FlatEncodeError> {
             encode_type(type2, bytes)?;
         }
         Type::Data => bytes.push(tag::DATA),
+        Type::Value => bytes.push(tag::VALUE),
         Type::Bls12_381G1Element | Type::Bls12_381G2Element | Type::Bls12_381MlResult => {
             return Err(FlatEncodeError::BlsElementNotSupported)
         }
@@ -239,10 +248,35 @@ fn encode_constant_value<'a>(e: &mut Encoder, x: &'a &Constant<'a>) -> Result<()
         Constant::Data(_data) => {
             todo!();
         }
+        Constant::Value(v) => {
+            encode_value(e, v)?;
+        }
         Constant::Bls12_381G1Element(_)
         | Constant::Bls12_381G2Element(_)
         | Constant::Bls12_381MlResult(_) => return Err(FlatEncodeError::BlsElementNotSupported),
     }
+
+    Ok(())
+}
+
+fn encode_value(e: &mut Encoder, v: &LedgerValue) -> Result<(), FlatEncodeError> {
+    for entry in v.entries {
+        e.one();
+
+        e.bytes(entry.currency)?;
+
+        for token in entry.tokens {
+            e.one();
+
+            e.bytes(token.name)?;
+
+            e.integer(token.quantity);
+        }
+
+        e.zero();
+    }
+
+    e.zero();
 
     Ok(())
 }
