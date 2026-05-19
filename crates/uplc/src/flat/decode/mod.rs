@@ -9,6 +9,7 @@ use bumpalo::collections::Vec as BumpVec;
 
 use crate::arena::Arena;
 use crate::binder::Binder;
+use crate::ledger_value::{check_quantity_range, CurrencyEntry, LedgerValue, TokenEntry};
 use crate::machine::PlutusVersion;
 use crate::typ::Type;
 use crate::{
@@ -23,18 +24,21 @@ use super::{
     tag::{BUILTIN_TAG_WIDTH, CONST_TAG_WIDTH, TERM_TAG_WIDTH},
 };
 
-/// Decode a flat-encoded UPLC program, validating builtins against the given
-/// Plutus language version and protocol version. Allows trailing bytes.
+/// Decode a FLAT-encoded program with version gating.
+///
+/// CONSTR/CASE terms, the VALUE constant type, and certain builtins are rejected
+/// when the program version or plutus/protocol version combination disallows them.
 pub fn decode<'a, V>(
     arena: &'a Arena,
     bytes: &[u8],
     plutus_version: PlutusVersion,
-    protocol_version_major: u32,
+    protocol_version: u32,
 ) -> Result<&'a Program<'a, V>, FlatDecodeError>
 where
     V: Binder<'a>,
 {
-    let (program, _remainder) = decode_inner(arena, bytes, plutus_version, protocol_version_major)?;
+    let (program, _remainder) =
+        decode_inner(arena, bytes, Some(plutus_version), Some(protocol_version))?;
     Ok(program)
 }
 
@@ -49,18 +53,34 @@ pub fn decode_strict<'a, V>(
 where
     V: Binder<'a>,
 {
-    let (program, remainder) = decode_inner(arena, bytes, plutus_version, protocol_version)?;
+    let (program, remainder) =
+        decode_inner(arena, bytes, Some(plutus_version), Some(protocol_version))?;
     if remainder > 0 {
         return Err(FlatDecodeError::TrailingBytes(remainder));
     }
     Ok(program)
 }
 
+/// Decode a FLAT-encoded program without version gating.
+///
+/// All term constructors, constant types, and builtins are accepted regardless
+/// of the embedded program version.
+pub fn decode_ungated<'a, V>(
+    arena: &'a Arena,
+    bytes: &[u8],
+) -> Result<&'a Program<'a, V>, FlatDecodeError>
+where
+    V: Binder<'a>,
+{
+    let (program, _remainder) = decode_inner(arena, bytes, None, None)?;
+    Ok(program)
+}
+
 fn decode_inner<'a, V>(
     arena: &'a Arena,
     bytes: &[u8],
-    plutus_version: PlutusVersion,
-    protocol_version_major: u32,
+    plutus_version: Option<PlutusVersion>,
+    protocol_version: Option<u32>,
 ) -> Result<(&'a Program<'a, V>, usize), FlatDecodeError>
 where
     V: Binder<'a>,
@@ -73,13 +93,14 @@ where
 
     let version = Version::new(arena, major, minor, patch);
 
-    let mut ctx = Ctx { arena };
+    let mut ctx = Ctx {
+        arena,
+        version: Some(version),
+        plutus_version,
+        protocol_version,
+    };
 
-    let term = decode_term(
-        &mut ctx,
-        &mut decoder,
-        (plutus_version, protocol_version_major),
-    )?;
+    let term = decode_term(&mut ctx, &mut decoder)?;
 
     decoder.filler()?;
 
@@ -91,7 +112,6 @@ where
 fn decode_term<'a, V>(
     ctx: &mut Ctx<'a>,
     decoder: &mut Decoder<'_>,
-    version_check: (PlutusVersion, u32),
 ) -> Result<&'a Term<'a, V>, FlatDecodeError>
 where
     V: Binder<'a>,
@@ -103,7 +123,7 @@ where
         tag::VAR => Ok(Term::var(ctx.arena, V::var_decode(ctx.arena, decoder)?)),
         // Delay
         tag::DELAY => {
-            let term = decode_term(ctx, decoder, version_check)?;
+            let term = decode_term(ctx, decoder)?;
 
             Ok(term.delay(ctx.arena))
         }
@@ -111,14 +131,14 @@ where
         tag::LAMBDA => {
             let param = V::parameter_decode(ctx.arena, decoder)?;
 
-            let term = decode_term(ctx, decoder, version_check)?;
+            let term = decode_term(ctx, decoder)?;
 
             Ok(term.lambda(ctx.arena, param))
         }
         // Apply
         tag::APPLY => {
-            let function = decode_term(ctx, decoder, version_check)?;
-            let argument = decode_term(ctx, decoder, version_check)?;
+            let function = decode_term(ctx, decoder)?;
+            let argument = decode_term(ctx, decoder)?;
 
             let term = function.apply(ctx.arena, argument);
 
@@ -132,7 +152,7 @@ where
         }
         // Force
         tag::FORCE => {
-            let term = decode_term(ctx, decoder, version_check)?;
+            let term = decode_term(ctx, decoder)?;
 
             Ok(term.force(ctx.arena))
         }
@@ -144,11 +164,10 @@ where
 
             let function = builtin::try_from_tag(ctx.arena, builtin_tag)?;
 
-            let (plutus_version, protocol_version_major) = version_check;
-            if !function.is_available_in(plutus_version, protocol_version_major) {
+            if ctx.is_builtin_gated(function) {
                 return Err(FlatDecodeError::BuiltinNotAvailable(
                     builtin_tag,
-                    format!("{:?}", function),
+                    format!("{function:?}"),
                 ));
             }
 
@@ -158,8 +177,12 @@ where
         }
         // Constr
         tag::CONSTR => {
+            if ctx.program_is_pre_1_1_0() {
+                return Err(FlatDecodeError::TermNotAvailable(tag::CONSTR, "Constr"));
+            }
+
             let tag = decoder.word()?;
-            let fields = decoder.list_with(ctx, |ctx, d| decode_term(ctx, d, version_check))?;
+            let fields = decoder.list_with(ctx, decode_term)?;
             let fields = ctx.arena.alloc(fields);
 
             let term = Term::constr(ctx.arena, tag, fields);
@@ -168,8 +191,12 @@ where
         }
         // Case
         tag::CASE => {
-            let constr = decode_term(ctx, decoder, version_check)?;
-            let branches = decoder.list_with(ctx, |ctx, d| decode_term(ctx, d, version_check))?;
+            if ctx.program_is_pre_1_1_0() {
+                return Err(FlatDecodeError::TermNotAvailable(tag::CASE, "Case"));
+            }
+
+            let constr = decode_term(ctx, decoder)?;
+            let branches = decoder.list_with(ctx, decode_term)?;
             let branches = ctx.arena.alloc(branches);
 
             Ok(Term::case(ctx.arena, constr, branches))
@@ -206,6 +233,15 @@ fn type_from_tags<'a>(
                 Type::pair(ctx.arena, sub_typ1, sub_typ2),
                 3 + consumed1 + consumed2,
             ))
+        }
+        [tag::VALUE, ..] => {
+            if ctx.program_is_pre_1_1_0() {
+                return Err(FlatDecodeError::ConstantTypeNotAvailable(
+                    tag::VALUE,
+                    "Value",
+                ));
+            }
+            Ok((Type::value(ctx.arena), 1))
         }
         [] => Err(FlatDecodeError::MissingTypeTag),
         x => Err(FlatDecodeError::UnknownTypeTags(x.to_vec())),
@@ -273,6 +309,7 @@ fn decode_constant<'a>(
         Type::Bls12_381G1Element => Err(FlatDecodeError::BlsTypeNotSupported),
         Type::Bls12_381G2Element => Err(FlatDecodeError::BlsTypeNotSupported),
         Type::Bls12_381MlResult => Err(FlatDecodeError::BlsTypeNotSupported),
+        Type::Value => decode_value(ctx, d),
     }
 }
 
@@ -335,7 +372,79 @@ fn decode_constant_with_type<'a>(
         Type::Bls12_381G1Element => Err(FlatDecodeError::BlsTypeNotSupported),
         Type::Bls12_381G2Element => Err(FlatDecodeError::BlsTypeNotSupported),
         Type::Bls12_381MlResult => Err(FlatDecodeError::BlsTypeNotSupported),
+        Type::Value => decode_value(ctx, d),
     }
+}
+
+fn decode_value<'a>(
+    ctx: &mut Ctx<'a>,
+    d: &mut Decoder,
+) -> Result<&'a Constant<'a>, FlatDecodeError> {
+    let arena = ctx.arena;
+
+    let mut currency_entries = BumpVec::new_in(arena.as_bump());
+    let mut total_size = 0usize;
+
+    // Outer map: bit-prefix list of (ByteString, Map ByteString Integer)
+    while d.bit()? {
+        let ccy = d.bytes(arena)?;
+
+        if ccy.len() > 32 {
+            return Err(FlatDecodeError::Message(
+                "Value key exceeds 32 bytes".into(),
+            ));
+        }
+
+        let ccy: &'a [u8] = arena.alloc(ccy);
+
+        let mut token_entries = BumpVec::new_in(arena.as_bump());
+
+        // Inner map: bit-prefix list of (ByteString, Integer)
+        while d.bit()? {
+            let tok = d.bytes(arena)?;
+
+            if tok.len() > 32 {
+                return Err(FlatDecodeError::Message(
+                    "Value token name exceeds 32 bytes".into(),
+                ));
+            }
+
+            let tok: &'a [u8] = arena.alloc(tok);
+
+            let qty = d.integer()?;
+
+            if check_quantity_range(&qty).is_err() {
+                return Err(FlatDecodeError::Message(
+                    "Value quantity out of range".into(),
+                ));
+            }
+
+            let qty = arena.alloc_integer(qty);
+
+            token_entries.push(TokenEntry {
+                name: tok,
+                quantity: qty,
+            });
+        }
+
+        let tokens: &'a [TokenEntry<'a>] = arena.alloc(token_entries);
+
+        total_size += tokens.len();
+
+        currency_entries.push(CurrencyEntry {
+            currency: ccy,
+            tokens,
+        });
+    }
+
+    let entries: &'a [CurrencyEntry<'a>] = arena.alloc(currency_entries);
+
+    let v = arena.alloc(LedgerValue {
+        entries,
+        size: total_size,
+    });
+
+    Ok(Constant::ledger_value(arena, v))
 }
 
 fn decode_constant_tags<'a>(

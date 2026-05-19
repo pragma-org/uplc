@@ -36,4 +36,8 @@ pub enum FlatDecodeError {
     TrailingBytes(usize),
     #[error("Builtin function {1} (tag {0}) is not available in the given language version")]
     BuiltinNotAvailable(u8, String),
+    #[error("Term constructor {1} (tag {0}) is not available before UPLC version 1.1.0")]
+    TermNotAvailable(u8, &'static str),
+    #[error("Constant type {1} (tag {0}) is not available before UPLC version 1.1.0")]
+    ConstantTypeNotAvailable(u8, &'static str),
 }

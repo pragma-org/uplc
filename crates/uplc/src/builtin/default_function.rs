@@ -123,6 +123,15 @@ pub enum DefaultFunction {
     // BLS Multi-Scalar Multiplication
     Bls12_381_G1_MultiScalarMul = 92,
     Bls12_381_G2_MultiScalarMul = 93,
+
+    // Value builtins
+    InsertCoin = 94,
+    LookupCoin = 95,
+    UnionValue = 96,
+    ValueContains = 97,
+    ValueData = 98,
+    UnValueData = 99,
+    ScaleValue = 100,
 }
 
 impl DefaultFunction {
@@ -222,6 +231,13 @@ impl DefaultFunction {
             DefaultFunction::IndexArray => 1,
             DefaultFunction::Bls12_381_G1_MultiScalarMul => 0,
             DefaultFunction::Bls12_381_G2_MultiScalarMul => 0,
+            DefaultFunction::InsertCoin => 0,
+            DefaultFunction::LookupCoin => 0,
+            DefaultFunction::UnionValue => 0,
+            DefaultFunction::ValueContains => 0,
+            DefaultFunction::ValueData => 0,
+            DefaultFunction::UnValueData => 0,
+            DefaultFunction::ScaleValue => 0,
         }
     }
 
@@ -321,6 +337,13 @@ impl DefaultFunction {
             DefaultFunction::IndexArray => 2,
             DefaultFunction::Bls12_381_G1_MultiScalarMul => 2,
             DefaultFunction::Bls12_381_G2_MultiScalarMul => 2,
+            DefaultFunction::InsertCoin => 4,
+            DefaultFunction::LookupCoin => 3,
+            DefaultFunction::UnionValue => 2,
+            DefaultFunction::ValueContains => 2,
+            DefaultFunction::ValueData => 1,
+            DefaultFunction::UnValueData => 1,
+            DefaultFunction::ScaleValue => 2,
         }
     }
 

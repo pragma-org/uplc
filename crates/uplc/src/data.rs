@@ -54,7 +54,15 @@ impl<'a> PlutusData<'a> {
         arena: &'a Arena,
         cbor: &'_ [u8],
     ) -> Result<&'a PlutusData<'a>, minicbor::decode::Error> {
-        minicbor::decode_with(cbor, &mut Ctx { arena })
+        minicbor::decode_with(
+            cbor,
+            &mut Ctx {
+                arena,
+                version: None,
+                plutus_version: None,
+                protocol_version: None,
+            },
+        )
     }
 
     pub fn unwrap_constr<V>(
