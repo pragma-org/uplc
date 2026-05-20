@@ -22,6 +22,7 @@ pub const STRING: u8 = 2;
 pub const UNIT: u8 = 3;
 pub const BOOL: u8 = 4;
 pub const DATA: u8 = 8;
+pub const VALUE: u8 = 13;
 pub const PROTO_LIST_ONE: u8 = 7;
 pub const PROTO_LIST_TWO: u8 = 5;
 pub const PROTO_ARRAY_ONE: u8 = 7;

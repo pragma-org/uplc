@@ -231,6 +231,19 @@ pub fn try_from_tag(arena: &Arena, v: u8) -> Result<&DefaultFunction, FlatDecode
         }
         v if v == DefaultFunction::IndexArray as u8 => Ok(arena.alloc(DefaultFunction::IndexArray)),
 
+        // Value builtins
+        v if v == DefaultFunction::InsertCoin as u8 => Ok(arena.alloc(DefaultFunction::InsertCoin)),
+        v if v == DefaultFunction::LookupCoin as u8 => Ok(arena.alloc(DefaultFunction::LookupCoin)),
+        v if v == DefaultFunction::UnionValue as u8 => Ok(arena.alloc(DefaultFunction::UnionValue)),
+        v if v == DefaultFunction::ValueContains as u8 => {
+            Ok(arena.alloc(DefaultFunction::ValueContains))
+        }
+        v if v == DefaultFunction::ValueData as u8 => Ok(arena.alloc(DefaultFunction::ValueData)),
+        v if v == DefaultFunction::UnValueData as u8 => {
+            Ok(arena.alloc(DefaultFunction::UnValueData))
+        }
+        v if v == DefaultFunction::ScaleValue as u8 => Ok(arena.alloc(DefaultFunction::ScaleValue)),
+
         _ => Err(FlatDecodeError::DefaultFunctionNotFound(v)),
     }
 }
