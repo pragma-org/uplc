@@ -61,21 +61,6 @@ where
     Ok(program)
 }
 
-/// Decode a FLAT-encoded program without version gating.
-///
-/// All term constructors, constant types, and builtins are accepted regardless
-/// of the embedded program version.
-pub fn decode_ungated<'a, V>(
-    arena: &'a Arena,
-    bytes: &[u8],
-) -> Result<&'a Program<'a, V>, FlatDecodeError>
-where
-    V: Binder<'a>,
-{
-    let (program, _remainder) = decode_inner(arena, bytes, None, None)?;
-    Ok(program)
-}
-
 fn decode_inner<'a, V>(
     arena: &'a Arena,
     bytes: &[u8],
@@ -177,10 +162,6 @@ where
         }
         // Constr
         tag::CONSTR => {
-            if ctx.program_is_pre_1_1_0() {
-                return Err(FlatDecodeError::TermNotAvailable(tag::CONSTR, "Constr"));
-            }
-
             let tag = decoder.word()?;
             let fields = decoder.list_with(ctx, decode_term)?;
             let fields = ctx.arena.alloc(fields);
@@ -191,10 +172,6 @@ where
         }
         // Case
         tag::CASE => {
-            if ctx.program_is_pre_1_1_0() {
-                return Err(FlatDecodeError::TermNotAvailable(tag::CASE, "Case"));
-            }
-
             let constr = decode_term(ctx, decoder)?;
             let branches = decoder.list_with(ctx, decode_term)?;
             let branches = ctx.arena.alloc(branches);

@@ -55,10 +55,10 @@ impl<'a> LedgerValue<'a> {
 
     pub fn lookup_coin(&self, arena: &'a Arena, ccy: &[u8], tok: &[u8]) -> &'a Integer {
         for entry in self.entries {
-            match compare_bytes(entry.currency, ccy) {
+            match entry.currency.cmp(ccy) {
                 std::cmp::Ordering::Equal => {
                     for token in entry.tokens {
-                        match compare_bytes(token.name, tok) {
+                        match token.name.cmp(tok) {
                             std::cmp::Ordering::Equal => return token.quantity,
                             std::cmp::Ordering::Greater => break,
                             _ => {}
@@ -84,8 +84,7 @@ impl<'a> LedgerValue<'a> {
         let mut found_ccy = false;
 
         for entry in v.entries {
-            let cmp = compare_bytes(entry.currency, ccy);
-            match cmp {
+            match entry.currency.cmp(ccy) {
                 std::cmp::Ordering::Less => {
                     currency_entries.push(entry.clone());
                 }
@@ -95,8 +94,7 @@ impl<'a> LedgerValue<'a> {
                     let mut found_tok = false;
 
                     for token in entry.tokens {
-                        let tcmp = compare_bytes(token.name, tok);
-                        match tcmp {
+                        match token.name.cmp(tok) {
                             std::cmp::Ordering::Less => {
                                 token_entries.push(token.clone());
                             }
@@ -189,8 +187,7 @@ impl<'a> LedgerValue<'a> {
         let mut j = 0usize;
 
         while i < v1.entries.len() && j < v2.entries.len() {
-            let cmp = compare_bytes(v1.entries[i].currency, v2.entries[j].currency);
-            match cmp {
+            match v1.entries[i].currency.cmp(v2.entries[j].currency) {
                 std::cmp::Ordering::Less => {
                     currency_entries.push(v1.entries[i].clone());
                     i += 1;
@@ -365,7 +362,7 @@ impl<'a> LedgerValue<'a> {
 
             // Check strictly ascending order
             if let Some(prev) = prev_ccy {
-                if compare_bytes(prev, ccy) != std::cmp::Ordering::Less {
+                if prev.cmp(ccy) != std::cmp::Ordering::Less {
                     return Err(ValueError::UnValueData(
                         "currency symbols not strictly ascending",
                     ));
@@ -397,7 +394,7 @@ impl<'a> LedgerValue<'a> {
 
                 // Check strictly ascending order
                 if let Some(prev) = prev_tok {
-                    if compare_bytes(prev, tok) != std::cmp::Ordering::Less {
+                    if prev.cmp(tok) != std::cmp::Ordering::Less {
                         return Err(ValueError::UnValueData(
                             "token names not strictly ascending",
                         ));
@@ -449,8 +446,7 @@ fn merge_tokens<'a>(
     let mut j = 0usize;
 
     while i < t1.len() && j < t2.len() {
-        let cmp = compare_bytes(t1[i].name, t2[j].name);
-        match cmp {
+        match t1[i].name.cmp(t2[j].name) {
             std::cmp::Ordering::Less => {
                 result.push(t1[i].clone());
                 i += 1;
@@ -486,10 +482,6 @@ fn merge_tokens<'a>(
     }
 
     Ok(arena.alloc(result) as &'a [TokenEntry<'a>])
-}
-
-fn compare_bytes(a: &[u8], b: &[u8]) -> std::cmp::Ordering {
-    a.cmp(b)
 }
 
 /// Check that a quantity is within the 128-bit signed range: -(2^127) to (2^127 - 1).
