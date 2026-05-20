@@ -65,10 +65,7 @@ fn prepare_msm_scalar(
     padded[SIZE - be_bytes.len()..].copy_from_slice(&be_bytes);
 
     unsafe {
-        blst::blst_scalar_from_bendian(
-            scalar_buf as *mut _,
-            padded.as_ptr() as *const _,
-        );
+        blst::blst_scalar_from_bendian(scalar_buf as *mut _, padded.as_ptr() as *const _);
     }
     scalar_bytes.extend_from_slice(&scalar_buf.b);
 }
