@@ -441,20 +441,30 @@ impl DefaultFunction {
                 | Ripemd_160
         );
 
-        // batch6: van Rossem (PV 11) — ExpModInteger, DropList, LengthOfArray, ListToArray, IndexArray
-        // Not explicitly matched because PV >= 11 returns true for all builtins.
+        // batch6: van Rossem (PV 11) — ExpModInteger, DropList, LengthOfArray, ListToArray,
+        // IndexArray, BLS MSM, and Value builtins (once added).
+        let batch6 = matches!(
+            self,
+            ExpModInteger
+                | DropList
+                | LengthOfArray
+                | ListToArray
+                | IndexArray
+                | Bls12_381_G1_MultiScalarMul
+                | Bls12_381_G2_MultiScalarMul
+        );
 
         match plutus_version {
             PlutusVersion::V1 => {
                 if pv >= 11 {
-                    true
+                    batch1 || batch2 || batch3 || batch4a || batch4b || batch5 || batch6
                 } else {
                     batch1
                 }
             }
             PlutusVersion::V2 => {
                 if pv >= 11 {
-                    true
+                    batch1 || batch2 || batch3 || batch4a || batch4b || batch5 || batch6
                 } else if pv >= 10 {
                     batch1 || batch2 || batch3 || batch4b
                 } else if pv >= 8 {
@@ -466,7 +476,7 @@ impl DefaultFunction {
             }
             PlutusVersion::V3 => {
                 if pv >= 11 {
-                    true
+                    batch1 || batch2 || batch3 || batch4a || batch4b || batch5 || batch6
                 } else if pv >= 10 {
                     batch1 || batch2 || batch3 || batch4a || batch4b || batch5
                 } else {
