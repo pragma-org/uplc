@@ -231,6 +231,13 @@ pub fn try_from_tag(arena: &Arena, v: u8) -> Result<&DefaultFunction, FlatDecode
         }
         v if v == DefaultFunction::IndexArray as u8 => Ok(arena.alloc(DefaultFunction::IndexArray)),
 
+        v if v == DefaultFunction::Bls12_381_G1_MultiScalarMul as u8 => {
+            Ok(arena.alloc(DefaultFunction::Bls12_381_G1_MultiScalarMul))
+        }
+        v if v == DefaultFunction::Bls12_381_G2_MultiScalarMul as u8 => {
+            Ok(arena.alloc(DefaultFunction::Bls12_381_G2_MultiScalarMul))
+        }
+
         _ => Err(FlatDecodeError::DefaultFunctionNotFound(v)),
     }
 }

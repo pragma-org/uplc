@@ -139,6 +139,8 @@ pub enum RuntimeError<'a> {
     IndexArrayOutOfBounds(&'a Integer, usize),
     #[error("Serialization error")]
     SerializationError(&'a PlutusData<'a>),
+    #[error("Scalar exceeds 512-byte bound for multiScalarMul")]
+    MultiScalarMulScalarOutOfBounds,
 }
 
 impl<'a, V> MachineError<'a, V>

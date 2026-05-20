@@ -671,4 +671,16 @@ impl<'a, V> Term<'a, V> {
 
         Term::builtin(arena, fun)
     }
+
+    pub fn bls12_381_g1_multi_scalar_mul(arena: &'a Arena) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::Bls12_381_G1_MultiScalarMul);
+
+        Term::builtin(arena, fun)
+    }
+
+    pub fn bls12_381_g2_multi_scalar_mul(arena: &'a Arena) -> &'a Term<'a, V> {
+        let fun = arena.alloc(DefaultFunction::Bls12_381_G2_MultiScalarMul);
+
+        Term::builtin(arena, fun)
+    }
 }

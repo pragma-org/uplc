@@ -120,6 +120,9 @@ pub struct BuiltinCostsV3 {
     length_of_array: OneArgumentCosting,
     list_to_array: TwoArgumentsCosting,
     index_array: TwoArgumentsCosting,
+
+    bls12_381_g1_multi_scalar_mul: TwoArgumentsCosting,
+    bls12_381_g2_multi_scalar_mul: TwoArgumentsCosting,
 }
 
 impl Default for BuiltinCostsV3 {
@@ -502,6 +505,14 @@ impl Default for BuiltinCostsV3 {
             index_array: TwoArgumentsCosting::new(
                 TwoArgumentsCosting::constant_cost(32),
                 TwoArgumentsCosting::constant_cost(194922),
+            ),
+            bls12_381_g1_multi_scalar_mul: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(18),
+                TwoArgumentsCosting::linear_in_x(321837444, 25087669),
+            ),
+            bls12_381_g2_multi_scalar_mul: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(36),
+                TwoArgumentsCosting::linear_in_x(617887431, 67302824),
             ),
         }
     }
@@ -1189,6 +1200,14 @@ impl BuiltinCostModel for BuiltinCostsV3 {
                 TwoArgumentsCosting::constant_cost(32),
                 TwoArgumentsCosting::constant_cost(194922),
             ),
+            bls12_381_g1_multi_scalar_mul: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(18),
+                TwoArgumentsCosting::linear_in_x(321837444, 25087669),
+            ),
+            bls12_381_g2_multi_scalar_mul: TwoArgumentsCosting::new(
+                TwoArgumentsCosting::constant_cost(36),
+                TwoArgumentsCosting::linear_in_x(617887431, 67302824),
+            ),
         }
     }
 
@@ -1585,6 +1604,22 @@ impl BuiltinCostModel for BuiltinCostsV3 {
             DefaultFunction::IndexArray => Some(ExBudget::new(
                 self.index_array.mem.cost([args[0], args[1]]),
                 self.index_array.cpu.cost([args[0], args[1]]),
+            )),
+            DefaultFunction::Bls12_381_G1_MultiScalarMul => Some(ExBudget::new(
+                self.bls12_381_g1_multi_scalar_mul
+                    .mem
+                    .cost([args[0], args[1]]),
+                self.bls12_381_g1_multi_scalar_mul
+                    .cpu
+                    .cost([args[0], args[1]]),
+            )),
+            DefaultFunction::Bls12_381_G2_MultiScalarMul => Some(ExBudget::new(
+                self.bls12_381_g2_multi_scalar_mul
+                    .mem
+                    .cost([args[0], args[1]]),
+                self.bls12_381_g2_multi_scalar_mul
+                    .cpu
+                    .cost([args[0], args[1]]),
             )),
         }
     }
