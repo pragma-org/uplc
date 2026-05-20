@@ -545,7 +545,7 @@ impl Default for BuiltinCostsV3 {
                 OneArgumentCosting::linear_cost(1000, 38159),
             ),
             un_value_data: OneArgumentCosting::new(
-                OneArgumentCosting::linear_cost(11, 1),
+                OneArgumentCosting::linear_cost(1, 11),
                 OneArgumentCosting::quadratic_cost(1000, 95933, 1),
             ),
             scale_value: TwoArgumentsCosting::new(
@@ -1269,7 +1269,7 @@ impl BuiltinCostModel for BuiltinCostsV3 {
                 OneArgumentCosting::linear_cost(1000, 38159),
             ),
             un_value_data: OneArgumentCosting::new(
-                OneArgumentCosting::linear_cost(11, 1),
+                OneArgumentCosting::linear_cost(1, 11),
                 OneArgumentCosting::quadratic_cost(1000, 95933, 1),
             ),
             scale_value: TwoArgumentsCosting::new(
