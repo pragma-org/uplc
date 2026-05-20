@@ -49,6 +49,30 @@ fn check_multi_scalar_range(int: &Integer) -> Result<(), RuntimeError<'_>> {
     }
 }
 
+/// Reduce scalar mod SCALAR_PERIOD, convert to LE bytes, and append to the output buffer.
+/// Caller must validate the scalar range first via `check_multi_scalar_range`.
+fn prepare_msm_scalar(
+    si: &Integer,
+    scalar_buf: &mut blst::blst_scalar,
+    scalar_bytes: &mut Vec<u8>,
+) {
+    let si = si.mod_floor(&SCALAR_PERIOD);
+    let (_, be_bytes) = si.to_bytes_be();
+
+    // Zero-padded big-endian scalar on the stack (always 32 bytes).
+    const SIZE: usize = size_of::<blst::blst_scalar>();
+    let mut padded = [0u8; SIZE];
+    padded[SIZE - be_bytes.len()..].copy_from_slice(&be_bytes);
+
+    unsafe {
+        blst::blst_scalar_from_bendian(
+            scalar_buf as *mut _,
+            padded.as_ptr() as *const _,
+        );
+    }
+    scalar_bytes.extend_from_slice(&scalar_buf.b);
+}
+
 pub enum BuiltinSemantics {
     V1,
     V2,
@@ -3175,30 +3199,11 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 self.spend_budget(budget)?;
 
                 let n = scalars.len().min(points.len());
-
-                if n == 0 {
-                    let out = self.arena.alloc(blst::blst_p1::default());
-
-                    let compressed: [u8; 48] = {
-                        let mut buf = [0u8; 48];
-                        buf[0] = 0xc0;
-                        buf
-                    };
-
-                    let identity = blst::blst_p1::uncompress(self.arena, &compressed)
-                        .map_err(MachineError::bls)?;
-
-                    *out = *identity;
-
-                    let constant = Constant::g1(self.arena, out);
-
-                    return Ok(Value::con(self.arena, constant));
-                }
-
                 let size_scalar = size_of::<blst::blst_scalar>();
 
-                let scalar_buf = self.arena.alloc(blst::blst_scalar::default());
-                let mut acc = blst::blst_p1::default();
+                let mut scalar_bytes = Vec::with_capacity(n * size_scalar);
+                let mut proj_points = Vec::with_capacity(n);
+                let mut scalar_buf = blst::blst_scalar::default();
 
                 for i in 0..n {
                     let Constant::Integer(si) = scalars[i] else {
@@ -3212,56 +3217,35 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         ));
                     };
 
-                    // Check scalar fits in signed 4096-bit range
+                    // Validate range even for infinity points.
                     check_multi_scalar_range(si).map_err(MachineError::runtime)?;
 
-                    let si = si.mod_floor(&SCALAR_PERIOD);
-
-                    let (_, mut si_bytes) = si.to_bytes_be();
-
-                    if size_scalar > si_bytes.len() {
-                        let diff = size_scalar - si_bytes.len();
-
-                        let mut new_vec = vec![0; diff];
-
-                        new_vec.append(&mut si_bytes);
-
-                        si_bytes = new_vec;
+                    // Skip infinity points: scalar * infinity = identity,
+                    // and infinity poisons the batch affine conversion.
+                    if unsafe { blst::blst_p1_is_inf(*pi) } {
+                        continue;
                     }
 
-                    let mut term = blst::blst_p1::default();
-                    unsafe {
-                        blst::blst_scalar_from_bendian(
-                            scalar_buf as *mut _,
-                            si_bytes.as_ptr() as *const _,
-                        );
+                    prepare_msm_scalar(si, &mut scalar_buf, &mut scalar_bytes);
 
-                        blst::blst_p1_mult(
-                            &mut term as *mut _,
-                            (*pi) as *const _,
-                            scalar_buf.b.as_ptr() as *const _,
-                            size_scalar * 8,
-                        );
-                    }
-
-                    if i == 0 {
-                        acc = term;
-                    } else {
-                        let mut sum = blst::blst_p1::default();
-
-                        unsafe {
-                            blst::blst_p1_add_or_double(
-                                &mut sum as *mut _,
-                                &acc as *const _,
-                                &term as *const _,
-                            );
-                        }
-
-                        acc = sum;
-                    }
+                    proj_points.push(**pi);
                 }
 
-                let out = self.arena.alloc(acc);
+                let result = if proj_points.is_empty() {
+                    let compressed: [u8; 48] = {
+                        let mut buf = [0u8; 48];
+                        buf[0] = 0xc0;
+                        buf
+                    };
+
+                    *blst::blst_p1::uncompress(self.arena, &compressed)
+                        .map_err(MachineError::bls)?
+                } else {
+                    let affines = blst::p1_affines::from(&proj_points);
+                    affines.mult(&scalar_bytes, size_scalar * 8)
+                };
+
+                let out = self.arena.alloc(result);
 
                 let constant = Constant::g1(self.arena, out);
 
@@ -3285,31 +3269,11 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 self.spend_budget(budget)?;
 
                 let n = scalars.len().min(points.len());
-
-                if n == 0 {
-                    // Return G2 identity (zero point)
-                    let out = self.arena.alloc(blst::blst_p2::default());
-
-                    let compressed: [u8; 96] = {
-                        let mut buf = [0u8; 96];
-                        buf[0] = 0xc0;
-                        buf
-                    };
-
-                    let identity = blst::blst_p2::uncompress(self.arena, &compressed)
-                        .map_err(MachineError::bls)?;
-
-                    *out = *identity;
-
-                    let constant = Constant::g2(self.arena, out);
-
-                    return Ok(Value::con(self.arena, constant));
-                }
-
                 let size_scalar = size_of::<blst::blst_scalar>();
 
-                let scalar_buf = self.arena.alloc(blst::blst_scalar::default());
-                let mut acc = blst::blst_p2::default();
+                let mut scalar_bytes = Vec::with_capacity(n * size_scalar);
+                let mut proj_points = Vec::with_capacity(n);
+                let mut scalar_buf = blst::blst_scalar::default();
 
                 for i in 0..n {
                     let Constant::Integer(si) = scalars[i] else {
@@ -3323,54 +3287,35 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         ));
                     };
 
-                    // Check scalar fits in signed 4096-bit range
+                    // Validate range even for infinity points.
                     check_multi_scalar_range(si).map_err(MachineError::runtime)?;
 
-                    let si = si.mod_floor(&SCALAR_PERIOD);
-
-                    let (_, mut si_bytes) = si.to_bytes_be();
-
-                    if size_scalar > si_bytes.len() {
-                        let diff = size_scalar - si_bytes.len();
-                        let mut new_vec = vec![0; diff];
-                        new_vec.append(&mut si_bytes);
-                        si_bytes = new_vec;
+                    // Skip infinity points: scalar * infinity = identity,
+                    // and infinity poisons the batch affine conversion.
+                    if unsafe { blst::blst_p2_is_inf(*pi) } {
+                        continue;
                     }
 
-                    let mut term = blst::blst_p2::default();
+                    prepare_msm_scalar(si, &mut scalar_buf, &mut scalar_bytes);
 
-                    unsafe {
-                        blst::blst_scalar_from_bendian(
-                            scalar_buf as *mut _,
-                            si_bytes.as_ptr() as *const _,
-                        );
-
-                        blst::blst_p2_mult(
-                            &mut term as *mut _,
-                            (*pi) as *const _,
-                            scalar_buf.b.as_ptr() as *const _,
-                            size_scalar * 8,
-                        );
-                    }
-
-                    if i == 0 {
-                        acc = term;
-                    } else {
-                        let mut sum = blst::blst_p2::default();
-
-                        unsafe {
-                            blst::blst_p2_add_or_double(
-                                &mut sum as *mut _,
-                                &acc as *const _,
-                                &term as *const _,
-                            );
-                        }
-
-                        acc = sum;
-                    }
+                    proj_points.push(**pi);
                 }
 
-                let out = self.arena.alloc(acc);
+                let result = if proj_points.is_empty() {
+                    let compressed: [u8; 96] = {
+                        let mut buf = [0u8; 96];
+                        buf[0] = 0xc0;
+                        buf
+                    };
+
+                    *blst::blst_p2::uncompress(self.arena, &compressed)
+                        .map_err(MachineError::bls)?
+                } else {
+                    let affines = blst::p2_affines::from(&proj_points);
+                    affines.mult(&scalar_bytes, size_scalar * 8)
+                };
+
+                let out = self.arena.alloc(result);
 
                 let constant = Constant::g2(self.arena, out);
 
