@@ -151,26 +151,26 @@ impl Default for BuiltinCostsV3 {
             ),
             divide_integer: TwoArgumentsCosting::new(
                 TwoArgumentsCosting::subtracted_sizes(0, 1, 1),
-                TwoArgumentsCosting::const_above_diagonal_into_quadratic_x_and_y(
-                    85848, 85848, 123203, 7305, -900, 1716, 549, 57,
+                TwoArgumentsCosting::above_and_below_diagonal_into_quadratic_x_and_y(
+                    85848, 123203, 7305, -900, 1716, 960, 57,
                 ),
             ),
             quotient_integer: TwoArgumentsCosting::new(
                 TwoArgumentsCosting::subtracted_sizes(0, 1, 1),
                 TwoArgumentsCosting::const_above_diagonal_into_quadratic_x_and_y(
-                    85848, 85848, 123203, 7305, -900, 1716, 549, 57,
+                    85848, 85848, 123203, 7305, -900, 1716, 960, 57,
                 ),
             ),
             remainder_integer: TwoArgumentsCosting::new(
                 TwoArgumentsCosting::linear_in_y(0, 1),
                 TwoArgumentsCosting::const_above_diagonal_into_quadratic_x_and_y(
-                    85848, 85848, 123203, 7305, -900, 1716, 549, 57,
+                    85848, 85848, 123203, 7305, -900, 1716, 960, 57,
                 ),
             ),
             mod_integer: TwoArgumentsCosting::new(
                 TwoArgumentsCosting::linear_in_y(0, 1),
-                TwoArgumentsCosting::const_above_diagonal_into_quadratic_x_and_y(
-                    85848, 85848, 123203, 7305, -900, 1716, 549, 57,
+                TwoArgumentsCosting::above_and_below_diagonal_into_quadratic_x_and_y(
+                    85848, 123203, 7305, -900, 1716, 960, 57,
                 ),
             ),
             equals_integer: TwoArgumentsCosting::new(
@@ -207,7 +207,7 @@ impl Default for BuiltinCostsV3 {
             ),
             equals_byte_string: TwoArgumentsCosting::new(
                 TwoArgumentsCosting::constant_cost(1),
-                TwoArgumentsCosting::linear_on_diagonal(24548, 29498, 38),
+                TwoArgumentsCosting::linear_on_diagonal(30623, 28755, 75),
             ),
             less_than_byte_string: TwoArgumentsCosting::new(
                 TwoArgumentsCosting::constant_cost(1),
@@ -504,15 +504,15 @@ impl Default for BuiltinCostsV3 {
             ),
             length_of_array: OneArgumentCosting::new(
                 OneArgumentCosting::constant_cost(10),
-                OneArgumentCosting::constant_cost(198994),
+                OneArgumentCosting::constant_cost(231883),
             ),
             list_to_array: TwoArgumentsCosting::new(
                 TwoArgumentsCosting::linear_in_x(7, 1),
-                TwoArgumentsCosting::linear_in_x(307802, 8496),
+                TwoArgumentsCosting::linear_in_x(1000, 24838),
             ),
             index_array: TwoArgumentsCosting::new(
                 TwoArgumentsCosting::constant_cost(32),
-                TwoArgumentsCosting::constant_cost(194922),
+                TwoArgumentsCosting::constant_cost(232010),
             ),
             bls12_381_g1_multi_scalar_mul: TwoArgumentsCosting::new(
                 TwoArgumentsCosting::constant_cost(18),
@@ -646,8 +646,7 @@ impl BuiltinCostModel for BuiltinCostsV3 {
                     cost_map["divide_integer-mem-arguments-minimum"],
                     cost_map["divide_integer-mem-arguments-slope"],
                 ),
-                TwoArgumentsCosting::const_above_diagonal_into_quadratic_x_and_y(
-                    cost_map["divide_integer-cpu-arguments-constant"],
+                TwoArgumentsCosting::above_and_below_diagonal_into_quadratic_x_and_y(
                     cost_map["divide_integer-cpu-arguments-minimum"],
                     cost_map["divide_integer-cpu-arguments-c00"],
                     cost_map["divide_integer-cpu-arguments-c01"],
@@ -782,8 +781,7 @@ impl BuiltinCostModel for BuiltinCostsV3 {
                     cost_map["mod_integer-mem-arguments-intercept"],
                     cost_map["mod_integer-mem-arguments-slope"],
                 ),
-                TwoArgumentsCosting::const_above_diagonal_into_quadratic_x_and_y(
-                    cost_map["mod_integer-cpu-arguments-constant"],
+                TwoArgumentsCosting::above_and_below_diagonal_into_quadratic_x_and_y(
                     cost_map["mod_integer-cpu-arguments-minimum"],
                     cost_map["mod_integer-cpu-arguments-c00"],
                     cost_map["mod_integer-cpu-arguments-c01"],
@@ -1228,15 +1226,15 @@ impl BuiltinCostModel for BuiltinCostsV3 {
             ),
             length_of_array: OneArgumentCosting::new(
                 OneArgumentCosting::constant_cost(10),
-                OneArgumentCosting::constant_cost(198994),
+                OneArgumentCosting::constant_cost(231883),
             ),
             list_to_array: TwoArgumentsCosting::new(
                 TwoArgumentsCosting::linear_in_x(7, 1),
-                TwoArgumentsCosting::linear_in_x(307802, 8496),
+                TwoArgumentsCosting::linear_in_x(1000, 24838),
             ),
             index_array: TwoArgumentsCosting::new(
                 TwoArgumentsCosting::constant_cost(32),
-                TwoArgumentsCosting::constant_cost(194922),
+                TwoArgumentsCosting::constant_cost(232010),
             ),
             bls12_381_g1_multi_scalar_mul: TwoArgumentsCosting::new(
                 TwoArgumentsCosting::constant_cost(18),
