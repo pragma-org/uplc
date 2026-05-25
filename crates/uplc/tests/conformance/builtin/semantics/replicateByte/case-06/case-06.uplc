@@ -1,1 +1,0 @@
-(program 1.0.0 [ [ (builtin replicateByte) (con integer 4) ] (con integer 256) ])

@@ -14,30 +14,35 @@ fn main() {
     ];
 
     let crate_root = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
-
-    let dir = "conformance"; // or whatever your previous macro argument was
-
-    let dir_path = crate_root
+    let flat_dir = crate_root
         .parent()
         .unwrap()
         .join("uplc")
         .join("tests")
-        .join(dir);
+        .join("conformance")
+        .join("flat");
 
     println!("cargo:rerun-if-changed={}", skip_tests.join(","));
-    println!("cargo:rerun-if-changed={}", dir_path.display());
+    println!("cargo:rerun-if-changed={}", flat_dir.display());
 
+    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+
+    let tests = generate_tests(&flat_dir, &skip_tests);
+    fs::write(out_dir.join("generated_tests.rs"), tests).unwrap();
+}
+
+fn generate_tests(dir_path: &PathBuf, skip_tests: &[&str]) -> String {
     let mut tests = String::new();
 
-    for entry in WalkDir::new(&dir_path).into_iter().filter_map(Result::ok) {
+    for entry in WalkDir::new(dir_path).into_iter().filter_map(Result::ok) {
         let path = entry.path();
 
-        if path.extension().and_then(OsStr::to_str) != Some("uplc") {
+        if path.file_name().and_then(OsStr::to_str) != Some("fixture.json") {
             continue;
         }
 
         let test_name = path
-            .strip_prefix(&dir_path)
+            .strip_prefix(dir_path)
             .unwrap()
             .parent()
             .unwrap()
@@ -46,32 +51,24 @@ fn main() {
             .replace(|c: char| !c.is_alphanumeric(), "_")
             .to_lowercase();
 
+        let ignore = if skip_tests.contains(&test_name.as_str()) {
+            "\n#[ignore]"
+        } else {
+            ""
+        };
+
         let file_path = path.display();
-        let expected_path = path.with_extension("uplc.expected");
-        let budget_path = path.with_extension("uplc.budget.expected");
 
         tests.push_str(&format!(
             r#"
 {ignore}
 #[test]
 fn {test_name}() {{
-    run_conformance_test(
-        include_str!("{file_path}"),
-        include_str!("{expected_path}"),
-        include_str!("{budget_path}"),
-    );
+    run_conformance(include_str!("{file_path}"));
 }}
 "#,
-            ignore = if skip_tests.contains(&test_name.as_str()) {
-                "\n#[ignore]"
-            } else {
-                ""
-            },
-            expected_path = expected_path.display(),
-            budget_path = budget_path.display(),
         ));
     }
 
-    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-    fs::write(out_dir.join("generated_tests.rs"), tests).unwrap();
+    tests
 }

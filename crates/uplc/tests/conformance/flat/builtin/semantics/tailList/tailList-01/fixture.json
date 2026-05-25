@@ -1,0 +1,4 @@
+{
+  "input": "0100003574497ac001",
+  "expected": { "kind": "error" }
+}

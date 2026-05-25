@@ -1,1 +1,0 @@
-(program 1.0.0 [ [(builtin lessThanEqualsByteString) (con bytestring #00ff)] (con bytestring #00) ])

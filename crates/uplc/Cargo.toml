@@ -38,6 +38,8 @@ itertools.workspace = true
 ouroboros.workspace = true
 pretty_assertions.workspace = true
 rayon.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 
 [features]
 alloc_profiler = []
