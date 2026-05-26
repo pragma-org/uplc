@@ -3319,7 +3319,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
 
                 Ok(Value::con(self.arena, constant))
             }
-        }
+
             DefaultFunction::InsertCoin => {
                 let ccy = runtime.args[0].unwrap_byte_string()?;
                 let tok = runtime.args[1].unwrap_byte_string()?;
