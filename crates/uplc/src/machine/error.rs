@@ -154,10 +154,6 @@ where
         MachineError::Runtime(runtime_error)
     }
 
-    pub fn value(error: ValueError) -> Self {
-        MachineError::Runtime(RuntimeError::Value(error))
-    }
-
     pub fn type_mismatch(expected: Type<'a>, constant: &'a Constant<'a>) -> Self {
         MachineError::runtime(RuntimeError::TypeMismatch(expected, constant))
     }

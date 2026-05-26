@@ -3339,7 +3339,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
 
                 // Validate quantity in 128-bit signed range
                 if !qty.is_zero() {
-                    ledger_value::check_quantity_range(qty).map_err(MachineError::value)?;
+                    ledger_value::check_quantity_range(qty)
+                        .map_err(|e| MachineError::runtime(e.into()))?;
                 }
 
                 // Validate key lengths (> 32 only allowed when qty=0, which is a no-op)
@@ -3355,7 +3356,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         ValueError::InsertCoinInvalidToken
                     };
 
-                    return Err(MachineError::value(err));
+                    return Err(MachineError::runtime(err.into()));
                 }
 
                 let result = LedgerValue::insert_coin(self.arena, ccy, tok, qty, v);
@@ -3403,8 +3404,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
 
                 self.spend_budget(budget)?;
 
-                let result =
-                    LedgerValue::union_value(self.arena, v1, v2).map_err(MachineError::value)?;
+                let result = LedgerValue::union_value(self.arena, v1, v2)
+                    .map_err(|e| MachineError::runtime(e.into()))?;
 
                 let constant = Constant::ledger_value(self.arena, result);
 
@@ -3427,8 +3428,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
 
                 self.spend_budget(budget)?;
 
-                let result =
-                    LedgerValue::value_contains(self.arena, v1, v2).map_err(MachineError::value)?;
+                let result = LedgerValue::value_contains(v1, v2)
+                    .map_err(|e| MachineError::runtime(e.into()))?;
 
                 Ok(Value::bool(self.arena, result))
             }
@@ -3443,7 +3444,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
 
                 self.spend_budget(budget)?;
 
-                let data = LedgerValue::value_data(self.arena, v);
+                let data = LedgerValue::value_data(self.arena, v)
+                    .map_err(|e| MachineError::runtime(e.into()))?;
 
                 let constant = Constant::data(self.arena, data);
 
@@ -3463,8 +3465,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
 
                 self.spend_budget(budget)?;
 
-                let result =
-                    LedgerValue::un_value_data(self.arena, data).map_err(MachineError::value)?;
+                let result = LedgerValue::un_value_data(self.arena, data)
+                    .map_err(|e| MachineError::runtime(e.into()))?;
 
                 let constant = Constant::ledger_value(self.arena, result);
 
@@ -3485,8 +3487,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
 
                 self.spend_budget(budget)?;
 
-                let result =
-                    LedgerValue::scale_value(self.arena, scalar, v).map_err(MachineError::value)?;
+                let result = LedgerValue::scale_value(self.arena, scalar, v)
+                    .map_err(|e| MachineError::runtime(e.into()))?;
 
                 let constant = Constant::ledger_value(self.arena, result);
 

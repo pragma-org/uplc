@@ -6,10 +6,13 @@ pub use decoder::Decoder;
 pub use error::FlatDecodeError;
 
 use bumpalo::collections::Vec as BumpVec;
+use num::Zero;
 
 use crate::arena::Arena;
 use crate::binder::Binder;
-use crate::ledger_value::{check_quantity_range, CurrencyEntry, LedgerValue, TokenEntry};
+use crate::ledger_value::{
+    check_quantity_range, count_stats, CurrencyEntry, LedgerValue, TokenEntry,
+};
 use crate::machine::PlutusVersion;
 use crate::typ::Type;
 use crate::{
@@ -360,7 +363,7 @@ fn decode_value<'a>(
     let arena = ctx.arena;
 
     let mut currency_entries = BumpVec::new_in(arena.as_bump());
-    let mut total_size = 0usize;
+    let mut prev_ccy: Option<&[u8]> = None;
 
     // Outer map: bit-prefix list of (ByteString, Map ByteString Integer)
     while d.bit()? {
@@ -374,7 +377,18 @@ fn decode_value<'a>(
 
         let ccy: &'a [u8] = arena.alloc(ccy);
 
+        // Currency symbols must be strictly ascending
+        if let Some(prev) = prev_ccy {
+            if prev >= ccy {
+                return Err(FlatDecodeError::Message(
+                    "Value currency symbols not strictly ascending".into(),
+                ));
+            }
+        }
+        prev_ccy = Some(ccy);
+
         let mut token_entries = BumpVec::new_in(arena.as_bump());
+        let mut prev_tok: Option<&[u8]> = None;
 
         // Inner map: bit-prefix list of (ByteString, Integer)
         while d.bit()? {
@@ -388,11 +402,28 @@ fn decode_value<'a>(
 
             let tok: &'a [u8] = arena.alloc(tok);
 
+            // Token names must be strictly ascending
+            if let Some(prev) = prev_tok {
+                if prev >= tok {
+                    return Err(FlatDecodeError::Message(
+                        "Value token names not strictly ascending".into(),
+                    ));
+                }
+            }
+            prev_tok = Some(tok);
+
             let qty = d.integer()?;
 
             if check_quantity_range(&qty).is_err() {
                 return Err(FlatDecodeError::Message(
                     "Value quantity out of range".into(),
+                ));
+            }
+
+            // No zero quantities
+            if qty.is_zero() {
+                return Err(FlatDecodeError::Message(
+                    "Value contains zero quantity".into(),
                 ));
             }
 
@@ -406,7 +437,12 @@ fn decode_value<'a>(
 
         let tokens: &'a [TokenEntry<'a>] = arena.alloc(token_entries);
 
-        total_size += tokens.len();
+        // No empty inner maps
+        if tokens.is_empty() {
+            return Err(FlatDecodeError::Message(
+                "Value contains empty inner map".into(),
+            ));
+        }
 
         currency_entries.push(CurrencyEntry {
             currency: ccy,
@@ -415,10 +451,12 @@ fn decode_value<'a>(
     }
 
     let entries: &'a [CurrencyEntry<'a>] = arena.alloc(currency_entries);
+    let (size, negative_count) = count_stats(entries);
 
     let v = arena.alloc(LedgerValue {
         entries,
-        size: total_size,
+        size,
+        negative_count,
     });
 
     Ok(Constant::ledger_value(arena, v))

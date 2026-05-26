@@ -8,6 +8,26 @@ use crate::{
 };
 
 #[derive(thiserror::Error, Debug)]
+pub enum UnValueDataError {
+    #[error("non-Map constructor")]
+    NonMapConstructor,
+    #[error("non-B constructor")]
+    NonByteStringConstructor,
+    #[error("non-I constructor")]
+    NonIntegerConstructor,
+    #[error("invalid key")]
+    InvalidKey,
+    #[error("empty inner map")]
+    EmptyInnerMap,
+    #[error("currency symbols not strictly ascending")]
+    CurrencyNotAscending,
+    #[error("token names not strictly ascending")]
+    TokenNotAscending,
+    #[error("invalid quantity")]
+    InvalidQuantity,
+}
+
+#[derive(thiserror::Error, Debug)]
 pub enum ValueError {
     #[error("insertCoin: invalid currency")]
     InsertCoinInvalidCurrency,
@@ -21,8 +41,10 @@ pub enum ValueError {
     ValueContainsSecondNegative,
     #[error("scaleValue: quantity out of bounds")]
     ScaleValueQuantityOutOfBounds,
+    #[error("valueData: maximum input size ({0}) exceeded")]
+    ValueDataMaxSizeExceeded(usize),
     #[error("unValueData: {0}")]
-    UnValueData(&'static str),
+    UnValueData(#[from] UnValueDataError),
     #[error("Quantity out of signed 128-bit integer bounds")]
     QuantityOutOfBounds,
 }
@@ -31,6 +53,7 @@ pub enum ValueError {
 pub struct LedgerValue<'a> {
     pub entries: &'a [CurrencyEntry<'a>],
     pub size: usize,
+    pub negative_count: usize,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -50,6 +73,7 @@ impl<'a> LedgerValue<'a> {
         arena.alloc(LedgerValue {
             entries: &[],
             size: 0,
+            negative_count: 0,
         })
     }
 
@@ -167,13 +191,11 @@ impl<'a> LedgerValue<'a> {
         }
 
         let entries: &'a [CurrencyEntry<'a>] = arena.alloc(currency_entries);
-        let mut total_size = 0usize;
-        for e in entries.iter() {
-            total_size += e.tokens.len();
-        }
+        let (size, negative_count) = count_stats(entries);
         arena.alloc(LedgerValue {
             entries,
-            size: total_size,
+            size,
+            negative_count,
         })
     }
 
@@ -220,47 +242,66 @@ impl<'a> LedgerValue<'a> {
         }
 
         let entries: &'a [CurrencyEntry<'a>] = arena.alloc(currency_entries);
-        let mut total_size = 0usize;
-        for e in entries.iter() {
-            total_size += e.tokens.len();
-        }
+        let (size, negative_count) = count_stats(entries);
         Ok(arena.alloc(LedgerValue {
             entries,
-            size: total_size,
+            size,
+            negative_count,
         }))
     }
 
-    pub fn value_contains(
-        arena: &'a Arena,
-        v1: &'a LedgerValue<'a>,
-        v2: &'a LedgerValue<'a>,
-    ) -> Result<bool, ValueError> {
-        // Check v1 for negatives
-        for entry in v1.entries {
-            for token in entry.tokens {
-                if token.quantity.is_negative() {
-                    return Err(ValueError::ValueContainsFirstNegative);
-                }
-            }
+    pub fn value_contains(v1: &LedgerValue<'a>, v2: &LedgerValue<'a>) -> Result<bool, ValueError> {
+        // 1. Check v1 for negatives
+        if v1.negative_count > 0 {
+            return Err(ValueError::ValueContainsFirstNegative);
         }
-        // Check v2 for negatives
-        for entry in v2.entries {
-            for token in entry.tokens {
-                if token.quantity.is_negative() {
-                    return Err(ValueError::ValueContainsSecondNegative);
+
+        // 2. Check v2 for negatives
+        if v2.negative_count > 0 {
+            return Err(ValueError::ValueContainsSecondNegative);
+        }
+
+        // 3. v2 has more tokens than v1, so v1 cannot contain v2
+        if v1.size < v2.size {
+            return Ok(false);
+        }
+
+        // 4. Sorted lockstep check that v2 is a submap of v1
+        let mut v1_iter = v1.entries.iter().flat_map(|entry| {
+            entry
+                .tokens
+                .iter()
+                .map(move |token| (entry.currency, token.name, token.quantity))
+        });
+        let mut v1_current = v1_iter.next();
+
+        for v2_entry in v2.entries {
+            for v2_token in v2_entry.tokens {
+                loop {
+                    match v1_current {
+                        Some((v1_ccy, v1_name, v1_qty)) => {
+                            match (v1_ccy, v1_name).cmp(&(v2_entry.currency, v2_token.name)) {
+                                std::cmp::Ordering::Less => {
+                                    v1_current = v1_iter.next();
+                                }
+                                std::cmp::Ordering::Equal => {
+                                    if v1_qty < v2_token.quantity {
+                                        return Ok(false);
+                                    }
+                                    v1_current = v1_iter.next();
+                                    break;
+                                }
+                                std::cmp::Ordering::Greater => {
+                                    return Ok(false);
+                                }
+                            }
+                        }
+                        None => return Ok(false),
+                    }
                 }
             }
         }
 
-        // For each asset in v2, check v1 has >= that amount
-        for v2_entry in v2.entries {
-            for v2_token in v2_entry.tokens {
-                let v1_qty = v1.lookup_coin(arena, v2_entry.currency, v2_token.name);
-                if v1_qty < v2_token.quantity {
-                    return Ok(false);
-                }
-            }
-        }
         Ok(true)
     }
 
@@ -304,17 +345,24 @@ impl<'a> LedgerValue<'a> {
         }
 
         let entries: &'a [CurrencyEntry<'a>] = arena.alloc(currency_entries);
-        let mut total_size = 0usize;
-        for e in entries.iter() {
-            total_size += e.tokens.len();
-        }
+        let (size, negative_count) = count_stats(entries);
         Ok(arena.alloc(LedgerValue {
             entries,
-            size: total_size,
+            size,
+            negative_count,
         }))
     }
 
-    pub fn value_data(arena: &'a Arena, v: &'a LedgerValue<'a>) -> &'a PlutusData<'a> {
+    pub fn value_data(
+        arena: &'a Arena,
+        v: &'a LedgerValue<'a>,
+    ) -> Result<&'a PlutusData<'a>, ValueError> {
+        const VALUE_DATA_MAX_SIZE: usize = 40_000;
+
+        if v.size > VALUE_DATA_MAX_SIZE {
+            return Err(ValueError::ValueDataMaxSizeExceeded(VALUE_DATA_MAX_SIZE));
+        }
+
         let mut outer_pairs = BumpVec::new_in(arena.as_bump());
 
         for entry in v.entries {
@@ -334,7 +382,7 @@ impl<'a> LedgerValue<'a> {
         }
 
         let outer_pairs: &'a [_] = arena.alloc(outer_pairs);
-        PlutusData::map(arena, outer_pairs)
+        Ok(PlutusData::map(arena, outer_pairs))
     }
 
     pub fn un_value_data(
@@ -343,40 +391,37 @@ impl<'a> LedgerValue<'a> {
     ) -> Result<&'a LedgerValue<'a>, ValueError> {
         let outer_map = match d {
             PlutusData::Map(m) => m,
-            _ => return Err(ValueError::UnValueData("non-Map constructor")),
+            _ => return Err(UnValueDataError::NonMapConstructor.into()),
         };
 
         let mut currency_entries = BumpVec::new_in(arena.as_bump());
         let mut prev_ccy: Option<&[u8]> = None;
-        let mut total_size = 0usize;
 
         for (key, value) in outer_map.iter() {
             let ccy = match key {
                 PlutusData::ByteString(bs) => *bs,
-                _ => return Err(ValueError::UnValueData("non-B constructor")),
+                _ => return Err(UnValueDataError::NonByteStringConstructor.into()),
             };
 
             if ccy.len() > 32 {
-                return Err(ValueError::UnValueData("invalid key"));
+                return Err(UnValueDataError::InvalidKey.into());
             }
 
             // Check strictly ascending order
             if let Some(prev) = prev_ccy {
                 if prev.cmp(ccy) != std::cmp::Ordering::Less {
-                    return Err(ValueError::UnValueData(
-                        "currency symbols not strictly ascending",
-                    ));
+                    return Err(UnValueDataError::CurrencyNotAscending.into());
                 }
             }
             prev_ccy = Some(ccy);
 
             let inner_map = match value {
                 PlutusData::Map(m) => m,
-                _ => return Err(ValueError::UnValueData("non-Map constructor")),
+                _ => return Err(UnValueDataError::NonMapConstructor.into()),
             };
 
             if inner_map.is_empty() {
-                return Err(ValueError::UnValueData("empty inner map"));
+                return Err(UnValueDataError::EmptyInnerMap.into());
             }
 
             let mut token_entries = BumpVec::new_in(arena.as_bump());
@@ -385,34 +430,32 @@ impl<'a> LedgerValue<'a> {
             for (inner_key, inner_value) in inner_map.iter() {
                 let tok = match inner_key {
                     PlutusData::ByteString(bs) => *bs,
-                    _ => return Err(ValueError::UnValueData("non-B constructor")),
+                    _ => return Err(UnValueDataError::NonByteStringConstructor.into()),
                 };
 
                 if tok.len() > 32 {
-                    return Err(ValueError::UnValueData("invalid key"));
+                    return Err(UnValueDataError::InvalidKey.into());
                 }
 
                 // Check strictly ascending order
                 if let Some(prev) = prev_tok {
                     if prev.cmp(tok) != std::cmp::Ordering::Less {
-                        return Err(ValueError::UnValueData(
-                            "token names not strictly ascending",
-                        ));
+                        return Err(UnValueDataError::TokenNotAscending.into());
                     }
                 }
                 prev_tok = Some(tok);
 
                 let qty = match inner_value {
                     PlutusData::Integer(i) => *i,
-                    _ => return Err(ValueError::UnValueData("non-I constructor")),
+                    _ => return Err(UnValueDataError::NonIntegerConstructor.into()),
                 };
 
                 if qty.is_zero() {
-                    return Err(ValueError::UnValueData("invalid quantity"));
+                    return Err(UnValueDataError::InvalidQuantity.into());
                 }
 
                 check_quantity_range(qty)
-                    .map_err(|_| ValueError::UnValueData("invalid quantity"))?;
+                    .map_err(|_| ValueError::from(UnValueDataError::InvalidQuantity))?;
 
                 token_entries.push(TokenEntry {
                     name: tok,
@@ -421,7 +464,6 @@ impl<'a> LedgerValue<'a> {
             }
 
             let tokens: &'a [TokenEntry<'a>] = arena.alloc(token_entries);
-            total_size += tokens.len();
             currency_entries.push(CurrencyEntry {
                 currency: ccy,
                 tokens,
@@ -429,11 +471,27 @@ impl<'a> LedgerValue<'a> {
         }
 
         let entries: &'a [CurrencyEntry<'a>] = arena.alloc(currency_entries);
+        let (size, negative_count) = count_stats(entries);
         Ok(arena.alloc(LedgerValue {
             entries,
-            size: total_size,
+            size,
+            negative_count,
         }))
     }
+}
+
+pub fn count_stats(entries: &[CurrencyEntry]) -> (usize, usize) {
+    let mut total_size = 0usize;
+    let mut negative_count = 0usize;
+    for e in entries {
+        for t in e.tokens {
+            total_size += 1;
+            if t.quantity.is_negative() {
+                negative_count += 1;
+            }
+        }
+    }
+    (total_size, negative_count)
 }
 
 fn merge_tokens<'a>(
