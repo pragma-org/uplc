@@ -19,6 +19,7 @@ amaru-uplc = { version = "0.1.0", path = "./crates/uplc" }
 append-only-vec = "0.1.8"
 blst = "0.3.13"
 bumpalo = "3.16.0"
+chumsky = "=1.0.0-alpha.8"
 criterion = "0.7.0"
 cryptoxide = "0.4.4"
 divan = "0.1.21"

@@ -7,6 +7,7 @@ pub mod data;
 pub mod flat;
 pub mod machine;
 pub mod program;
+pub mod syn;
 pub mod term;
 pub mod typ;
 

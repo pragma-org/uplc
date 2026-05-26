@@ -1,8 +1,10 @@
 # Flat conformance suite
 
-The canonical UPLC conformance suite for this repo. Each fixture is a single `fixture.json` inside its own directory; the harness in `tests/conformance.rs` deserializes it, decodes the flat bytes via the consensus-critical `flat::decode_strict`, and then either evaluates and compares against the expected output + budget, or — for negatives — checks that the rejection lands at the declared layer (`decode` or `eval`).
+One of two parallel conformance suites in this repo. Each fixture is a single `fixture.json` inside its own directory; the harness in `tests/conformance_flat.rs` deserializes it, decodes the flat bytes via the consensus-critical flat decoders, and then either evaluates and compares against the expected output + budget, or, for negatives checks, that the rejection lands at the declared layer (`decode` or `eval`).
 
-Most fixtures originated from [IntersectMBO/plutus](https://github.com/IntersectMBO/plutus)'s textual conformance suite (`plutus-conformance/test-cases/uplc/evaluation/`), converted to flat via the reference `uplc` CLI. There's no automated sync, so the suite isn't guaranteed to match upstream byte-for-byte.
+The sibling `../textual/` suite holds the upstream Plutus textual fixtures verbatim and is run by `tests/conformance.rs` through the `syn` parser. The textual suite is the canonical conformance signal; this flat suite exercises the on-chain decode path.
+
+Most fixtures here originated from [IntersectMBO/plutus](https://github.com/IntersectMBO/plutus)'s textual conformance suite (`plutus-conformance/test-cases/uplc/evaluation/`), converted to flat via the reference `uplc` CLI. There's no automated sync, so the flat suite isn't guaranteed to match upstream byte-for-byte.
 
 ## fixture.json schema
 
@@ -45,10 +47,10 @@ Fifteen fixtures don't come from the upstream textual suite. The corresponding t
 | `builtin/constant/value/key-too-long-{1,2}/` | 33-byte currency/token key: decoder's >32 length check rejects |
 | `builtin/constant/value/{overflow,underflow}/` | quantity outside `i128` range: `check_quantity_range` rejects |
 
-## Upstream fixtures that didn't carry over
+## Upstream fixtures covered only by the textual suite
 
-169 textual fixtures from the upstream Plutus suite have no flat counterpart here. They fall into two groups:
+~169 textual fixtures from the upstream Plutus suite have no flat counterpart here, but they still run as part of `../textual/`. They fall into two groups:
 
-**BLS in the program (143).** Most are valid programs that pass `(con bls12_381_G[12]_element 0x…)` to a BLS builtin. The flat wire format has no representation for raw curve points. In practice, G1/G2 values arrive as a bytestring fed to `bls12_381_G[12]_uncompress` at runtime. Plutus's decoder rejects the BLS constant tag uniformly, `negative/bls/g1-element/g1-const/` covers the whole class.
+**BLS in the program (143).** Most are valid programs that pass `(con bls12_381_G[12]_element 0x…)` to a BLS builtin. The flat wire format has no representation for raw curve points. In practice, G1/G2 values arrive as a bytestring fed to `bls12_381_G[12]_uncompress` at runtime. Plutus's decoder rejects the BLS constant tag uniformly, `negative/bls/g1-element/g1-const/` covers the whole class on the flat side.
 
 **Textual-only failure modes (26).** `(con bool Maybe)`, `(con integer 0.5)`, `(con (list bool) [5])`, `(constr -5 …)`, `(con value [("CURRENCY", …)])`, and others. The parser rejects on grammar or type grounds, but no malformed byte sequence in flat targets the same failure: bool is one bit, integers are LEB128, list/pair elements decode by the declared type tag with no per-value check, constr tags are unsigned LEB128, Value entries are length-prefixed bytestrings with no string-vs-bytestring distinction.
