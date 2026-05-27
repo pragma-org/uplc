@@ -43,7 +43,7 @@ pub fn byte_string_ex_mem(b: &[u8]) -> i64 {
 }
 
 pub fn string_ex_mem(s: &str) -> i64 {
-    s.chars().count() as i64
+    s.len() as i64 / 4
 }
 
 pub fn pair_ex_mem(l: &Constant, r: &Constant) -> i64 {
