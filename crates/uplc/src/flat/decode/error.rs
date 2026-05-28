@@ -38,4 +38,8 @@ pub enum FlatDecodeError {
     BuiltinNotAvailable(u8, String),
     #[error("Constant type {1} (tag {0}) is not available before UPLC version 1.1.0")]
     ConstantTypeNotAvailable(u8, &'static str),
+    #[error("Term {1} (tag {0}) is not available before UPLC version 1.1.0")]
+    TermNotAvailable(u8, &'static str),
+    #[error("Word value overflow: LEB128 value exceeds machine word size")]
+    WordOverflow,
 }
