@@ -60,7 +60,7 @@ impl<'b> Decoder<'b> {
     pub fn word(&mut self) -> Result<usize, FlatDecodeError> {
         let mut leading_bit = 1;
         let mut final_word: usize = 0;
-        let mut shl: usize = 0;
+        let mut shl: u32 = 0;
 
         // continue looping if lead bit is 1 which is 128 as a u8 otherwise exit
         while leading_bit > 0 {
@@ -68,7 +68,18 @@ impl<'b> Decoder<'b> {
 
             let word7 = word8 & 127;
 
-            final_word |= (word7 as usize) << shl;
+            if shl >= usize::BITS {
+                return Err(FlatDecodeError::WordOverflow);
+            }
+
+            let part = (word7 as usize) << shl;
+
+            // Check that no bits were lost in the shift
+            if (part >> shl) != word7 as usize {
+                return Err(FlatDecodeError::WordOverflow);
+            }
+
+            final_word |= part;
 
             shl += 7;
 

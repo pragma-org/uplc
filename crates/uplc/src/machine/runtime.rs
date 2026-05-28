@@ -2790,10 +2790,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 let bytes = runtime.args[0].unwrap_byte_string()?;
                 let shift = runtime.args[1].unwrap_integer()?;
 
-                let arg1: i64 = u64::try_from(shift.abs())
-                    .unwrap()
-                    .try_into()
-                    .unwrap_or(i64::MAX);
+                let arg1: i64 = i64::try_from(shift)
+                    .map_err(|_| MachineError::outside_usize_bounds(shift))?
+                    .saturating_abs();
 
                 let budget = self
                     .costs
@@ -2883,10 +2882,9 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 let bytes = runtime.args[0].unwrap_byte_string()?;
                 let shift = runtime.args[1].unwrap_integer()?;
 
-                let arg1: i64 = u64::try_from(shift.abs())
-                    .unwrap()
-                    .try_into()
-                    .unwrap_or(i64::MAX);
+                let arg1: i64 = i64::try_from(shift)
+                    .map_err(|_| MachineError::outside_usize_bounds(shift))?
+                    .saturating_abs();
 
                 let budget = self
                     .costs

@@ -165,6 +165,10 @@ where
         }
         // Constr
         tag::CONSTR => {
+            if ctx.program_is_pre_1_1_0() {
+                return Err(FlatDecodeError::TermNotAvailable(tag::CONSTR, "constr"));
+            }
+
             let tag = decoder.word()?;
             let fields = decoder.list_with(ctx, decode_term)?;
             let fields = ctx.arena.alloc(fields);
@@ -175,6 +179,10 @@ where
         }
         // Case
         tag::CASE => {
+            if ctx.program_is_pre_1_1_0() {
+                return Err(FlatDecodeError::TermNotAvailable(tag::CASE, "case"));
+            }
+
             let constr = decode_term(ctx, decoder)?;
             let branches = decoder.list_with(ctx, decode_term)?;
             let branches = ctx.arena.alloc(branches);

@@ -245,8 +245,9 @@ fn encode_constant_value<'a>(e: &mut Encoder, x: &'a &Constant<'a>) -> Result<()
 
             encode_constant_value(e, b)?;
         }
-        Constant::Data(_data) => {
-            todo!();
+        Constant::Data(data) => {
+            let data = minicbor::to_vec(*data)?;
+            e.bytes(&data)?;
         }
         Constant::Value(v) => {
             encode_value(e, v)?;
