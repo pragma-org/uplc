@@ -43,7 +43,11 @@ fn generate_flat_tests(dir_path: &PathBuf, skip_tests: &[&str]) -> String {
     for entry in WalkDir::new(dir_path).into_iter().filter_map(Result::ok) {
         let path = entry.path();
 
-        if path.file_name().and_then(OsStr::to_str) != Some("fixture.json") {
+        if !path
+            .file_name()
+            .and_then(OsStr::to_str)
+            .is_some_and(|name| name.ends_with(".fixture.json"))
+        {
             continue;
         }
 
