@@ -1,6 +1,6 @@
 use amaru_uplc::{arena::Arena, machine::PlutusVersion, syn::parse_program};
 
-fn run_conformance_test(file_contents: &str, expected_output: &str, expected_budget: &str) {
+fn run_conformance(file_contents: &str, expected_output: &str, expected_budget: &str) {
     let arena = Arena::new();
 
     let Ok(program) = parse_program(&arena, file_contents).into_result() else {

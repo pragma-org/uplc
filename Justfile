@@ -6,14 +6,14 @@ test:
 download-plutus-tests:
     set -euo pipefail
 
-    rm -rf crates/uplc/tests/conformance
+    rm -rf crates/uplc/tests/conformance/textual
 
     curl -L -s https://github.com/IntersectMBO/plutus/archive/master.tar.gz | tar xz -C /tmp
 
-    mkdir -p crates/uplc/tests/conformance
+    mkdir -p crates/uplc/tests/conformance/textual
 
-    mv /tmp/plutus-master/plutus-conformance/test-cases/uplc/evaluation/* crates/uplc/tests/conformance/
+    mv /tmp/plutus-master/plutus-conformance/test-cases/uplc/evaluation/* crates/uplc/tests/conformance/textual/
 
     rm -rf /tmp/plutus-master
 
-    @echo "Download complete. Test cases are now in crates/uplc/tests/conformance/"
+    @echo "Download complete. Test cases are now in crates/uplc/tests/conformance/textual/"
