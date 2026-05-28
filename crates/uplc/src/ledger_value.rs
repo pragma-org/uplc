@@ -314,8 +314,6 @@ impl<'a> LedgerValue<'a> {
             return Ok(LedgerValue::empty(arena));
         }
 
-        check_quantity_range(scalar).map_err(|_| ValueError::ScaleValueQuantityOutOfBounds)?;
-
         let mut currency_entries = BumpVec::new_in(arena.as_bump());
 
         for entry in v.entries {
