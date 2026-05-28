@@ -83,6 +83,7 @@ pub fn constant_ex_mem(c: &Constant) -> i64 {
         Constant::Bls12_381G1Element(_) => g1_element_ex_mem(),
         Constant::Bls12_381G2Element(_) => g2_element_ex_mem(),
         Constant::Bls12_381MlResult(_) => ml_result_ex_mem(),
+        Constant::Value(v) => v.size as i64,
     }
 }
 

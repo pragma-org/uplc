@@ -6,6 +6,7 @@ use crate::{
     builtin::DefaultFunction,
     constant::{Constant, Integer},
     data::PlutusData,
+    ledger_value::ValueError,
     term::Term,
     typ::Type,
 };
@@ -141,6 +142,8 @@ pub enum RuntimeError<'a> {
     SerializationError(&'a PlutusData<'a>),
     #[error("Scalar exceeds 512-byte bound for multiScalarMul")]
     MultiScalarMulScalarOutOfBounds,
+    #[error(transparent)]
+    Value(#[from] ValueError),
 }
 
 impl<'a, V> MachineError<'a, V>

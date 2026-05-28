@@ -102,6 +102,14 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Type<'a>, Extra<'a>> {
                     Type::g2(state.arena)
                 },
             ),
+            // value
+            text::keyword("value")
+                .ignored()
+                .map_with(|_, e: &mut MapExtra<'a, '_>| {
+                    let state = e.state();
+
+                    Type::value(state.arena)
+                }),
         ))
         .boxed()
     })

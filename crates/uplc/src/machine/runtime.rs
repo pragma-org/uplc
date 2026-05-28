@@ -8,6 +8,7 @@ use crate::{
     builtin::DefaultFunction,
     constant::{self, Constant, Integer},
     data::PlutusData,
+    ledger_value::{self, LedgerValue, ValueError},
     machine::cost_model::builtin_costs::BuiltinCostModel,
     typ::Type,
 };
@@ -3315,6 +3316,181 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                 let out = self.arena.alloc(result);
 
                 let constant = Constant::g2(self.arena, out);
+
+                Ok(Value::con(self.arena, constant))
+            }
+
+            DefaultFunction::InsertCoin => {
+                let ccy = runtime.args[0].unwrap_byte_string()?;
+                let tok = runtime.args[1].unwrap_byte_string()?;
+                let qty = runtime.args[2].unwrap_integer()?;
+                let v = runtime.args[3].unwrap_ledger_value()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::InsertCoin,
+                        &[ledger_value::value_max_depth(v)],
+                    )
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::InsertCoin))?;
+
+                self.spend_budget(budget)?;
+
+                // Validate quantity in 128-bit signed range
+                if !qty.is_zero() {
+                    ledger_value::check_quantity_range(qty)
+                        .map_err(|e| MachineError::runtime(e.into()))?;
+                }
+
+                // Validate key lengths (> 32 only allowed when qty=0, which is a no-op)
+                if ccy.len() > 32 || tok.len() > 32 {
+                    if qty.is_zero() {
+                        let constant = Constant::ledger_value(self.arena, v);
+                        return Ok(Value::con(self.arena, constant));
+                    }
+
+                    let err = if ccy.len() > 32 {
+                        ValueError::InsertCoinInvalidCurrency
+                    } else {
+                        ValueError::InsertCoinInvalidToken
+                    };
+
+                    return Err(MachineError::runtime(err.into()));
+                }
+
+                let result = LedgerValue::insert_coin(self.arena, ccy, tok, qty, v);
+
+                let constant = Constant::ledger_value(self.arena, result);
+
+                Ok(Value::con(self.arena, constant))
+            }
+            DefaultFunction::LookupCoin => {
+                let ccy = runtime.args[0].unwrap_byte_string()?;
+                let tok = runtime.args[1].unwrap_byte_string()?;
+                let v = runtime.args[2].unwrap_ledger_value()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::LookupCoin,
+                        &[
+                            cost_model::byte_string_ex_mem(ccy),
+                            cost_model::byte_string_ex_mem(tok),
+                            ledger_value::value_max_depth(v),
+                        ],
+                    )
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::LookupCoin))?;
+
+                self.spend_budget(budget)?;
+
+                let qty = v.lookup_coin(self.arena, ccy, tok);
+
+                Ok(Value::integer(self.arena, qty))
+            }
+            DefaultFunction::UnionValue => {
+                let v1 = runtime.args[0].unwrap_ledger_value()?;
+                let v2 = runtime.args[1].unwrap_ledger_value()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::UnionValue,
+                        &[v1.size as i64, v2.size as i64],
+                    )
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::UnionValue))?;
+
+                self.spend_budget(budget)?;
+
+                let result = LedgerValue::union_value(self.arena, v1, v2)
+                    .map_err(|e| MachineError::runtime(e.into()))?;
+
+                let constant = Constant::ledger_value(self.arena, result);
+
+                Ok(Value::con(self.arena, constant))
+            }
+            DefaultFunction::ValueContains => {
+                let v1 = runtime.args[0].unwrap_ledger_value()?;
+                let v2 = runtime.args[1].unwrap_ledger_value()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::ValueContains,
+                        &[v1.size as i64, v2.size as i64],
+                    )
+                    .ok_or(MachineError::NoCostForBuiltin(
+                        DefaultFunction::ValueContains,
+                    ))?;
+
+                self.spend_budget(budget)?;
+
+                let result = LedgerValue::value_contains(v1, v2)
+                    .map_err(|e| MachineError::runtime(e.into()))?;
+
+                Ok(Value::bool(self.arena, result))
+            }
+            DefaultFunction::ValueData => {
+                let v = runtime.args[0].unwrap_ledger_value()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(DefaultFunction::ValueData, &[v.size as i64])
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::ValueData))?;
+
+                self.spend_budget(budget)?;
+
+                let data = LedgerValue::value_data(self.arena, v)
+                    .map_err(|e| MachineError::runtime(e.into()))?;
+
+                let constant = Constant::data(self.arena, data);
+
+                Ok(Value::con(self.arena, constant))
+            }
+            DefaultFunction::UnValueData => {
+                let data = runtime.args[0].unwrap_constant()?.unwrap_data()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::UnValueData,
+                        &[ledger_value::data_node_count(data)],
+                    )
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::UnValueData))?;
+
+                self.spend_budget(budget)?;
+
+                let result = LedgerValue::un_value_data(self.arena, data)
+                    .map_err(|e| MachineError::runtime(e.into()))?;
+
+                let constant = Constant::ledger_value(self.arena, result);
+
+                Ok(Value::con(self.arena, constant))
+            }
+            DefaultFunction::ScaleValue => {
+                let scalar = runtime.args[0].unwrap_integer()?;
+                let v = runtime.args[1].unwrap_ledger_value()?;
+
+                let budget = self
+                    .costs
+                    .builtin_costs
+                    .get_cost(
+                        DefaultFunction::ScaleValue,
+                        &[cost_model::integer_ex_mem(scalar), v.size as i64],
+                    )
+                    .ok_or(MachineError::NoCostForBuiltin(DefaultFunction::ScaleValue))?;
+
+                self.spend_budget(budget)?;
+
+                let result = LedgerValue::scale_value(self.arena, scalar, v)
+                    .map_err(|e| MachineError::runtime(e.into()))?;
+
+                let constant = Constant::ledger_value(self.arena, result);
 
                 Ok(Value::con(self.arena, constant))
             }
