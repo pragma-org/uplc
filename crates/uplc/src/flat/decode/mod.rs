@@ -214,15 +214,7 @@ fn type_from_tags<'a>(
                 3 + consumed1 + consumed2,
             ))
         }
-        [tag::VALUE, ..] => {
-            if ctx.program_is_pre_1_1_0() {
-                return Err(FlatDecodeError::ConstantTypeNotAvailable(
-                    tag::VALUE,
-                    "Value",
-                ));
-            }
-            Ok((Type::value(ctx.arena), 1))
-        }
+        [tag::VALUE, ..] => Ok((Type::value(ctx.arena), 1)),
         [] => Err(FlatDecodeError::MissingTypeTag),
         x => Err(FlatDecodeError::UnknownTypeTags(x.to_vec())),
     }
