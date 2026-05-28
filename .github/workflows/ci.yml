@@ -35,7 +35,14 @@ jobs:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - run: cargo test
+      - name: Unit tests
+        run: cargo test --lib
+      - name: Textual conformance
+        if: '!cancelled()'
+        run: cargo test --test conformance
+      - name: Flat conformance
+        if: '!cancelled()'
+        run: cargo test --test conformance_flat
 
   audit:
     name: Audit
