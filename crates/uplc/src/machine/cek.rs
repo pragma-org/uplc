@@ -28,6 +28,7 @@ pub struct Machine<'a, B: BuiltinCostModel> {
     slippage: u8,
     pub(super) logs: Vec<String>,
     pub(super) semantics: BuiltinSemantics,
+    pre_v11: bool,
 }
 
 impl<'a, B: BuiltinCostModel> Machine<'a, B> {
@@ -36,6 +37,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
         initial_budget: ExBudget,
         costs: CostModel<B>,
         semantics: BuiltinSemantics,
+        pre_v11: bool,
     ) -> Self {
         Machine {
             arena,
@@ -45,6 +47,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
             slippage: 200,
             logs: Vec::new(),
             semantics,
+            pre_v11,
         }
     }
 
@@ -248,7 +251,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         Err(MachineError::MissingCaseBranch(branches, value))
                     }
                 }
-                Value::Con(constant) => {
+                Value::Con(constant) if self.pre_v11 => {
                     let (tag, max_branches, fields) = self.constant_as_tag_fields(constant)?;
 
                     if branches.len() > max_branches {

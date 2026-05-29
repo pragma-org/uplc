@@ -83,11 +83,13 @@ where
         plutus_version: PlutusVersion,
         initial_budget: ExBudget,
     ) -> EvalResult<'a, V> {
+        let pre_v11 = !self.version.is_less_than_1_1_0();
         let mut machine = Machine::new(
             arena,
             initial_budget,
             cost_model,
             BuiltinSemantics::from(&plutus_version),
+            pre_v11,
         );
         let term = machine.run(self.term);
         let mut info = machine.info();
