@@ -643,8 +643,8 @@ impl BuiltinCostModel for BuiltinCostsV3 {
             divide_integer: TwoArgumentsCosting::new(
                 TwoArgumentsCosting::subtracted_sizes(
                     cost_map["divide_integer-mem-arguments-intercept"],
-                    cost_map["divide_integer-mem-arguments-minimum"],
                     cost_map["divide_integer-mem-arguments-slope"],
+                    cost_map["divide_integer-mem-arguments-minimum"],
                 ),
                 TwoArgumentsCosting::above_and_below_diagonal_into_quadratic_x_and_y(
                     cost_map["divide_integer-cpu-arguments-minimum"],

@@ -610,7 +610,10 @@ impl CostMap {
                     "byteStringToInteger-mem-arguments-slope",
                 ];
 
-                if values.len() == 297 {
+                // Newer parameter vectors may append extra entries after the known
+                // bitwise/ripemd V3 costs. As long as we have at least that prefix,
+                // keep mapping the known keys instead of silently dropping them.
+                if values.len() >= 297 {
                     base_keys.extend([
                         "andByteString-cpu-arguments-intercept",
                         "andByteString-cpu-arguments-slope1",

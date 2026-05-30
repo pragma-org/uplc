@@ -91,8 +91,7 @@ where
             *self.version,
         );
         let term = machine.run(self.term);
-        let mut info = machine.info();
-        info.consumed_budget = initial_budget - info.consumed_budget;
+        let info = machine.info();
         EvalResult { term, info }
     }
 

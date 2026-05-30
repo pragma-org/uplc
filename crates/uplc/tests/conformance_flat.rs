@@ -110,7 +110,7 @@ fn run_conformance(fixture_json: &str) {
     let encoded = flat::encode(result_program).expect("encoder failed on eval result");
 
     assert_eq!(hex::encode(&expected_bytes), hex::encode(&encoded));
-    assert_eq!(result.info.consumed_budget, *budget);
+    assert_eq!(result.info.remaining_budget, *budget);
 }
 
 include!(concat!(env!("OUT_DIR"), "/generated_flat_tests.rs"));

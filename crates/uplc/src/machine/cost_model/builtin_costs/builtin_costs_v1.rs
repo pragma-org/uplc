@@ -376,8 +376,8 @@ impl BuiltinCostModel for BuiltinCostsV1 {
             divide_integer: TwoArgumentsCosting::new(
                 TwoArgumentsCosting::subtracted_sizes(
                     cost_map["divide_integer-mem-arguments-intercept"],
-                    cost_map["divide_integer-mem-arguments-minimum"],
                     cost_map["divide_integer-mem-arguments-slope"],
+                    cost_map["divide_integer-mem-arguments-minimum"],
                 ),
                 TwoArgumentsCosting::const_above_diagonal_into_multiplied_sizes(
                     cost_map["divide_integer-cpu-arguments-constant"],
