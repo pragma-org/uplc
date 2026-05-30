@@ -83,13 +83,12 @@ where
         plutus_version: PlutusVersion,
         initial_budget: ExBudget,
     ) -> EvalResult<'a, V> {
-        let pre_v11 = !self.version.is_less_than_1_1_0();
         let mut machine = Machine::new(
             arena,
             initial_budget,
             cost_model,
             BuiltinSemantics::from(&plutus_version),
-            pre_v11,
+            *self.version,
         );
         let term = machine.run(self.term);
         let mut info = machine.info();
@@ -150,11 +149,11 @@ impl<'a> Version<'a> {
     }
 
     pub fn is_v1_0_0(&'a self) -> bool {
-        self.0 .0 == 1 && self.0 .1 == 0 && self.0 .2 == 0
+        self.0 == &(1, 0, 0)
     }
 
     pub fn is_v1_1_0(&'a self) -> bool {
-        self.0 .0 == 1 && self.0 .1 == 1 && self.0 .2 == 0
+        self.0 == &(1, 1, 0)
     }
 
     pub fn is_valid_version(&'a self) -> bool {
@@ -162,7 +161,11 @@ impl<'a> Version<'a> {
     }
 
     pub fn is_less_than_1_1_0(&'a self) -> bool {
-        self.0 .0 == 0 || self.0 .1 == 0
+        self.0 < &(1, 1, 0)
+    }
+
+    pub fn is_at_least_1_1_0(&'a self) -> bool {
+        self.0 >= &(1, 1, 0)
     }
 
     pub fn major(&'a self) -> usize {

@@ -1,29 +1,25 @@
 mod decoder;
 mod error;
 
-pub use decoder::Ctx;
-pub use decoder::Decoder;
+pub use decoder::{Ctx, Decoder};
 pub use error::FlatDecodeError;
 
 use bumpalo::collections::Vec as BumpVec;
 use num::Zero;
 
-use crate::arena::Arena;
-use crate::binder::Binder;
-use crate::ledger_value::{
-    check_quantity_range, count_stats, CurrencyEntry, LedgerValue, TokenEntry,
-};
-use crate::machine::PlutusVersion;
-use crate::typ::Type;
 use crate::{
+    arena::Arena,
+    binder::Binder,
     constant::Constant,
+    ledger_value::{check_quantity_range, count_stats, CurrencyEntry, LedgerValue, TokenEntry},
+    machine::PlutusVersion,
     program::{Program, Version},
     term::Term,
+    typ::Type,
 };
 
-use super::tag;
 use super::{
-    builtin,
+    builtin, tag,
     tag::{BUILTIN_TAG_WIDTH, CONST_TAG_WIDTH, TERM_TAG_WIDTH},
 };
 
@@ -165,7 +161,7 @@ where
         }
         // Constr
         tag::CONSTR => {
-            if ctx.program_is_pre_1_1_0() {
+            if ctx.version.is_some_and(|v| v.is_less_than_1_1_0()) {
                 return Err(FlatDecodeError::TermNotAvailable(tag::CONSTR, "constr"));
             }
 
@@ -179,7 +175,7 @@ where
         }
         // Case
         tag::CASE => {
-            if ctx.program_is_pre_1_1_0() {
+            if ctx.version.is_some_and(|v| v.is_less_than_1_1_0()) {
                 return Err(FlatDecodeError::TermNotAvailable(tag::CASE, "case"));
             }
 

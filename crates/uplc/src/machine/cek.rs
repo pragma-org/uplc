@@ -1,3 +1,4 @@
+use crate::program::Version;
 use bumpalo::collections::Vec as BumpVec;
 
 use crate::{
@@ -28,7 +29,7 @@ pub struct Machine<'a, B: BuiltinCostModel> {
     slippage: u8,
     pub(super) logs: Vec<String>,
     pub(super) semantics: BuiltinSemantics,
-    pre_v11: bool,
+    version: Version<'a>,
 }
 
 impl<'a, B: BuiltinCostModel> Machine<'a, B> {
@@ -37,7 +38,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
         initial_budget: ExBudget,
         costs: CostModel<B>,
         semantics: BuiltinSemantics,
-        pre_v11: bool,
+        version: Version<'a>,
     ) -> Self {
         Machine {
             arena,
@@ -47,7 +48,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
             slippage: 200,
             logs: Vec::new(),
             semantics,
-            pre_v11,
+            version,
         }
     }
 
@@ -251,7 +252,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
                         Err(MachineError::MissingCaseBranch(branches, value))
                     }
                 }
-                Value::Con(constant) if self.pre_v11 => {
+                Value::Con(constant) if self.version.is_at_least_1_1_0() => {
                     let (tag, max_branches, fields) = self.constant_as_tag_fields(constant)?;
 
                     if branches.len() > max_branches {
