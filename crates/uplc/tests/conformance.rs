@@ -27,12 +27,12 @@ fn run_conformance(file_contents: &str, expected_output: &str, expected_budget: 
 
     pretty_assertions::assert_eq!(expected.term, term);
 
-    let remaining_budget = format!(
+    let consumed_budget = format!(
         "({{cpu: {}\n| mem: {}}})",
-        info.remaining_budget.cpu, info.remaining_budget.mem
+        info.consumed_budget.cpu, info.consumed_budget.mem
     );
 
-    pretty_assertions::assert_eq!(remaining_budget, expected_budget);
+    pretty_assertions::assert_eq!(consumed_budget, expected_budget);
 }
 
 include!(concat!(env!("OUT_DIR"), "/generated_tests.rs"));

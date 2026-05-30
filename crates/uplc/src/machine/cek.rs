@@ -56,8 +56,8 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
 
     pub fn info(self) -> MachineInfo {
         MachineInfo {
-            remaining_budget: self.initial_budget - self.ex_budget,
-            consumed_budget: self.ex_budget,
+            remaining_budget: self.ex_budget,
+            consumed_budget: self.initial_budget - self.ex_budget,
             logs: self.logs,
         }
     }
