@@ -23,6 +23,7 @@ use super::{
 
 pub struct Machine<'a, B: BuiltinCostModel> {
     pub(super) arena: &'a Arena,
+    initial_budget: ExBudget,
     ex_budget: ExBudget,
     unbudgeted_steps: [u8; 10],
     pub(super) costs: CostModel<B>,
@@ -42,6 +43,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
     ) -> Self {
         Machine {
             arena,
+            initial_budget,
             ex_budget: initial_budget,
             unbudgeted_steps: [0; 10],
             costs,
@@ -54,6 +56,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
 
     pub fn info(self) -> MachineInfo {
         MachineInfo {
+            remaining_budget: self.initial_budget - self.ex_budget,
             consumed_budget: self.ex_budget,
             logs: self.logs,
         }
