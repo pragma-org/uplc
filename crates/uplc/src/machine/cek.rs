@@ -384,6 +384,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
     }
 
     /// Decompose a constant into (tag, max_branches, fields) for constant-case.
+    #[allow(clippy::type_complexity)]
     fn constant_as_tag_fields<V>(
         &self,
         constant: &'a Constant<'a>,
