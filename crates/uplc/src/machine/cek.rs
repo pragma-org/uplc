@@ -1,8 +1,10 @@
+use crate::program::Version;
 use bumpalo::collections::Vec as BumpVec;
 
 use crate::{
     arena::Arena,
     binder::Eval,
+    constant::Constant,
     machine::{
         context::Context, cost_model::builtin_costs::BuiltinCostModel, env::Env,
         state::MachineState,
@@ -27,6 +29,7 @@ pub struct Machine<'a, B: BuiltinCostModel> {
     slippage: u8,
     pub(super) logs: Vec<String>,
     pub(super) semantics: BuiltinSemantics,
+    version: Version<'a>,
 }
 
 impl<'a, B: BuiltinCostModel> Machine<'a, B> {
@@ -35,6 +38,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
         initial_budget: ExBudget,
         costs: CostModel<B>,
         semantics: BuiltinSemantics,
+        version: Version<'a>,
     ) -> Self {
         Machine {
             arena,
@@ -44,6 +48,7 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
             slippage: 200,
             logs: Vec::new(),
             semantics,
+            version,
         }
     }
 
@@ -237,13 +242,24 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
             }
             Context::FrameCases(env, branches, context) => match value {
                 Value::Constr(tag, fields) => {
-                    // kind of awkward tbh cause tag is already usize so how can it be bigger
-                    // than the max
-                    // if *tag > usize::MAX {
-                    //     return Err(MachineError::MaxConstrTagExceeded(value));
-                    // }
-
                     if let Some(branch) = branches.get(*tag) {
+                        let frame = self.transfer_arg_stack(fields, context);
+
+                        let state = MachineState::compute(self.arena, frame, env, branch);
+
+                        Ok(state)
+                    } else {
+                        Err(MachineError::MissingCaseBranch(branches, value))
+                    }
+                }
+                Value::Con(constant) if self.version.is_at_least_1_1_0() => {
+                    let (tag, max_branches, fields) = self.constant_as_tag_fields(constant)?;
+
+                    if branches.len() > max_branches {
+                        return Err(MachineError::MissingCaseBranch(branches, value));
+                    }
+
+                    if let Some(branch) = branches.get(tag) {
                         let frame = self.transfer_arg_stack(fields, context);
 
                         let state = MachineState::compute(self.arena, frame, env, branch);
@@ -365,6 +381,55 @@ impl<'a, B: BuiltinCostModel> Machine<'a, B> {
         }
 
         c
+    }
+
+    /// Decompose a constant into (tag, max_branches, fields) for constant-case.
+    #[allow(clippy::type_complexity)]
+    fn constant_as_tag_fields<V>(
+        &self,
+        constant: &'a Constant<'a>,
+    ) -> Result<(usize, usize, &'a [&'a Value<'a, V>]), MachineError<'a, V>>
+    where
+        V: Eval<'a>,
+    {
+        let empty: &'a [&'a Value<'a, V>] = self.arena.alloc(BumpVec::new_in(self.arena.as_bump()));
+        match constant {
+            Constant::Unit => Ok((0, 1, empty)),
+            Constant::Boolean(false) => Ok((0, 2, empty)),
+            Constant::Boolean(true) => Ok((1, 2, empty)),
+            Constant::Integer(i) => {
+                let tag = usize::try_from(*i).map_err(|_| MachineError::outside_usize_bounds(i))?;
+                Ok((tag, usize::MAX, empty))
+            }
+            Constant::ProtoList(ty, items) => {
+                if items.is_empty() {
+                    Ok((1, 2, empty))
+                } else {
+                    let head = Value::con(self.arena, items[0]);
+                    let tail = Value::con(
+                        self.arena,
+                        Constant::proto_list(self.arena, ty, &items[1..]),
+                    );
+
+                    let mut fields = BumpVec::with_capacity_in(2, self.arena.as_bump());
+                    fields.push(head);
+                    fields.push(tail);
+                    Ok((0, 2, self.arena.alloc(fields)))
+                }
+            }
+            Constant::ProtoPair(_, _, first, second) => {
+                let first_val = Value::con(self.arena, first);
+                let second_val = Value::con(self.arena, second);
+
+                let mut fields = BumpVec::with_capacity_in(2, self.arena.as_bump());
+                fields.push(first_val);
+                fields.push(second_val);
+                Ok((0, 1, self.arena.alloc(fields)))
+            }
+            _ => Err(MachineError::NonConstrScrutinized(Value::con(
+                self.arena, constant,
+            ))),
+        }
     }
 
     fn step_and_maybe_spend<V>(&mut self, step: StepKind) -> Result<(), MachineError<'a, V>>

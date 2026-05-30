@@ -21,14 +21,6 @@ pub struct Ctx<'a> {
 }
 
 impl<'a> Ctx<'a> {
-    /// Returns true if gating is active and the program version is pre-1.1.0.
-    pub fn program_is_pre_1_1_0(&self) -> bool {
-        match self.version {
-            Some(v) => v.is_less_than_1_1_0(),
-            None => false,
-        }
-    }
-
     /// Returns true if the given builtin is NOT available under the current
     /// plutus_version / protocol_version combination.
     pub fn is_builtin_gated(&self, func: &DefaultFunction) -> bool {
