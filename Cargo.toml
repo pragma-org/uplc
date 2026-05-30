@@ -3,7 +3,7 @@ resolver = "2"
 members = ["crates/*"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.3.0"
 description = "A UPLC Evaluator as a CEK machine"
 edition = "2021"
 license = "Apache-2.0"
@@ -14,7 +14,7 @@ documentation = "https://docs.rs/amaru-uplc"
 
 [workspace.dependencies]
 # Internal
-amaru-uplc = { version = "0.1.0", path = "./crates/uplc" }
+amaru-uplc = { version = "0.3.0", path = "./crates/uplc" }
 # External
 append-only-vec = "0.1.8"
 blst = "0.3.13"
