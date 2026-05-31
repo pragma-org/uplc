@@ -169,8 +169,8 @@ impl Default for BuiltinCostsV3 {
             ),
             mod_integer: TwoArgumentsCosting::new(
                 TwoArgumentsCosting::linear_in_y(0, 1),
-                TwoArgumentsCosting::above_and_below_diagonal_into_quadratic_x_and_y(
-                    85848, 123203, 7305, -900, 1716, 960, 57,
+                TwoArgumentsCosting::const_above_diagonal_into_quadratic_x_and_y(
+                    85848, 85848, 123203, 7305, -900, 1716, 960, 57,
                 ),
             ),
             equals_integer: TwoArgumentsCosting::new(
@@ -782,7 +782,8 @@ impl BuiltinCostModel for BuiltinCostsV3 {
                     cost_map["mod_integer-mem-arguments-intercept"],
                     cost_map["mod_integer-mem-arguments-slope"],
                 ),
-                TwoArgumentsCosting::above_and_below_diagonal_into_quadratic_x_and_y(
+                TwoArgumentsCosting::const_above_diagonal_into_quadratic_x_and_y(
+                    cost_map["mod_integer-cpu-arguments-constant"],
                     cost_map["mod_integer-cpu-arguments-minimum"],
                     cost_map["mod_integer-cpu-arguments-c00"],
                     cost_map["mod_integer-cpu-arguments-c01"],

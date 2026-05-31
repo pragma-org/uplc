@@ -72,7 +72,6 @@ pub enum TwoArguments {
     ConstAboveDiagonalIntoQuadraticXAndY(i64, TwoArgumentsQuadraticFunction),
     ConstAboveDiagonalIntoMultipliedSizes(i64, MultipliedSizes),
     WithInteraction(WithInteraction),
-    AboveAndBelowDiagonalIntoQuadraticXAndY(TwoArgumentsQuadraticFunction),
 }
 
 pub type TwoArgumentsCosting = Costing<2, TwoArguments>;
@@ -155,27 +154,6 @@ impl TwoArgumentsCosting {
         })
     }
 
-    #[allow(clippy::too_many_arguments)]
-    pub fn above_and_below_diagonal_into_quadratic_x_and_y(
-        minimum: i64,
-        coeff_00: i64,
-        coeff_01: i64,
-        coeff_02: i64,
-        coeff_10: i64,
-        coeff_11: i64,
-        coeff_20: i64,
-    ) -> TwoArguments {
-        TwoArguments::AboveAndBelowDiagonalIntoQuadraticXAndY(TwoArgumentsQuadraticFunction {
-            minimum,
-            coeff_00,
-            coeff_01,
-            coeff_02,
-            coeff_10,
-            coeff_11,
-            coeff_20,
-        })
-    }
-
     pub fn const_above_diagonal_into_multiplied_sizes(
         constant: i64,
         intercept: i64,
@@ -237,19 +215,6 @@ impl Cost<2> for TwoArguments {
                 }
             }
             TwoArguments::WithInteraction(w) => w.c00 + w.c10 * x + w.c01 * y + w.c11 * x * y,
-            TwoArguments::AboveAndBelowDiagonalIntoQuadraticXAndY(q) => {
-                let max_arg = x.max(y);
-                let min_arg = x.min(y);
-                std::cmp::max(
-                    q.minimum,
-                    q.coeff_00
-                        + q.coeff_10 * max_arg
-                        + q.coeff_01 * min_arg
-                        + q.coeff_20 * max_arg * max_arg
-                        + q.coeff_11 * max_arg * min_arg
-                        + q.coeff_02 * min_arg * min_arg,
-                )
-            }
         }
     }
 }
