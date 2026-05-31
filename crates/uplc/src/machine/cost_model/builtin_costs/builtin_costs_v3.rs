@@ -151,8 +151,8 @@ impl Default for BuiltinCostsV3 {
             ),
             divide_integer: TwoArgumentsCosting::new(
                 TwoArgumentsCosting::subtracted_sizes(0, 1, 1),
-                TwoArgumentsCosting::above_and_below_diagonal_into_quadratic_x_and_y(
-                    85848, 123203, 7305, -900, 1716, 960, 57,
+                TwoArgumentsCosting::const_above_diagonal_into_quadratic_x_and_y(
+                    85848, 85848, 123203, 7305, -900, 1716, 960, 57,
                 ),
             ),
             quotient_integer: TwoArgumentsCosting::new(
@@ -646,7 +646,8 @@ impl BuiltinCostModel for BuiltinCostsV3 {
                     cost_map["divide_integer-mem-arguments-slope"],
                     cost_map["divide_integer-mem-arguments-minimum"],
                 ),
-                TwoArgumentsCosting::above_and_below_diagonal_into_quadratic_x_and_y(
+                TwoArgumentsCosting::const_above_diagonal_into_quadratic_x_and_y(
+                    cost_map["divide_integer-cpu-arguments-constant"],
                     cost_map["divide_integer-cpu-arguments-minimum"],
                     cost_map["divide_integer-cpu-arguments-c00"],
                     cost_map["divide_integer-cpu-arguments-c01"],
