@@ -153,7 +153,7 @@ const BLS12_G2_KEYS: [&str; 16] = [
 ];
 
 impl CostMap {
-    pub fn new(version: &PlutusVersion, values: &[i64]) -> Self {
+    pub fn new(version: &PlutusVersion, protocol_version: (u64, u64), values: &[i64]) -> Self {
         let keys: Vec<&str> = match version {
             PlutusVersion::V1 => {
                 let mut v: Vec<&str> = vec![
@@ -365,8 +365,12 @@ impl CostMap {
                     "byteStringToInteger-mem-arguments-intercept",
                     "byteStringToInteger-mem-arguments-slope",
                 ]);
-                v.extend(PLOMIN_KEYS);
-                v.extend(PV11_KEYS);
+                if protocol_version.0 >= 10 {
+                    v.extend(PLOMIN_KEYS);
+                }
+                if protocol_version.0 >= 11 {
+                    v.extend(PV11_KEYS);
+                }
                 v
             }
             PlutusVersion::V2 => {
@@ -584,9 +588,13 @@ impl CostMap {
                     "blake2b_224-mem-arguments",
                 ]);
                 // 233-278: Plomin (bitwise + ripemd_160)
-                v.extend(PLOMIN_KEYS);
+                if protocol_version.0 >= 10 {
+                    v.extend(PLOMIN_KEYS);
+                }
                 // 279-331: PV11
-                v.extend(PV11_KEYS);
+                if protocol_version.0 >= 11 {
+                    v.extend(PV11_KEYS);
+                }
                 v
             }
             PlutusVersion::V3 => {
@@ -818,9 +826,13 @@ impl CostMap {
                     "byteStringToInteger-mem-arguments-slope",
                 ]);
                 // 251-296: Plomin (bitwise + ripemd_160)
-                v.extend(PLOMIN_KEYS);
+                if protocol_version.0 >= 10 {
+                    v.extend(PLOMIN_KEYS);
+                }
                 // 297-349: PV11
-                v.extend(PV11_KEYS);
+                if protocol_version.0 >= 11 {
+                    v.extend(PV11_KEYS);
+                }
                 v
             }
         };

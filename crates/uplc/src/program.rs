@@ -99,25 +99,26 @@ where
         &'a self,
         arena: &'a Arena,
         plutus_version: PlutusVersion,
+        protocol_version: (u64, u64),
         cost_model: &[i64],
         initial_budget: ExBudget,
     ) -> EvalResult<'a, V> {
         match plutus_version {
             PlutusVersion::V1 => self.evaluate(
                 arena,
-                CostModel::<BuiltinCostsV1>::initialize_cost_model(&plutus_version, cost_model),
+                CostModel::<BuiltinCostsV1>::initialize_cost_model(&plutus_version, protocol_version, cost_model),
                 plutus_version,
                 initial_budget,
             ),
             PlutusVersion::V2 => self.evaluate(
                 arena,
-                CostModel::<BuiltinCostsV2>::initialize_cost_model(&plutus_version, cost_model),
+                CostModel::<BuiltinCostsV2>::initialize_cost_model(&plutus_version, protocol_version, cost_model),
                 plutus_version,
                 initial_budget,
             ),
             PlutusVersion::V3 => self.evaluate(
                 arena,
-                CostModel::<BuiltinCostsV3>::initialize_cost_model(&plutus_version, cost_model),
+                CostModel::<BuiltinCostsV3>::initialize_cost_model(&plutus_version, protocol_version, cost_model),
                 plutus_version,
                 initial_budget,
             ),

@@ -20,8 +20,8 @@ pub struct CostModel<B: BuiltinCostModel> {
 }
 
 impl<B: BuiltinCostModel> CostModel<B> {
-    pub fn initialize_cost_model(version: &PlutusVersion, cost_model: &[i64]) -> CostModel<B> {
-        let cost_map = cost_map::CostMap::new(version, cost_model);
+    pub fn initialize_cost_model(version: &PlutusVersion, protocol_version: (u64, u64), cost_model: &[i64]) -> CostModel<B> {
+        let cost_map = cost_map::CostMap::new(version, protocol_version, cost_model);
         Self {
             machine_startup: ExBudget {
                 mem: cost_map["cek_startup_cost-exBudgetmem"],

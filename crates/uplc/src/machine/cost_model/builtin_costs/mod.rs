@@ -56,7 +56,7 @@ mod tests {
         costs.extend([194922, 32]); // 293-294: index_array cpu, mem
         assert_eq!(costs.len(), 295);
 
-        let cost_model = CostMap::new(&PlutusVersion::V1, &costs);
+        let cost_model = CostMap::new(&PlutusVersion::V1, (11, 0), &costs);
 
         assert_eq!(
             BuiltinCostsV1::default(),
@@ -92,7 +92,7 @@ mod tests {
         costs.extend([194922, 32]); // 293-294: index_array cpu, mem
         assert_eq!(costs.len(), 295);
 
-        let cost_model = CostMap::new(&PlutusVersion::V2, &costs);
+        let cost_model = CostMap::new(&PlutusVersion::V2, (11, 0), &costs);
 
         assert_eq!(
             BuiltinCostsV2::default(),
@@ -125,7 +125,7 @@ mod tests {
             1964219, 24520, 3,
         ];
 
-        let cost_model = CostMap::new(&PlutusVersion::V3, &costs);
+        let cost_model = CostMap::new(&PlutusVersion::V3, (10, 0), &costs);
 
         assert_eq!(
             BuiltinCostsV3::default(),
@@ -152,7 +152,7 @@ mod tests {
         ];
         assert_eq!(costs.len(), 166);
 
-        let cost_model = CostMap::new(&PlutusVersion::V1, &costs);
+        let cost_model = CostMap::new(&PlutusVersion::V1, (9, 0), &costs);
         let builtin_costs = BuiltinCostsV1::initialize(&cost_model);
 
         const SENTINEL: i64 = 30_000_000_000;
@@ -184,7 +184,7 @@ mod tests {
         costs.extend([1964219, 24520, 3]); // 276-278: ripemd_160
         assert_eq!(costs.len(), 279);
 
-        let cost_model = CostMap::new(&PlutusVersion::V1, &costs);
+        let cost_model = CostMap::new(&PlutusVersion::V1, (10, 0), &costs);
         let builtin_costs = BuiltinCostsV1::initialize(&cost_model);
 
         let budget = builtin_costs
@@ -212,7 +212,7 @@ mod tests {
         ];
         assert_eq!(costs.len(), 175);
 
-        let cost_model = CostMap::new(&PlutusVersion::V2, &costs);
+        let cost_model = CostMap::new(&PlutusVersion::V2, (9, 0), &costs);
         let builtin_costs = BuiltinCostsV2::initialize(&cost_model);
 
         const SENTINEL: i64 = 30_000_000_000;
@@ -243,7 +243,7 @@ mod tests {
         costs.extend([1964219, 24520, 3]); // 276-278: ripemd_160
         assert_eq!(costs.len(), 279);
 
-        let cost_model = CostMap::new(&PlutusVersion::V2, &costs);
+        let cost_model = CostMap::new(&PlutusVersion::V2, (10, 0), &costs);
         let builtin_costs = BuiltinCostsV2::initialize(&cost_model);
 
         let budget = builtin_costs
