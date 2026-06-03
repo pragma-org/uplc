@@ -1,6 +1,6 @@
 use amaru_uplc::{
     arena::Arena,
-    machine::{ExBudget, PlutusVersion, default_v3_cost_model},
+    machine::{default_v3_cost_model, ExBudget, PlutusVersion},
     syn::parse_program,
 };
 
@@ -11,7 +11,8 @@ fn run_conformance(file_contents: &str, expected_output: &str, expected_budget: 
     let arena = Arena::new();
     let costs = default_v3_cost_model();
 
-    let Ok(program) = parse_program(&arena, file_contents, PROTOCOL_VERSION.0 as u32).into_result() else {
+    let Ok(program) = parse_program(&arena, file_contents, PROTOCOL_VERSION.0 as u32).into_result()
+    else {
         pretty_assertions::assert_eq!("parse error", expected_output);
         pretty_assertions::assert_eq!("parse error", expected_budget);
 
@@ -19,7 +20,11 @@ fn run_conformance(file_contents: &str, expected_output: &str, expected_budget: 
     };
 
     let result = program.eval_with_params(
-        &arena, PLUTUS_VERSION, PROTOCOL_VERSION, &costs, ExBudget::default(),
+        &arena,
+        PLUTUS_VERSION,
+        PROTOCOL_VERSION,
+        &costs,
+        ExBudget::default(),
     );
 
     let info = result.info;

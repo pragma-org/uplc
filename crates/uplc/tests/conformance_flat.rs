@@ -2,7 +2,7 @@ use amaru_uplc::{
     arena::Arena,
     binder::DeBruijn,
     flat,
-    machine::{ExBudget, PlutusVersion, default_v3_cost_model},
+    machine::{default_v3_cost_model, ExBudget, PlutusVersion},
     program::Program,
 };
 use serde::Deserialize;
@@ -91,7 +91,11 @@ fn run_conformance(fixture_json: &str) {
     }
 
     let result = program.eval_with_params(
-        &arena, PLUTUS_VERSION, PROTOCOL_VERSION, &costs, ExBudget::default(),
+        &arena,
+        PLUTUS_VERSION,
+        PROTOCOL_VERSION,
+        &costs,
+        ExBudget::default(),
     );
 
     let term = match result.term {

@@ -19,7 +19,7 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use crate::binder::DeBruijn;
-    use crate::machine::{ExBudget, PlutusVersion, default_v3_cost_model};
+    use crate::machine::{default_v3_cost_model, ExBudget, PlutusVersion};
     use crate::program::Version;
 
     use super::arena::Arena;
@@ -156,13 +156,25 @@ mod tests {
         let program = Program::<DeBruijn>::new(&arena, version, term);
 
         let r9 = program.eval_with_params(
-            &arena, PlutusVersion::V3, (9, 0), &costs, ExBudget::default(),
+            &arena,
+            PlutusVersion::V3,
+            (9, 0),
+            &costs,
+            ExBudget::default(),
         );
         let r10 = program.eval_with_params(
-            &arena, PlutusVersion::V3, (10, 0), &costs, ExBudget::default(),
+            &arena,
+            PlutusVersion::V3,
+            (10, 0),
+            &costs,
+            ExBudget::default(),
         );
         let r11 = program.eval_with_params(
-            &arena, PlutusVersion::V3, (11, 0), &costs, ExBudget::default(),
+            &arena,
+            PlutusVersion::V3,
+            (11, 0),
+            &costs,
+            ExBudget::default(),
         );
 
         // All three should produce the correct result
@@ -182,16 +194,23 @@ mod tests {
         let arena = Arena::new();
         let costs = default_v3_cost_model();
 
-        let term = Term::<DeBruijn>::ripemd_160(&arena)
-            .apply(&arena, Term::byte_string(&arena, b"test"));
+        let term =
+            Term::<DeBruijn>::ripemd_160(&arena).apply(&arena, Term::byte_string(&arena, b"test"));
         let version = Version::plutus_v3(&arena);
         let program = Program::<DeBruijn>::new(&arena, version, term);
 
         let result = program.eval_with_params(
-            &arena, PlutusVersion::V3, (10, 0), &costs, ExBudget::default(),
+            &arena,
+            PlutusVersion::V3,
+            (10, 0),
+            &costs,
+            ExBudget::default(),
         );
 
-        assert!(result.term.is_ok(), "post-Plomin ripemd_160 should succeed with real costs");
+        assert!(
+            result.term.is_ok(),
+            "post-Plomin ripemd_160 should succeed with real costs"
+        );
     }
 
     #[test]
@@ -202,13 +221,17 @@ mod tests {
         let arena = Arena::new();
         let costs = default_v3_cost_model();
 
-        let term = Term::<DeBruijn>::ripemd_160(&arena)
-            .apply(&arena, Term::byte_string(&arena, b"test"));
+        let term =
+            Term::<DeBruijn>::ripemd_160(&arena).apply(&arena, Term::byte_string(&arena, b"test"));
         let version = Version::plutus_v3(&arena);
         let program = Program::<DeBruijn>::new(&arena, version, term);
 
         let result = program.eval_with_params(
-            &arena, PlutusVersion::V3, (9, 0), &costs, ExBudget::default(),
+            &arena,
+            PlutusVersion::V3,
+            (9, 0),
+            &costs,
+            ExBudget::default(),
         );
 
         assert!(
@@ -227,16 +250,24 @@ mod tests {
         let arena = Arena::new();
         let costs = default_v3_cost_model();
 
-        let term = Term::<DeBruijn>::ripemd_160(&arena)
-            .apply(&arena, Term::byte_string(&arena, b"test"));
+        let term =
+            Term::<DeBruijn>::ripemd_160(&arena).apply(&arena, Term::byte_string(&arena, b"test"));
         let version = Version::plutus_v3(&arena);
         let program = Program::<DeBruijn>::new(&arena, version, term);
 
         let r10 = program.eval_with_params(
-            &arena, PlutusVersion::V3, (10, 0), &costs, ExBudget::default(),
+            &arena,
+            PlutusVersion::V3,
+            (10, 0),
+            &costs,
+            ExBudget::default(),
         );
         let r11 = program.eval_with_params(
-            &arena, PlutusVersion::V3, (11, 0), &costs, ExBudget::default(),
+            &arena,
+            PlutusVersion::V3,
+            (11, 0),
+            &costs,
+            ExBudget::default(),
         );
 
         assert!(r10.term.is_ok());

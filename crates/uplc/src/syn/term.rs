@@ -175,7 +175,10 @@ pub fn parser<'a>() -> impl Parser<'a, &'a str, &'a Term<'a, DeBruijn>, Extra<'a
                     let ret = Term::case(state.arena, tag, branches);
 
                     if !state.is_constr_case_available() {
-                        emitter.emit(Rich::custom(e.span(), "case is not available for this protocol version"));
+                        emitter.emit(Rich::custom(
+                            e.span(),
+                            "case is not available for this protocol version",
+                        ));
                     }
 
                     ret

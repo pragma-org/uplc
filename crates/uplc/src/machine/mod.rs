@@ -11,9 +11,9 @@ mod state;
 mod value;
 
 pub use cek::*;
+pub use cost_model::default_v3_cost_model;
 pub use cost_model::ex_budget::*;
 pub use cost_model::CostModel;
-pub use cost_model::default_v3_cost_model;
 pub use error::*;
 pub use eval_result::*;
 pub use info::*;

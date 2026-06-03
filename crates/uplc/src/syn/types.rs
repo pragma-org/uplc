@@ -24,10 +24,8 @@ impl<'a> State<'a> {
     }
 
     pub fn is_constr_case_available(&self) -> bool {
-        let protocol_ok = self.protocol_version.map_or(true, |pv| pv >= 9);
-        let version_ok = self
-            .version
-            .map_or(true, |v| v.is_constr_case_available());
+        let protocol_ok = self.protocol_version.is_none_or(|pv| pv >= 9);
+        let version_ok = self.version.is_none_or(|v| v.is_constr_case_available());
         protocol_ok && version_ok
     }
 }
