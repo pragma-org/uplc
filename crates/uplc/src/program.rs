@@ -148,24 +148,8 @@ impl<'a> Version<'a> {
         Self::new(arena, 1, 1, 0)
     }
 
-    pub fn is_v1_0_0(&'a self) -> bool {
-        self.0 == &(1, 0, 0)
-    }
-
-    pub fn is_v1_1_0(&'a self) -> bool {
-        self.0 == &(1, 1, 0)
-    }
-
-    pub fn is_valid_version(&'a self) -> bool {
-        self.is_v1_0_0() || self.is_v1_1_0()
-    }
-
-    pub fn is_less_than_1_1_0(&'a self) -> bool {
-        self.0 < &(1, 1, 0)
-    }
-
-    pub fn is_at_least_1_1_0(&'a self) -> bool {
-        self.0 >= &(1, 1, 0)
+    pub fn is_constr_case_available(&'a self) -> bool {
+        self.0 .0 >= 1 && self.0 .1 >= 1
     }
 
     pub fn major(&'a self) -> usize {
