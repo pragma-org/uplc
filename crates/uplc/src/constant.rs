@@ -3,13 +3,11 @@
 //! [`Constant`] covers all ground types: arbitrary-precision integers ([`Integer`]),
 //! byte strings, UTF-8 strings, booleans, unit, homogeneous lists and arrays, pairs,
 //! structured [`PlutusData`], and BLS12-381 curve elements.
-//! 
+//!
 use crate::{
     arena::Arena, binder::Eval, data::PlutusData, ledger_value::LedgerValue, machine::MachineError,
     typ::Type,
 };
-
-use crate::{arena::Arena, binder::Eval, data::PlutusData, machine::MachineError, typ::Type};
 
 /// A UPLC ground-type constant.
 #[non_exhaustive]
@@ -44,6 +42,7 @@ pub enum Constant<'a> {
     Bls12_381G2Element(&'a blst::blst_p2),
     /// BLS12-381 Miller-loop result.
     Bls12_381MlResult(&'a blst::blst_fp12),
+    /// Cardano multi-asset ledger value.
     Value(&'a LedgerValue<'a>),
 }
 
@@ -145,10 +144,12 @@ impl<'a> Constant<'a> {
         arena.alloc(Constant::Bls12_381MlResult(ml_res))
     }
 
+    /// Allocates a [`Constant::Value`] wrapping a [`LedgerValue`].
     pub fn ledger_value(arena: &'a Arena, v: &'a LedgerValue<'a>) -> &'a Constant<'a> {
         arena.alloc(Constant::Value(v))
     }
 
+    /// Unwraps a [`Constant::Data`], returning the inner [`PlutusData`].
     pub fn unwrap_data<V>(&'a self) -> Result<&'a PlutusData<'a>, MachineError<'a, V>>
     where
         V: Eval<'a>,

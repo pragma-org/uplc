@@ -219,16 +219,25 @@ pub enum DefaultFunction {
     IndexArray = 91,
 
     // BLS Multi-Scalar Multiplication
+    /// Multi-scalar multiplication on G1 points.
     Bls12_381_G1_MultiScalarMul = 92,
+    /// Multi-scalar multiplication on G2 points.
     Bls12_381_G2_MultiScalarMul = 93,
 
     // Value builtins
+    /// Inserts a single token quantity into a ledger value.
     InsertCoin = 94,
+    /// Looks up a token quantity in a ledger value.
     LookupCoin = 95,
+    /// Merges two ledger values by summing matching token quantities.
     UnionValue = 96,
+    /// Tests whether one ledger value contains at least the quantities of another.
     ValueContains = 97,
+    /// Serialises a ledger value into [`PlutusData`](crate::data::PlutusData).
     ValueData = 98,
+    /// Deserialises [`PlutusData`](crate::data::PlutusData) into a ledger value.
     UnValueData = 99,
+    /// Multiplies every quantity in a ledger value by a scalar.
     ScaleValue = 100,
 }
 

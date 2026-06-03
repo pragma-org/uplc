@@ -31,7 +31,7 @@ smart-contract language for the [Cardano](https://cardano.org/) blockchain.
 
 ```toml
 [dependencies]
-amaru-uplc = "0.1.0"
+amaru-uplc = "0.4.0"
 ```
 
 ## Usage

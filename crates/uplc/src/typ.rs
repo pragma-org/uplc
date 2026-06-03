@@ -36,6 +36,7 @@ pub enum Type<'a> {
     Bls12_381G2Element,
     /// BLS12-381 Miller-loop result.
     Bls12_381MlResult,
+    /// Cardano multi-asset ledger value.
     Value,
 }
 
@@ -100,6 +101,7 @@ impl<'a> Type<'a> {
         arena.alloc(Type::Bls12_381MlResult)
     }
 
+    /// Allocates a [`Type::Value`].
     pub fn value(arena: &'a Arena) -> &'a Type<'a> {
         arena.alloc(Type::Value)
     }

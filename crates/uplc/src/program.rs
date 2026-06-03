@@ -51,13 +51,11 @@ where
     V: Eval<'a>,
 {
     /// Evaluate using Plutus V3 semantics and the default mainnet budget.
-    #[must_use]
     pub fn eval(&'a self, arena: &'a Arena) -> EvalResult<'a, V> {
         self.eval_version(arena, PlutusVersion::V3)
     }
 
     /// Evaluate with the specified Plutus version and the default mainnet budget.
-    #[must_use]
     pub fn eval_version(
         &'a self,
         arena: &'a Arena,
@@ -67,7 +65,6 @@ where
     }
 
     /// Evaluate with an explicit Plutus version and a custom initial [`ExBudget`].
-    #[must_use]
     pub fn eval_version_budget(
         &'a self,
         arena: &'a Arena,
@@ -119,7 +116,6 @@ where
     ///
     /// `cost_model` must be ordered as expected by the corresponding
     /// `BuiltinCostModel` implementation for `plutus_version`.
-    #[must_use]
     pub fn eval_with_params(
         &'a self,
         arena: &'a Arena,
@@ -200,6 +196,7 @@ impl<'a> Version<'a> {
         self.0 < &(1, 1, 0)
     }
 
+    /// Returns `true` if this version is `1.1.0` or above.
     pub fn is_at_least_1_1_0(&'a self) -> bool {
         self.0 >= &(1, 1, 0)
     }

@@ -1,3 +1,9 @@
+//! Cardano multi-asset ledger values.
+//!
+//! A [`LedgerValue`] is a sorted, canonical representation of a Cardano multi-asset value
+//! (currency symbol → token name → quantity). It is used by the `Value`-related built-in
+//! functions introduced in later Plutus versions.
+
 use bumpalo::collections::Vec as BumpVec;
 use num::{Signed, Zero};
 
@@ -7,68 +13,100 @@ use crate::{
     data::PlutusData,
 };
 
+/// Errors produced when deserialising [`PlutusData`] into a [`LedgerValue`].
 #[derive(thiserror::Error, Debug)]
 pub enum UnValueDataError {
+    /// Expected a `Map` constructor but found something else.
     #[error("non-Map constructor")]
     NonMapConstructor,
+    /// Expected a `ByteString` constructor but found something else.
     #[error("non-B constructor")]
     NonByteStringConstructor,
+    /// Expected an `Integer` constructor but found something else.
     #[error("non-I constructor")]
     NonIntegerConstructor,
+    /// A currency symbol or token name exceeds the 32-byte limit.
     #[error("invalid key")]
     InvalidKey,
+    /// An inner token map is empty.
     #[error("empty inner map")]
     EmptyInnerMap,
+    /// Currency symbols are not in strictly ascending byte order.
     #[error("currency symbols not strictly ascending")]
     CurrencyNotAscending,
+    /// Token names are not in strictly ascending byte order.
     #[error("token names not strictly ascending")]
     TokenNotAscending,
+    /// A token quantity is zero or out of the valid range.
     #[error("invalid quantity")]
     InvalidQuantity,
 }
 
+/// Errors produced by `Value` built-in function operations.
 #[derive(thiserror::Error, Debug)]
 pub enum ValueError {
+    /// `insertCoin` received an invalid currency symbol.
     #[error("insertCoin: invalid currency")]
     InsertCoinInvalidCurrency,
+    /// `insertCoin` received an invalid token name.
     #[error("insertCoin: invalid token")]
     InsertCoinInvalidToken,
+    /// `unionValue` produced a quantity outside the signed 128-bit range.
     #[error("unionValue: quantity is out of the signed 128-bit integer bounds")]
     UnionValueQuantityOutOfBounds,
+    /// `valueContains` called with a first value that has negative amounts.
     #[error("valueContains: first value contains negative amounts")]
     ValueContainsFirstNegative,
+    /// `valueContains` called with a second value that has negative amounts.
     #[error("valueContains: second value contains negative amounts")]
     ValueContainsSecondNegative,
+    /// `scaleValue` produced a quantity outside the signed 128-bit range.
     #[error("scaleValue: quantity out of bounds")]
     ScaleValueQuantityOutOfBounds,
+    /// `valueData` input exceeds the maximum allowed size.
     #[error("valueData: maximum input size ({0}) exceeded")]
     ValueDataMaxSizeExceeded(usize),
+    /// Error during `unValueData` deserialisation.
     #[error("unValueData: {0}")]
     UnValueData(#[from] UnValueDataError),
+    /// A quantity is outside the signed 128-bit integer bounds.
     #[error("Quantity out of signed 128-bit integer bounds")]
     QuantityOutOfBounds,
 }
 
+/// A Cardano multi-asset value, sorted by currency symbol then token name.
+///
+/// Entries are kept in strictly ascending order to allow efficient merging and comparison.
 #[derive(Debug, PartialEq)]
 pub struct LedgerValue<'a> {
+    /// Currency entries, sorted by currency symbol in ascending byte order.
     pub entries: &'a [CurrencyEntry<'a>],
+    /// Total number of individual token entries across all currencies.
     pub size: usize,
+    /// Number of token entries with a negative quantity.
     pub negative_count: usize,
 }
 
+/// A single currency symbol and its associated token entries.
 #[derive(Debug, PartialEq, Clone)]
 pub struct CurrencyEntry<'a> {
+    /// Currency symbol (policy ID) as raw bytes.
     pub currency: &'a [u8],
+    /// Token entries under this currency, sorted by token name in ascending byte order.
     pub tokens: &'a [TokenEntry<'a>],
 }
 
+/// A single token name and its quantity within a currency.
 #[derive(Debug, PartialEq, Clone)]
 pub struct TokenEntry<'a> {
+    /// Token name as raw bytes.
     pub name: &'a [u8],
+    /// Quantity of this token (may be negative in intermediate results).
     pub quantity: &'a Integer,
 }
 
 impl<'a> LedgerValue<'a> {
+    /// Returns an empty ledger value with no currency entries.
     pub fn empty(arena: &'a Arena) -> &'a LedgerValue<'a> {
         arena.alloc(LedgerValue {
             entries: &[],
@@ -77,6 +115,7 @@ impl<'a> LedgerValue<'a> {
         })
     }
 
+    /// Looks up the quantity for a given currency and token name, returning zero if absent.
     pub fn lookup_coin(&self, arena: &'a Arena, ccy: &[u8], tok: &[u8]) -> &'a Integer {
         for entry in self.entries {
             match entry.currency.cmp(ccy) {
@@ -97,6 +136,9 @@ impl<'a> LedgerValue<'a> {
         integer(arena)
     }
 
+    /// Inserts or replaces a single token quantity in the value, maintaining sort order.
+    ///
+    /// If `qty` is zero, the entry is removed.
     pub fn insert_coin(
         arena: &'a Arena,
         ccy: &'a [u8],
@@ -199,6 +241,9 @@ impl<'a> LedgerValue<'a> {
         })
     }
 
+    /// Merges two ledger values by summing quantities for matching currency/token pairs.
+    ///
+    /// Entries with a resulting zero quantity are dropped.
     pub fn union_value(
         arena: &'a Arena,
         v1: &'a LedgerValue<'a>,
@@ -250,6 +295,9 @@ impl<'a> LedgerValue<'a> {
         }))
     }
 
+    /// Returns `true` if every token in `v2` is present in `v1` with at least the same quantity.
+    ///
+    /// Both values must be non-negative; returns an error otherwise.
     pub fn value_contains(v1: &LedgerValue<'a>, v2: &LedgerValue<'a>) -> Result<bool, ValueError> {
         // 1. Check v1 for negatives
         if v1.negative_count > 0 {
@@ -305,6 +353,9 @@ impl<'a> LedgerValue<'a> {
         Ok(true)
     }
 
+    /// Multiplies every quantity in the value by `scalar`.
+    ///
+    /// Returns an empty value if `scalar` is zero.
     pub fn scale_value(
         arena: &'a Arena,
         scalar: &'a Integer,
@@ -351,6 +402,7 @@ impl<'a> LedgerValue<'a> {
         }))
     }
 
+    /// Serialises a ledger value into a [`PlutusData`] map-of-maps representation.
     pub fn value_data(
         arena: &'a Arena,
         v: &'a LedgerValue<'a>,
@@ -383,6 +435,10 @@ impl<'a> LedgerValue<'a> {
         Ok(PlutusData::map(arena, outer_pairs))
     }
 
+    /// Deserialises a [`PlutusData`] map-of-maps into a [`LedgerValue`].
+    ///
+    /// Validates that keys are ≤ 32 bytes, in strictly ascending order, inner maps are
+    /// non-empty, quantities are non-zero, and all quantities fit in a signed 128-bit range.
     pub fn un_value_data(
         arena: &'a Arena,
         d: &'a PlutusData<'a>,
@@ -478,6 +534,7 @@ impl<'a> LedgerValue<'a> {
     }
 }
 
+/// Counts the total number of token entries and how many have negative quantities.
 pub fn count_stats(entries: &[CurrencyEntry]) -> (usize, usize) {
     let mut total_size = 0usize;
     let mut negative_count = 0usize;
@@ -563,6 +620,7 @@ pub fn check_quantity_range(int: &Integer) -> Result<(), ValueError> {
     }
 }
 
+/// Returns the approximate tree depth of the value for costing purposes.
 pub fn value_max_depth(v: &LedgerValue) -> i64 {
     let outer_size = v.entries.len();
     let mut max_inner = 0usize;
@@ -584,6 +642,7 @@ pub fn value_max_depth(v: &LedgerValue) -> i64 {
     log_outer + log_inner
 }
 
+/// Counts the total number of nodes in a [`PlutusData`] tree for costing purposes.
 pub fn data_node_count(d: &PlutusData) -> i64 {
     let mut total: i64 = 0;
     let mut stack: Vec<&PlutusData> = vec![d];

@@ -46,6 +46,7 @@
 //! | [`flat`] | Flat/CBOR binary encoder and decoder |
 //! | [`bls`] | BLS12-381 elliptic curve primitives |
 //! | [`typ`] | UPLC type system |
+//! | [`ledger_value`] | Cardano multi-asset ledger values |
 //!
 //! [UPLC]: https://plutus.readthedocs.io/en/latest/reference/uplc-introduction.html
 //! [Plutus]: https://plutus.readthedocs.io/
